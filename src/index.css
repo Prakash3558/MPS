@@ -112,16 +112,20 @@ body {
 
 @keyframes marquee {
   0% {
-    transform: translateX(0%);
+    transform: translate3d(0%, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
 .animate-marquee {
-  display: inline-block;
-  animation: marquee 25s linear infinite;
+  display: inline-flex;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  animation: marquee 28s linear infinite;
 }
 
 .animate-marquee:hover {
@@ -130,17 +134,21 @@ body {
 
 @keyframes infiniteScroll {
   0% {
-    transform: translateX(0%);
+    transform: translate3d(0%, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
 .animate-infinite-scroll {
   display: flex;
   width: max-content;
-  animation: infiniteScroll 40s linear infinite;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  animation: infiniteScroll 42s linear infinite;
 }
 
 .animate-infinite-scroll:hover {
@@ -150,11 +158,23 @@ body {
 .animate-infinite-scroll-slow {
   display: flex;
   width: max-content;
-  animation: infiniteScroll 50s linear infinite;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  animation: infiniteScroll 55s linear infinite;
 }
 
 .animate-infinite-scroll-slow:hover {
   animation-play-state: paused;
+}
+
+/* Smooth Image Motion Helper */
+.smooth-gpu-image {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* Modern Glassmorphism & Card Utilities */

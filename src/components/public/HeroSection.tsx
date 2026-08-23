@@ -75,28 +75,33 @@ export const HeroSection: React.FC = React.memo(() => {
           <div className="relative w-full h-full">
             {slides.map((slide, idx) => {
               const isActive = idx === currentSlideIndex;
-              const isFirstSlide = idx === 0;
               return (
                 <div
                   key={slide.id || idx}
-                  className={`absolute inset-0 ${isFirstSlide && currentSlideIndex === 0 ? '' : 'transition-opacity duration-1000 ease-in-out'} ${
+                  className={`absolute inset-0 transition-opacity duration-1000 ease-in-out will-change-[opacity] ${
                     isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
                   }`}
+                  style={{
+                    transform: 'translateZ(0)',
+                    backfaceVisibility: 'hidden'
+                  }}
                 >
                   <motion.div
-                    animate={isActive ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+                    animate={isActive ? { scale: [1, 1.04, 1] } : { scale: 1 }}
                     transition={{
-                      duration: 7,
+                      duration: 10,
                       repeat: Infinity,
                       repeatType: 'reverse',
-                      ease: 'easeInOut'
+                      ease: [0.4, 0, 0.2, 1]
                     }}
-                    className="w-full h-full"
+                    className="w-full h-full will-change-transform"
+                    style={{ transform: 'translateZ(0)' }}
                   >
                     <EditableImage
                       src={slide.image}
                       alt={`MPS Sikta Banner ${idx + 1}`}
                       loading={idx === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
                       className="w-full h-full object-cover filter brightness-90 contrast-105"
                       onSaveImage={(newUrl) => handleUpdateSlideImage(newUrl, idx)}
                     />

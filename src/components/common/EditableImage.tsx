@@ -9,6 +9,7 @@ interface EditableImageProps {
   aspectRatio?: string;
   isVideo?: boolean;
   loading?: 'lazy' | 'eager';
+  decoding?: 'async' | 'sync' | 'auto';
 }
 
 export const EditableImage: React.FC<EditableImageProps> = React.memo(({
@@ -16,7 +17,8 @@ export const EditableImage: React.FC<EditableImageProps> = React.memo(({
   alt,
   className = '',
   isVideo = false,
-  loading = 'lazy'
+  loading = 'lazy',
+  decoding
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -59,7 +61,7 @@ export const EditableImage: React.FC<EditableImageProps> = React.memo(({
           src={src}
           alt={alt}
           loading={loading}
-          decoding={isEager ? 'sync' : 'async'}
+          decoding={decoding || (isEager ? 'sync' : 'async')}
           referrerPolicy="no-referrer"
           {...(isEager ? { fetchPriority: 'high' as const } : {})}
           onLoad={handleImageLoad}
