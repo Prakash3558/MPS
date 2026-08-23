@@ -45,10 +45,10 @@ export const EditableImage: React.FC<EditableImageProps> = React.memo(({
   const isEager = loading === 'eager';
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-slate-200/60 dark:bg-slate-800/60 select-none">
+    <div className="relative w-full h-full overflow-hidden bg-slate-100 dark:bg-slate-800 select-none">
       {!isLoaded && !isEager && (
-        <div className="absolute inset-0 bg-slate-200 dark:bg-slate-800 animate-pulse flex items-center justify-center pointer-events-none">
-          <div className="w-6 h-6 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+        <div className="absolute inset-0 bg-slate-200/50 dark:bg-slate-800/50 flex items-center justify-center pointer-events-none">
+          <div className="w-5 h-5 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
         </div>
       )}
       {hasError ? (
@@ -61,12 +61,12 @@ export const EditableImage: React.FC<EditableImageProps> = React.memo(({
           src={src}
           alt={alt}
           loading={loading}
-          decoding={decoding || (isEager ? 'sync' : 'async')}
+          decoding={decoding || 'async'}
           referrerPolicy="no-referrer"
           {...(isEager ? { fetchPriority: 'high' as const } : {})}
           onLoad={handleImageLoad}
           onError={handleImageError}
-          className={`${className} transition-opacity duration-300 ${isLoaded || isEager ? 'opacity-100' : 'opacity-80'}`}
+          className={`${className}`}
         />
       )}
     </div>

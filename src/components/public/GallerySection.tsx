@@ -26,18 +26,93 @@ export const GallerySection: React.FC = React.memo(() => {
   }, [gallery, activeCategory]);
 
   const trackRef = useRef<HTMLDivElement>(null);
-  const [isPaused, setIsPaused] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const isInteractingRef = useRef(false);
+  const autoPlayTimerRef = useRef<number | null>(null);
 
-  // Clean navigation that aligns smoothly to whole cards
-  const handleManualNav = (direction: 'left' | 'right') => {
-    if (!trackRef.current) return;
+  // Sync current active dot indicator based on scroll position
+  const handleScroll = useCallback(() => {
+    if (!trackRef.current || gallery.length === 0) return;
     const el = trackRef.current;
-    const scrollAmount = Math.min(el.clientWidth * 0.8, 380);
-    el.scrollBy({
-      left: direction === 'left' ? -scrollAmount : scrollAmount,
+    const itemWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 20 : 340;
+    const newIdx = Math.round(el.scrollLeft / itemWidth);
+    setCurrentIndex(Math.min(Math.max(newIdx, 0), gallery.length - 1));
+  }, [gallery.length]);
+
+  // Clean navigation that aligns smoothly to cards in both directions
+  const scrollToIndex = useCallback((targetIndex: number) => {
+    if (!trackRef.current || gallery.length === 0) return;
+    const el = trackRef.current;
+    const clampedIndex = (targetIndex + gallery.length) % gallery.length;
+    const itemWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 20 : 340;
+    
+    el.scrollTo({
+      left: clampedIndex * itemWidth,
       behavior: 'smooth'
     });
+    setCurrentIndex(clampedIndex);
+  }, [gallery.length]);
+
+  const handleManualNav = (direction: 'left' | 'right') => {
+    pauseAutoPlay();
+    if (!trackRef.current || gallery.length === 0) return;
+    const el = trackRef.current;
+    const itemWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 20 : 340;
+    const currentIdx = Math.round(el.scrollLeft / itemWidth);
+    
+    if (direction === 'right') {
+      const nextIdx = currentIdx >= gallery.length - 1 ? 0 : currentIdx + 1;
+      scrollToIndex(nextIdx);
+    } else {
+      const prevIdx = currentIdx <= 0 ? gallery.length - 1 : currentIdx - 1;
+      scrollToIndex(prevIdx);
+    }
+    resumeAutoPlayDelayed(4000);
   };
+
+  const pauseAutoPlay = () => {
+    isInteractingRef.current = true;
+    if (autoPlayTimerRef.current) {
+      window.clearInterval(autoPlayTimerRef.current);
+      autoPlayTimerRef.current = null;
+    }
+  };
+
+  const resumeAutoPlayDelayed = (delay = 3500) => {
+    if (autoPlayTimerRef.current) window.clearInterval(autoPlayTimerRef.current);
+    autoPlayTimerRef.current = window.setTimeout(() => {
+      isInteractingRef.current = false;
+      startAutoPlayInterval();
+    }, delay);
+  };
+
+  const startAutoPlayInterval = () => {
+    if (autoPlayTimerRef.current) window.clearInterval(autoPlayTimerRef.current);
+    autoPlayTimerRef.current = window.setInterval(() => {
+      if (isInteractingRef.current || !trackRef.current || gallery.length <= 1) return;
+      const el = trackRef.current;
+      const itemWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 20 : 340;
+      const maxScroll = el.scrollWidth - el.clientWidth - 10;
+
+      if (el.scrollLeft >= maxScroll) {
+        // Smooth loop back to the first card
+        el.scrollTo({ left: 0, behavior: 'smooth' });
+        setCurrentIndex(0);
+      } else {
+        el.scrollBy({ left: itemWidth, behavior: 'smooth' });
+      }
+    }, 3800);
+  };
+
+  // Continuous auto-play cycle with graceful pause on user interaction
+  useEffect(() => {
+    startAutoPlayInterval();
+    return () => {
+      if (autoPlayTimerRef.current) {
+        window.clearInterval(autoPlayTimerRef.current);
+      }
+    };
+  }, [gallery.length]);
 
   const handleCardClick = (item: GalleryItem) => {
     setSelectedPhotoItem(item);
@@ -92,75 +167,85 @@ export const GallerySection: React.FC = React.memo(() => {
           </div>
         </div>
 
-        {/* Buttery Smooth GPU Infinite Moving Track */}
+        {/* Interactive Smooth Scroll Track with Touch & Mouse Momentum */}
         <div
           ref={trackRef}
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-          onTouchStart={() => setIsPaused(true)}
-          onTouchEnd={() => setTimeout(() => setIsPaused(false), 2000)}
-          className="overflow-x-auto pb-4 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          onScroll={handleScroll}
+          onMouseEnter={pauseAutoPlay}
+          onMouseLeave={() => resumeAutoPlayDelayed(2000)}
+          onTouchStart={pauseAutoPlay}
+          onTouchEnd={() => resumeAutoPlayDelayed(2500)}
+          className="flex gap-5 sm:gap-6 overflow-x-auto pb-4 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden scroll-smooth snap-x snap-mandatory"
           style={{
             touchAction: 'pan-x pan-y',
-            WebkitOverflowScrolling: 'touch',
-            scrollBehavior: 'smooth'
+            WebkitOverflowScrolling: 'touch'
           }}
         >
-          <div
-            className="flex gap-5 sm:gap-6 animate-infinite-scroll-slow"
-            style={{
-              animationPlayState: isPaused ? 'paused' : 'running',
-              willChange: 'transform'
-            }}
-          >
-            {/* Set 1 + Set 2 (for seamless endless loop) */}
-            {[...gallery, ...gallery].map((item, idx) => (
-              <div
-                key={`gallery-${item.id}-${idx}`}
-                onClick={() => handleCardClick(item)}
-                className="w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] flex-shrink-0 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-300 group cursor-pointer flex flex-col relative transform hover:-translate-y-1"
-                style={{
-                  transform: 'translateZ(0)',
-                  backfaceVisibility: 'hidden'
-                }}
-              >
-                {/* Photo Box */}
-                <div className="aspect-[16/11] overflow-hidden relative bg-slate-100 dark:bg-slate-800">
-                  <EditableImage
-                    src={item.url}
-                    alt={item.title}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out pointer-events-none will-change-transform"
-                  />
-                  
-                  {/* Category Badge */}
-                  <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-medium uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-white/20 pointer-events-none">
-                    {item.category}
-                  </span>
+          {gallery.map((item, idx) => (
+            <div
+              key={`gallery-${item.id}-${idx}`}
+              onClick={() => handleCardClick(item)}
+              className="w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] flex-shrink-0 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-300 group cursor-pointer flex flex-col relative snap-start transform hover:-translate-y-1"
+            >
+              {/* Photo Box */}
+              <div className="aspect-[16/11] overflow-hidden relative bg-slate-100 dark:bg-slate-800">
+                <EditableImage
+                  src={item.url}
+                  alt={item.title}
+                  loading={idx < 3 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out pointer-events-none will-change-transform"
+                />
+                
+                {/* Category Badge */}
+                <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-medium uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-white/20 pointer-events-none">
+                  {item.category}
+                </span>
 
-                  {/* Hover / Tap Hint */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center text-white gap-1.5 pointer-events-none">
-                    <Eye className="w-4 h-4 text-amber-400" />
-                    <span className="text-xs font-semibold text-white">View Photo</span>
-                  </div>
-                </div>
-
-                {/* Card Caption */}
-                <div className="p-4 flex-grow flex flex-col justify-between space-y-1 bg-white dark:bg-slate-900">
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white text-sm font-heading line-clamp-1">
-                      <EditableText blockKey={`gallery.${item.id}.title`} defaultText={item.title} />
-                    </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 font-body">
-                      <EditableText blockKey={`gallery.${item.id}.caption`} defaultText={item.caption} />
-                    </p>
-                  </div>
+                {/* Hover / Tap Hint */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center text-white gap-1.5 pointer-events-none">
+                  <Eye className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-semibold text-white">View Photo</span>
                 </div>
               </div>
+
+              {/* Card Caption */}
+              <div className="p-4 flex-grow flex flex-col justify-between space-y-1 bg-white dark:bg-slate-900">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm font-heading line-clamp-1">
+                    <EditableText blockKey={`gallery.${item.id}.title`} defaultText={item.title} />
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 font-body">
+                    <EditableText blockKey={`gallery.${item.id}.caption`} defaultText={item.caption} />
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Carousel Pagination Dots */}
+        {gallery.length > 1 && (
+          <div className="flex items-center justify-center gap-1.5 pt-3">
+            {gallery.map((_, i) => (
+              <button
+                key={`gallery-dot-${i}`}
+                type="button"
+                onClick={() => {
+                  pauseAutoPlay();
+                  scrollToIndex(i);
+                  resumeAutoPlayDelayed(4000);
+                }}
+                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  i === currentIndex
+                    ? 'w-6 bg-amber-500 dark:bg-amber-400'
+                    : 'w-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600'
+                }`}
+                aria-label={`Jump to photo ${i + 1}`}
+              />
             ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* SINGLE PHOTO MODAL (Opens ONLY when clicking an individual photo) */}

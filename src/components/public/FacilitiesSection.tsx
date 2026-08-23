@@ -15,7 +15,9 @@ export const FacilitiesSection: React.FC = React.memo(() => {
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
 
   const trackRef = useRef<HTMLDivElement>(null);
-  const [isPaused, setIsPaused] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const isInteractingRef = useRef(false);
+  const autoPlayTimerRef = useRef<number | null>(null);
 
   const getIcon = (iconName: string) => {
     switch (iconName) {
@@ -34,16 +36,87 @@ export const FacilitiesSection: React.FC = React.memo(() => {
     }
   };
 
-  // Clean navigation that scrolls smoothly
-  const handleManualNav = (direction: 'left' | 'right') => {
-    if (!trackRef.current) return;
+  // Sync current active dot indicator based on scroll position
+  const handleScroll = useCallback(() => {
+    if (!trackRef.current || facilities.length === 0) return;
     const el = trackRef.current;
-    const scrollAmount = Math.min(el.clientWidth * 0.8, 400);
-    el.scrollBy({
-      left: direction === 'left' ? -scrollAmount : scrollAmount,
+    const itemWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 20 : 360;
+    const newIdx = Math.round(el.scrollLeft / itemWidth);
+    setCurrentIndex(Math.min(Math.max(newIdx, 0), facilities.length - 1));
+  }, [facilities.length]);
+
+  // Clean bidirectional navigation that loops smoothly back & forth
+  const scrollToIndex = useCallback((targetIndex: number) => {
+    if (!trackRef.current || facilities.length === 0) return;
+    const el = trackRef.current;
+    const clampedIndex = (targetIndex + facilities.length) % facilities.length;
+    const itemWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 20 : 360;
+    
+    el.scrollTo({
+      left: clampedIndex * itemWidth,
       behavior: 'smooth'
     });
+    setCurrentIndex(clampedIndex);
+  }, [facilities.length]);
+
+  const handleManualNav = (direction: 'left' | 'right') => {
+    pauseAutoPlay();
+    if (!trackRef.current || facilities.length === 0) return;
+    const el = trackRef.current;
+    const itemWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 20 : 360;
+    const currentIdx = Math.round(el.scrollLeft / itemWidth);
+    
+    if (direction === 'right') {
+      const nextIdx = currentIdx >= facilities.length - 1 ? 0 : currentIdx + 1;
+      scrollToIndex(nextIdx);
+    } else {
+      const prevIdx = currentIdx <= 0 ? facilities.length - 1 : currentIdx - 1;
+      scrollToIndex(prevIdx);
+    }
+    resumeAutoPlayDelayed(4000);
   };
+
+  const pauseAutoPlay = () => {
+    isInteractingRef.current = true;
+    if (autoPlayTimerRef.current) {
+      window.clearInterval(autoPlayTimerRef.current);
+      autoPlayTimerRef.current = null;
+    }
+  };
+
+  const resumeAutoPlayDelayed = (delay = 3500) => {
+    if (autoPlayTimerRef.current) window.clearInterval(autoPlayTimerRef.current);
+    autoPlayTimerRef.current = window.setTimeout(() => {
+      isInteractingRef.current = false;
+      startAutoPlayInterval();
+    }, delay);
+  };
+
+  const startAutoPlayInterval = () => {
+    if (autoPlayTimerRef.current) window.clearInterval(autoPlayTimerRef.current);
+    autoPlayTimerRef.current = window.setInterval(() => {
+      if (isInteractingRef.current || !trackRef.current || facilities.length <= 1) return;
+      const el = trackRef.current;
+      const itemWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 20 : 360;
+      const maxScroll = el.scrollWidth - el.clientWidth - 10;
+
+      if (el.scrollLeft >= maxScroll) {
+        el.scrollTo({ left: 0, behavior: 'smooth' });
+        setCurrentIndex(0);
+      } else {
+        el.scrollBy({ left: itemWidth, behavior: 'smooth' });
+      }
+    }, 4200);
+  };
+
+  useEffect(() => {
+    startAutoPlayInterval();
+    return () => {
+      if (autoPlayTimerRef.current) {
+        window.clearInterval(autoPlayTimerRef.current);
+      }
+    };
+  }, [facilities.length]);
 
   return (
     <section id="facilities" className="py-14 sm:py-18 bg-white dark:bg-slate-950 transition-colors relative overflow-hidden">
@@ -83,88 +156,95 @@ export const FacilitiesSection: React.FC = React.memo(() => {
           </div>
         </div>
 
-        {/* Buttery Smooth GPU Auto-Moving Track */}
+        {/* Interactive Smooth Scroll Track with Touch Momentum & Zero Duplication */}
         <div
           ref={trackRef}
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-          onTouchStart={() => setIsPaused(true)}
-          onTouchEnd={() => setTimeout(() => setIsPaused(false), 2000)}
-          className="overflow-x-auto pb-4 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          onScroll={handleScroll}
+          onMouseEnter={pauseAutoPlay}
+          onMouseLeave={() => resumeAutoPlayDelayed(2000)}
+          onTouchStart={pauseAutoPlay}
+          onTouchEnd={() => resumeAutoPlayDelayed(2500)}
+          className="flex gap-5 sm:gap-6 overflow-x-auto pb-4 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden scroll-smooth snap-x snap-mandatory"
           style={{
             touchAction: 'pan-x pan-y',
-            WebkitOverflowScrolling: 'touch',
-            scrollBehavior: 'smooth'
+            WebkitOverflowScrolling: 'touch'
           }}
         >
-          <div
-            className="flex gap-5 sm:gap-6 animate-infinite-scroll-slow"
-            style={{
-              animationPlayState: isPaused ? 'paused' : 'running',
-              willChange: 'transform'
-            }}
-          >
-            {[...facilities, ...facilities].map((f, idx) => (
-              <div
-                key={`facility-${f.id}-${idx}`}
-                onClick={() => setSelectedFacility(f)}
-                className="w-[82vw] max-w-[340px] sm:w-[380px] md:w-[400px] flex-shrink-0 cursor-pointer"
-                style={{
-                  transform: 'translateZ(0)',
-                  backfaceVisibility: 'hidden'
-                }}
-              >
-                <Card3DTilt maxTilt={4} scaleOnHover={1.02} className="h-full">
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col h-full group relative">
-                    
-                    {/* Category & Status Badges */}
-                    <div className="absolute top-3.5 left-3.5 z-10 flex flex-wrap gap-1.5 pointer-events-none">
-                      {f.category && (
-                        <span className="text-[10px] font-semibold uppercase tracking-wider bg-black/60 text-white backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/20">
-                          {f.category}
-                        </span>
-                      )}
-                    </div>
+          {facilities.map((f, idx) => (
+            <div
+              key={`facility-${f.id}-${idx}`}
+              onClick={() => setSelectedFacility(f)}
+              className="w-[82vw] max-w-[340px] sm:w-[380px] md:w-[400px] flex-shrink-0 cursor-pointer snap-start"
+            >
+              <Card3DTilt maxTilt={4} scaleOnHover={1.02} className="h-full">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col h-full group relative">
+                  
+                  {/* Category & Status Badges */}
+                  <div className="absolute top-3.5 left-3.5 z-10 flex flex-wrap gap-1.5 pointer-events-none">
+                    {f.category && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wider bg-black/60 text-white backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/20">
+                        {f.category}
+                      </span>
+                    )}
+                  </div>
 
-                    {/* Photo Container */}
-                    <div className="aspect-[16/10] overflow-hidden relative bg-slate-100 dark:bg-slate-800">
-                      <EditableImage
-                        src={f.image}
-                        alt={f.title}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out pointer-events-none will-change-transform"
-                      />
-                    </div>
+                  {/* Photo Container */}
+                  <div className="aspect-[16/10] overflow-hidden relative bg-slate-100 dark:bg-slate-800">
+                    <EditableImage
+                      src={f.image}
+                      alt={f.title}
+                      loading={idx < 3 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out pointer-events-none will-change-transform"
+                    />
+                  </div>
 
-                    {/* Card Body */}
-                    <div className="p-5 flex-grow space-y-3 flex flex-col justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 flex-shrink-0">
-                            {getIcon(f.iconName)}
-                          </div>
-                          <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading line-clamp-1">
-                            <EditableText blockKey={`facility.${f.id}.title`} defaultText={f.title} />
-                          </h3>
+                  {/* Card Body */}
+                  <div className="p-5 flex-grow space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 flex-shrink-0">
+                          {getIcon(f.iconName)}
                         </div>
-
-                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-body line-clamp-2">
-                          <EditableText blockKey={`facility.${f.id}.desc`} defaultText={f.description} />
-                        </p>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading line-clamp-1">
+                          <EditableText blockKey={`facility.${f.id}.title`} defaultText={f.title} />
+                        </h3>
                       </div>
 
-                      <div className="w-full py-2 bg-slate-100 group-hover:bg-amber-500 group-hover:text-white dark:bg-slate-800 dark:group-hover:bg-amber-500 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all mt-2">
-                        <span>View Details</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </div>
+                      <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-body line-clamp-2">
+                        <EditableText blockKey={`facility.${f.id}.desc`} defaultText={f.description} />
+                      </p>
+                    </div>
+
+                    <div className="w-full py-2 bg-slate-100 group-hover:bg-amber-500 group-hover:text-white dark:bg-slate-800 dark:group-hover:bg-amber-500 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all mt-2">
+                      <span>View Details</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </div>
                   </div>
-                </Card3DTilt>
-              </div>
+                </div>
+              </Card3DTilt>
+            </div>
+          ))}
+        </div>
+
+        {/* Carousel Pagination Dots */}
+        {facilities.length > 1 && (
+          <div className="flex items-center justify-center gap-1.5 pt-3">
+            {facilities.map((_, i) => (
+              <button
+                key={`dot-${i}`}
+                type="button"
+                onClick={() => scrollToIndex(i)}
+                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  i === currentIndex
+                    ? 'w-7 bg-amber-500 dark:bg-amber-400'
+                    : 'w-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600'
+                }`}
+                aria-label={`Go to slide ${i + 1}`}
+              />
             ))}
           </div>
-        </div>
+        )}
 
         {/* Facility Details Modal */}
         <AnimatePresence>
