@@ -1,0 +1,36 @@
+# Robots.txt for Model Public School (MPS Sikta)
+# Website: https://modelpublicschool.vercel.app
+
+User-agent: *
+Allow: /
+Allow: /#about
+Allow: /#facilities
+Allow: /#gallery
+Allow: /#fees
+Allow: /#admissions
+Allow: /#faculty
+Allow: /#contact
+Allow: /logo.png
+Allow: /logo.svg
+Allow: /site.webmanifest
+
+# Crawlers for Google Search & AdSense
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+Allow: /uploads/
+
+User-agent: Mediapartners-Google
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Disallow internal admin actions from direct public search crawler indexing
+Disallow: /api/
+Disallow: /admin?secret=*
+
+# Sitemap location
+Sitemap: https://modelpublicschool.vercel.app/sitemap.xml

@@ -1,0 +1,6 @@
+{
+  "name": "Model Public School",
+  "description": "School website and complete portal management system for Model Public School (MPS Sikta) with 100% element-level CMS editing, Teacher Workspace, Student Portal, and Admin Control Center.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

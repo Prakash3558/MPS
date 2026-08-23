@@ -1,0 +1,65 @@
+/* ==========================================================================
+   SHARED TYPOGRAPHY SYSTEM & DESIGN TOKENS
+   --------------------------------------------------------------------------
+   Strict 3-Tier Font Weight System:
+   - Headers (Headings, Major Titles): 700
+   - Subheaders (Subtitles, Section Titles, Buttons, Labels, Badges, Tabs): 500
+   - Body Text (Paragraphs, Descriptions, Table Cells, Inputs): 400
+   ========================================================================== */
+
+:root {
+  --weight-header: 700;
+  --weight-subheader: 500;
+  --weight-body: 400;
+
+  --font-weight-header: 700;
+  --font-weight-subheader: 500;
+  --font-weight-body: 400;
+}
+
+/* Shared Typography Token Classes for future & current components */
+.font-header,
+.font-heading-token {
+  font-weight: var(--weight-header) !important;
+}
+
+.font-subheader,
+.font-subheading-token {
+  font-weight: var(--weight-subheader) !important;
+}
+
+.font-body-text,
+.font-body-token {
+  font-weight: var(--weight-body) !important;
+}
+
+/* Base HTML Tag Defaults */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--weight-header);
+}
+
+label, button, th, [role="tab"] {
+  font-weight: var(--weight-subheader);
+}
+
+p, td, input, textarea, select {
+  font-weight: var(--weight-body);
+}
+
+/* Override standard Tailwind weight utility classes to guarantee 700 / 500 / 400 compliance */
+.font-semibold,
+.font-extrabold,
+.font-black {
+  font-weight: 700 !important;
+}
+
+.font-medium {
+  font-weight: 500 !important;
+}
+
+.font-thin,
+.font-extralight,
+.font-light,
+.font-normal {
+  font-weight: 400 !important;
+}

@@ -1,0 +1,28 @@
+{
+  "name": "MPS",
+  "short_name": "MPS",
+  "description": "Model Public School (MPS) Official App",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": "/app",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#020617",
+  "theme_color": "#1e3a8a"
+}

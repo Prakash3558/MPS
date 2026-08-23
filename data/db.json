@@ -1,0 +1,693 @@
+{
+  "settings": {
+    "school_name": "Model Public School (MPS Sikta)",
+    "tagline": "Empowering Young Minds for a Brighter Future",
+    "cbse_affiliation": "330854",
+    "address": "AT- Bhawanipur, P.O.- Kursi Barwa, P.S.- Sikta, West Champaran, Bihar - 845307",
+    "phones": "+91 87579 68130, +91 91620 24642",
+    "email": "modelpublicschool@gmail.com",
+    "principal_name": "Dr. R.K. Sharma",
+    "principal_message": "Welcome to Model Public School, Sikta. We are committed to fostering academic excellence, moral integrity, and holistic development in every child. Our modern infrastructure paired with experienced educators creates an inspiring learning atmosphere.",
+    "principal_photo": "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=600",
+    "logo_url": "/logo.svg",
+    "theme_colors": {
+      "primary": "#1e3a8a",
+      "secondary": "#d97706",
+      "accent": "#0d9488",
+      "background": "#fcfbf7",
+      "cardBg": "#ffffff",
+      "text": "#1e293b"
+    },
+    "font_heading": "Outfit",
+    "font_body": "Plus Jakarta Sans",
+    "hero_slides": [
+      {
+        "id": "slide-1",
+        "badge": "CBSE Affiliated No. 330854",
+        "title": "Welcome to Model Public School, Sikta",
+        "subtitle": "Nurturing curiosity, character, and scholastic distinction in West Champaran, Bihar.",
+        "image": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=1600",
+        "primaryBtnText": "Explore Admissions",
+        "primaryBtnUrl": "#admissions",
+        "secondaryBtnText": "Student Portal Login",
+        "secondaryBtnUrl": "/portal"
+      },
+      {
+        "id": "slide-2",
+        "badge": "State-of-the-Art Campus",
+        "title": "Holistic Education & Modern Smart Classrooms",
+        "subtitle": "Digital learning tools, advanced science laboratories, sports facilities, and individual attention.",
+        "image": "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1600",
+        "primaryBtnText": "View Facilities",
+        "primaryBtnUrl": "#facilities",
+        "secondaryBtnText": "View Gallery",
+        "secondaryBtnUrl": "#gallery"
+      }
+    ],
+    "content_blocks": {
+      "hero.welcome": "Empowering Champions of Tomorrow in Sikta, Bihar",
+      "about.title": "About Model Public School (MPS Sikta)",
+      "about.text1": "Model Public School, located at Bhawanipur, Sikta, is an esteemed CBSE-affiliated co-educational institution committed to academic brilliance, technological literacy, and strong ethical values.",
+      "about.text2": "We offer comprehensive learning programs from Primary through Higher Secondary, equipped with digital smart boards, science and computer labs, expansive athletic fields, and safe bus transport across West Champaran.",
+      "fee.headline": "Transparent & Affordable Fee Structure",
+      "fee.subtext": "Quality education made accessible with no hidden charges. Monthly installments and merit scholarships available.",
+      "contact.heading": "Get in Touch with Our Campus",
+      "contact.subtext": "Visit our administration block or call us for admissions, campus tours, and general inquiries."
+    },
+    "gallery": [
+      {
+        "id": "g1",
+        "title": "Smart Classroom Session",
+        "category": "Academics",
+        "url": "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=800",
+        "caption": "Interactive learning with modern digital boards"
+      },
+      {
+        "id": "g2",
+        "title": "Annual Science & Robotics Exhibition",
+        "category": "Events",
+        "url": "https://images.unsplash.com/photo-1564069114553-74154c0e58f6?auto=format&fit=crop&q=80&w=800",
+        "caption": "Students showcasing innovative science models"
+      },
+      {
+        "id": "g3",
+        "title": "Sports Day Athletics",
+        "category": "Sports",
+        "url": "https://images.unsplash.com/photo-1576267423445-b2e0074d68a4?auto=format&fit=crop&q=80&w=800",
+        "caption": "Annual sports meet and track events"
+      },
+      {
+        "id": "g4",
+        "title": "Modern Library & Resource Center",
+        "category": "Campus",
+        "url": "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=800",
+        "caption": "Over 10,000+ reference books and periodicals"
+      },
+      {
+        "id": "g5",
+        "title": "Cultural Dance Performance",
+        "category": "Events",
+        "url": "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=800",
+        "caption": "Celebrating Bihar cultural heritage day"
+      },
+      {
+        "id": "g6",
+        "title": "Advanced Computer & IT Laboratory",
+        "category": "Campus",
+        "url": "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=800",
+        "caption": "High-speed internet and coding sessions"
+      }
+    ],
+    "facilities": [
+      {
+        "id": "f1",
+        "title": "Smart Digital Classrooms",
+        "iconName": "Monitor",
+        "description": "Interactive touch panels, audio-visual lessons, and digital curriculum integration.",
+        "image": "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=600"
+      },
+      {
+        "id": "f2",
+        "title": "Science & Bio Laboratories",
+        "iconName": "FlaskConical",
+        "description": "Fully furnished Physics, Chemistry, and Biology practical labs adhering to CBSE safety norms.",
+        "image": "https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=600"
+      },
+      {
+        "id": "f3",
+        "title": "Computer & AI Center",
+        "iconName": "Cpu",
+        "description": "Modern computer lab with high-speed internet, programming workshops, and robotics modules.",
+        "image": "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=600"
+      },
+      {
+        "id": "f4",
+        "title": "School Bus Transport",
+        "iconName": "Bus",
+        "description": "GPS-tracked school fleet covering Sikta, Bhawanipur, Kursi Barwa, and surrounding areas.",
+        "image": "https://images.unsplash.com/photo-1557223562-6c77ef16210f?auto=format&fit=crop&q=80&w=600"
+      },
+      {
+        "id": "f5",
+        "title": "Library & Reading Lounge",
+        "iconName": "BookOpen",
+        "description": "Vast collection of academic books, national journals, competitive guides, and literature.",
+        "image": "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=600"
+      },
+      {
+        "id": "f6",
+        "title": "Sports Grounds & Fitness",
+        "iconName": "Trophy",
+        "description": "Cricket pitch, football turf, badminton courts, table tennis, and yoga sessions.",
+        "image": "https://images.unsplash.com/photo-1576267423445-b2e0074d68a4?auto=format&fit=crop&q=80&w=600"
+      }
+    ],
+    "grade_fees": [
+      {
+        "id": "fee-1",
+        "className": "Nursery to U.K.G.",
+        "admissionFee": 3500,
+        "monthlyTuition": 850,
+        "annualCharges": 2000,
+        "examFee": 500
+      },
+      {
+        "id": "fee-2",
+        "className": "Class 1 to Class 5",
+        "admissionFee": 4500,
+        "monthlyTuition": 1100,
+        "annualCharges": 2500,
+        "examFee": 600
+      },
+      {
+        "id": "fee-3",
+        "className": "Class 6 to Class 8",
+        "admissionFee": 5500,
+        "monthlyTuition": 1400,
+        "annualCharges": 3000,
+        "examFee": 800
+      },
+      {
+        "id": "fee-4",
+        "className": "Class 9 & Class 10",
+        "admissionFee": 6500,
+        "monthlyTuition": 1800,
+        "annualCharges": 3500,
+        "examFee": 1000
+      }
+    ],
+    "section_order": [
+      "hero",
+      "notice",
+      "about",
+      "principal",
+      "facilities",
+      "gallery",
+      "fees",
+      "admissions",
+      "contact"
+    ]
+  },
+  "users": [
+    {
+      "id": "u-admin",
+      "username": "admin",
+      "role": "admin",
+      "name": "System Administrator",
+      "email": "admin@modelpublicschool.com"
+    },
+    {
+      "id": "u-teacher1",
+      "username": "teacher1",
+      "role": "teacher",
+      "name": "Sharma Sir",
+      "email": "sharma@modelpublicschool.com"
+    },
+    {
+      "id": "u-student1",
+      "username": "1001",
+      "role": "student",
+      "name": "Rahul Kumar",
+      "email": "rahul@modelpublicschool.com"
+    }
+  ],
+  "teachers": [
+    {
+      "id": "t-1",
+      "userId": "u-teacher1",
+      "name": "Sharma Sir",
+      "username": "teacher1",
+      "subject": "Mathematics",
+      "assignedClass": "10",
+      "assignedSection": "A",
+      "phone": "+91 91620 24642",
+      "photo": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400"
+    }
+  ],
+  "students": [
+    {
+      "id": "s-1001",
+      "userId": "u-student1",
+      "name": "Rahul Kumar",
+      "rollNo": "1001",
+      "class": "10",
+      "section": "A",
+      "password": "Rahul123",
+      "photo": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400",
+      "parentName": "Ramesh Kumar",
+      "phone": "+91 9876543210",
+      "address": "AT- Bhawanipur, P.S.- Sikta, West Champaran, Bihar",
+      "admissionDate": "2023-04-10",
+      "notice": "Please submit your science project report before August 10th.",
+      "feeInfo": {
+        "totalAnnual": 25100,
+        "paid": 18000,
+        "pending": 7100,
+        "notes": "Quarter 1 & 2 Fees Paid successfully.",
+        "months": [
+          {
+            "month": "April 2026",
+            "status": "Paid",
+            "amount": 1800,
+            "paidDate": "2026-04-05"
+          },
+          {
+            "month": "May 2026",
+            "status": "Paid",
+            "amount": 1800,
+            "paidDate": "2026-05-02"
+          },
+          {
+            "month": "June 2026",
+            "status": "Paid",
+            "amount": 1800,
+            "paidDate": "2026-06-04"
+          },
+          {
+            "month": "July 2026",
+            "status": "Paid",
+            "amount": 1800,
+            "paidDate": "2026-07-08"
+          },
+          {
+            "month": "August 2026",
+            "status": "Pending",
+            "amount": 1800,
+            "dueDate": "2026-08-10"
+          },
+          {
+            "month": "September 2026",
+            "status": "Pending",
+            "amount": 1800,
+            "dueDate": "2026-09-10"
+          }
+        ]
+      }
+    },
+    {
+      "id": "s-1002",
+      "userId": "u-student2",
+      "name": "Ananya Verma",
+      "rollNo": "1002",
+      "class": "10",
+      "section": "A",
+      "password": "Ananya123",
+      "photo": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=400",
+      "parentName": "Sanjay Verma",
+      "phone": "+91 9876543211",
+      "address": "Kursi Barwa, Sikta, West Champaran",
+      "admissionDate": "2023-04-12",
+      "notice": "Library books renewal due.",
+      "feeInfo": {
+        "totalAnnual": 25100,
+        "paid": 21600,
+        "pending": 3500,
+        "months": [
+          {
+            "month": "April 2026",
+            "status": "Paid",
+            "amount": 1800,
+            "paidDate": "2026-04-02"
+          },
+          {
+            "month": "May 2026",
+            "status": "Paid",
+            "amount": 1800,
+            "paidDate": "2026-05-01"
+          },
+          {
+            "month": "June 2026",
+            "status": "Paid",
+            "amount": 1800,
+            "paidDate": "2026-06-02"
+          },
+          {
+            "month": "July 2026",
+            "status": "Paid",
+            "amount": 1800,
+            "paidDate": "2026-07-03"
+          },
+          {
+            "month": "August 2026",
+            "status": "Pending",
+            "amount": 1800
+          }
+        ]
+      }
+    }
+  ],
+  "attendance": [
+    {
+      "id": "att-1",
+      "studentId": "s-1001",
+      "class": "10",
+      "section": "A",
+      "date": "2026-08-01",
+      "status": "Present"
+    },
+    {
+      "id": "att-2",
+      "studentId": "s-1001",
+      "class": "10",
+      "section": "A",
+      "date": "2026-07-31",
+      "status": "Present"
+    },
+    {
+      "id": "att-3",
+      "studentId": "s-1001",
+      "class": "10",
+      "section": "A",
+      "date": "2026-07-30",
+      "status": "Present"
+    },
+    {
+      "id": "att-4",
+      "studentId": "s-1001",
+      "class": "10",
+      "section": "A",
+      "date": "2026-07-29",
+      "status": "Late",
+      "remarks": "Bus delay"
+    },
+    {
+      "id": "att-5",
+      "studentId": "s-1001",
+      "class": "10",
+      "section": "A",
+      "date": "2026-07-28",
+      "status": "Present"
+    },
+    {
+      "id": "att-6",
+      "studentId": "s-1002",
+      "class": "10",
+      "section": "A",
+      "date": "2026-08-01",
+      "status": "Present"
+    }
+  ],
+  "examResults": [
+    {
+      "id": "exam-1",
+      "studentId": "s-1001",
+      "examType": "Unit Test 1",
+      "academicYear": "2025-2026",
+      "subjects": [
+        {
+          "subject": "Mathematics",
+          "maxMarks": 100,
+          "marksObtained": 78,
+          "grade": "B1"
+        },
+        {
+          "subject": "Science",
+          "maxMarks": 100,
+          "marksObtained": 82,
+          "grade": "A2"
+        },
+        {
+          "subject": "Social Studies",
+          "maxMarks": 100,
+          "marksObtained": 80,
+          "grade": "B1"
+        },
+        {
+          "subject": "English",
+          "maxMarks": 100,
+          "marksObtained": 84,
+          "grade": "A2"
+        },
+        {
+          "subject": "Hindi",
+          "maxMarks": 100,
+          "marksObtained": 88,
+          "grade": "A2"
+        }
+      ],
+      "totalMarks": 412,
+      "maxTotalMarks": 500,
+      "percentage": 82.4,
+      "grade": "A2",
+      "teacherRemarks": "Good foundation. Regular practice in Math recommended.",
+      "date": "2025-08-20"
+    },
+    {
+      "id": "exam-2",
+      "studentId": "s-1001",
+      "examType": "Quarterly Exam",
+      "academicYear": "2025-2026",
+      "subjects": [
+        {
+          "subject": "Mathematics",
+          "maxMarks": 100,
+          "marksObtained": 85,
+          "grade": "A2"
+        },
+        {
+          "subject": "Science",
+          "maxMarks": 100,
+          "marksObtained": 84,
+          "grade": "A2"
+        },
+        {
+          "subject": "Social Studies",
+          "maxMarks": 100,
+          "marksObtained": 82,
+          "grade": "A2"
+        },
+        {
+          "subject": "English",
+          "maxMarks": 100,
+          "marksObtained": 87,
+          "grade": "A2"
+        },
+        {
+          "subject": "Hindi",
+          "maxMarks": 100,
+          "marksObtained": 90,
+          "grade": "A1"
+        }
+      ],
+      "totalMarks": 428,
+      "maxTotalMarks": 500,
+      "percentage": 85.6,
+      "grade": "A2",
+      "teacherRemarks": "Steady progress observed across all subjects.",
+      "date": "2025-11-10"
+    },
+    {
+      "id": "exam-3",
+      "studentId": "s-1001",
+      "examType": "Mid-Term Examination",
+      "academicYear": "2025-2026",
+      "subjects": [
+        {
+          "subject": "Mathematics",
+          "maxMarks": 100,
+          "marksObtained": 92,
+          "grade": "A1"
+        },
+        {
+          "subject": "Science",
+          "maxMarks": 100,
+          "marksObtained": 88,
+          "grade": "A2"
+        },
+        {
+          "subject": "Social Studies",
+          "maxMarks": 100,
+          "marksObtained": 85,
+          "grade": "A2"
+        },
+        {
+          "subject": "English",
+          "maxMarks": 100,
+          "marksObtained": 90,
+          "grade": "A1"
+        },
+        {
+          "subject": "Hindi",
+          "maxMarks": 100,
+          "marksObtained": 94,
+          "grade": "A1"
+        }
+      ],
+      "totalMarks": 449,
+      "maxTotalMarks": 500,
+      "percentage": 89.8,
+      "grade": "A1",
+      "teacherRemarks": "Excellent academic performance and consistent participation in class.",
+      "date": "2026-01-20"
+    },
+    {
+      "id": "exam-4",
+      "studentId": "s-1001",
+      "examType": "Unit Test 2",
+      "academicYear": "2025-2026",
+      "subjects": [
+        {
+          "subject": "Mathematics",
+          "maxMarks": 100,
+          "marksObtained": 94,
+          "grade": "A1"
+        },
+        {
+          "subject": "Science",
+          "maxMarks": 100,
+          "marksObtained": 92,
+          "grade": "A1"
+        },
+        {
+          "subject": "Social Studies",
+          "maxMarks": 100,
+          "marksObtained": 89,
+          "grade": "A2"
+        },
+        {
+          "subject": "English",
+          "maxMarks": 100,
+          "marksObtained": 92,
+          "grade": "A1"
+        },
+        {
+          "subject": "Hindi",
+          "maxMarks": 100,
+          "marksObtained": 95,
+          "grade": "A1"
+        }
+      ],
+      "totalMarks": 462,
+      "maxTotalMarks": 500,
+      "percentage": 92.4,
+      "grade": "A1",
+      "teacherRemarks": "Outstanding improvement in problem solving and analytical writing.",
+      "date": "2026-04-15"
+    },
+    {
+      "id": "exam-5",
+      "studentId": "s-1001",
+      "examType": "Pre-Board Examination",
+      "academicYear": "2025-2026",
+      "subjects": [
+        {
+          "subject": "Mathematics",
+          "maxMarks": 100,
+          "marksObtained": 96,
+          "grade": "A1"
+        },
+        {
+          "subject": "Science",
+          "maxMarks": 100,
+          "marksObtained": 94,
+          "grade": "A1"
+        },
+        {
+          "subject": "Social Studies",
+          "maxMarks": 100,
+          "marksObtained": 92,
+          "grade": "A1"
+        },
+        {
+          "subject": "English",
+          "maxMarks": 100,
+          "marksObtained": 95,
+          "grade": "A1"
+        },
+        {
+          "subject": "Hindi",
+          "maxMarks": 100,
+          "marksObtained": 98,
+          "grade": "A1"
+        }
+      ],
+      "totalMarks": 475,
+      "maxTotalMarks": 500,
+      "percentage": 95,
+      "grade": "A1",
+      "teacherRemarks": "Top-tier performance! Exceptional readiness for CBSE Board Examinations.",
+      "date": "2026-07-15"
+    }
+  ],
+  "homework": [
+    {
+      "id": "hw-1",
+      "class": "10",
+      "section": "A",
+      "subject": "Mathematics",
+      "title": "Quadratic Equations Exercise 4.2",
+      "description": "Complete questions 1 through 10 from NCERT Textbook Page 88. Show all step-by-step factorization proofs.",
+      "dueDate": "2026-08-05",
+      "priority": "High",
+      "teacherName": "Sharma Sir",
+      "createdAt": "2026-08-01"
+    },
+    {
+      "id": "hw-2",
+      "class": "10",
+      "section": "A",
+      "subject": "Science",
+      "title": "Light Reflection & Refraction Ray Diagrams",
+      "description": "Draw neat ray diagrams for concave and convex mirrors in your practical manual.",
+      "dueDate": "2026-08-06",
+      "priority": "Medium",
+      "teacherName": "Sharma Sir",
+      "createdAt": "2026-07-31"
+    }
+  ],
+  "notices": [
+    {
+      "id": "n-1",
+      "title": "CBSE Board Examination Registration Form Verification",
+      "content": "Class 10 students are required to verify their parents name, DOB, and subject combinations at the admin window.",
+      "category": "Urgent",
+      "targetClass": "10-A",
+      "date": "2026-08-01",
+      "isUrgentTicker": true
+    },
+    {
+      "id": "n-2",
+      "title": "Independence Day Cultural Program Auditions",
+      "content": "Auditions for patriotic group songs and drama will take place in the school auditorium on August 8th.",
+      "category": "Event",
+      "targetClass": "All",
+      "date": "2026-07-30",
+      "isUrgentTicker": true
+    },
+    {
+      "id": "n-3",
+      "title": "Monthly Parent-Teacher Meeting (PTM)",
+      "content": "PTM for all classes will be held on August 12th from 9:00 AM to 1:00 PM. Report cards will be issued.",
+      "category": "General",
+      "targetClass": "All",
+      "date": "2026-07-28",
+      "isUrgentTicker": false
+    }
+  ],
+  "admissions": [
+    {
+      "id": "adm-101",
+      "studentName": "Amit Kumar Singh",
+      "parentName": "Manoj Singh",
+      "phone": "+91 91234 56789",
+      "targetClass": "Class 6",
+      "message": "Looking for admission for academic session 2026-27 with school transport.",
+      "status": "Pending",
+      "appliedDate": "2026-08-01"
+    },
+    {
+      "id": "adm-102",
+      "studentName": "Priya Kumari",
+      "parentName": "Sunil Kumar",
+      "phone": "+91 98765 12345",
+      "targetClass": "Class 1",
+      "message": "Seeking admission in primary section. Please guide on fee details.",
+      "status": "Contacted",
+      "appliedDate": "2026-07-31"
+    }
+  ],
+  "adminAuth": {
+    "username": "admin",
+    "passwordHash": "admin123"
+  }
+}
