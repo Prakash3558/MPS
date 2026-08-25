@@ -142,12 +142,18 @@ export const OfficialFeeReceipt: React.FC<OfficialFeeReceiptProps> = ({
         {/* Header Section */}
         <div className="text-center pb-3 border-b border-slate-300">
           <div className="flex items-center justify-center gap-3 mb-1">
-            {showLogoOption && settings?.logo_url ? (
-              <img src={settings.logo_url} alt="School Logo" className="max-h-16 max-w-[160px] w-auto h-auto object-contain flex-shrink-0" />
-            ) : showLogoOption ? (
-              <div className="w-14 h-14 rounded-full bg-slate-900 text-amber-400 font-black text-xl flex items-center justify-center border-2 border-amber-400 flex-shrink-0">
-                MPS
-              </div>
+            {showLogoOption ? (
+              <img
+                src={settings?.logo_url || '/logo.svg'}
+                alt="School Logo"
+                className="max-h-16 max-w-[160px] w-auto h-auto object-contain flex-shrink-0"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.endsWith('/logo.svg')) {
+                    target.src = '/logo.svg';
+                  }
+                }}
+              />
             ) : null}
             <div className="text-center">
               <h1 className="text-2xl sm:text-3xl font-black text-[#1e3a8a] tracking-wide font-serif uppercase">

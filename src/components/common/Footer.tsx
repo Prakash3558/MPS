@@ -23,11 +23,19 @@ export const Footer: React.FC = React.memo(() => {
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
             <div className="h-10 max-w-[140px] rounded-xl bg-white text-slate-900 flex items-center justify-center font-bold overflow-hidden p-1 shadow-sm border border-slate-200 dark:border-slate-800 flex-shrink-0">
-              {settings?.logo_url ? (
-                <img src={settings.logo_url} alt="MPS School Logo" className="max-h-full max-w-full w-auto h-auto object-contain" />
-              ) : (
-                <School className="w-4 h-4 text-slate-800" />
-              )}
+              <img
+                src={settings?.logo_url || '/logo.svg'}
+                alt={settings?.school_name ? `${settings.school_name} Logo` : 'MPS School Logo'}
+                loading="lazy"
+                decoding="async"
+                className="max-h-full max-w-full w-auto h-auto object-contain"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.endsWith('/logo.svg')) {
+                    target.src = '/logo.svg';
+                  }
+                }}
+              />
             </div>
             <h3 className="text-base font-black text-slate-900 dark:text-white font-heading">
               <EditableText blockKey="footer.schoolName" defaultText={settings?.school_name || 'Model Public School'} />

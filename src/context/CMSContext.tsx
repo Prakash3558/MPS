@@ -43,13 +43,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return defaultSiteSettings;
   });
-  const [loading, setLoading] = useState<boolean>(() => {
-    try {
-      return !localStorage.getItem(LOCAL_STORAGE_KEY);
-    } catch (e) {
-      return true;
-    }
-  });
+  const [loading, setLoading] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'saved' | 'error'>('synced');
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
@@ -113,19 +107,21 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       root.style.setProperty('--color-text', data.theme_colors.text || '#1e293b');
     }
 
-    // Dynamically load font links if needed
+    // Dynamically load font links if custom fonts are chosen
     const headingFont = data.font_heading || 'Outfit';
     const bodyFont = data.font_body || 'Plus Jakarta Sans';
     
-    const fontId = 'mps-dynamic-fonts';
-    let fontLink = document.getElementById(fontId) as HTMLLinkElement;
-    if (!fontLink) {
-      fontLink = document.createElement('link');
-      fontLink.id = fontId;
-      fontLink.rel = 'stylesheet';
-      document.head.appendChild(fontLink);
+    if (headingFont !== 'Outfit' || bodyFont !== 'Plus Jakarta Sans') {
+      const fontId = 'mps-dynamic-fonts';
+      let fontLink = document.getElementById(fontId) as HTMLLinkElement;
+      if (!fontLink) {
+        fontLink = document.createElement('link');
+        fontLink.id = fontId;
+        fontLink.rel = 'stylesheet';
+        document.head.appendChild(fontLink);
+      }
+      fontLink.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(headingFont)}:wght@400;600;700;800&family=${encodeURIComponent(bodyFont)}:wght@300;400;500;600;700&display=swap`;
     }
-    fontLink.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(headingFont)}:wght@400;600;700;800&family=${encodeURIComponent(bodyFont)}:wght@300;400;500;600;700&display=swap`;
 
     root.style.setProperty('--font-heading', `'${headingFont}', sans-serif`);
     root.style.setProperty('--font-body', `'${bodyFont}', sans-serif`);
@@ -166,7 +162,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const defaultDesc = `${data.school_name || 'Model Public School'} at ${data.address || 'Bhawanipur, Sikta, West Champaran, Bihar'}. CBSE Affiliated school providing quality education, admissions, and campus facilities.`;
     const description = seo.meta_description || defaultDesc;
     const keywords = seo.meta_keywords || `Model Public School, MPS Sikta, School in Sikta, CBSE School Bhawanipur, Schools in West Champaran, West Champaran CBSE School, MPS Bhawanipur`;
-    const image = seo.og_image || data.logo_url || '/logo.png';
+    const image = seo.og_image || data.logo_url || '/logo.svg';
     const author = seo.author || `${data.school_name || 'Model Public School'} Management`;
     const robots = seo.robots || 'index, follow';
     const canonical = seo.canonical_url || window.location.origin;
@@ -195,7 +191,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLinkTag('canonical', canonical);
 
     // Dynamic Favicon and Apple Touch Icon
-    const iconUrl = data.logo_url || '/logo.png';
+    const iconUrl = data.logo_url || '/logo.svg';
     setLinkTag('icon', iconUrl);
     setLinkTag('apple-touch-icon', iconUrl);
     setLinkTag('shortcut icon', iconUrl);

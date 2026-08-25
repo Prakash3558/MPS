@@ -44,10 +44,10 @@ export const EditableImage: React.FC<EditableImageProps> = React.memo(({
   const isEager = loading === 'eager';
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-slate-900 select-none">
+    <div className="relative w-full h-full overflow-hidden select-none">
       {hasError ? (
-        <div className={`w-full h-full min-h-[120px] flex flex-col items-center justify-center p-4 text-center bg-slate-800 text-slate-400 ${className}`}>
-          <ImageIcon className="w-8 h-8 mb-1 text-slate-400 opacity-60" />
+        <div className={`w-full h-full min-h-[120px] flex flex-col items-center justify-center p-4 text-center bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 ${className}`}>
+          <ImageIcon className="w-8 h-8 mb-1 opacity-60" />
           <span className="text-xs font-medium">{alt || 'Image unavailable'}</span>
         </div>
       ) : (
@@ -60,7 +60,7 @@ export const EditableImage: React.FC<EditableImageProps> = React.memo(({
           {...(isEager ? { fetchPriority: 'high' as const } : {})}
           onLoad={handleImageLoad}
           onError={handleImageError}
-          className={`${className} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-80'}`}
+          className={`${className} transition-opacity duration-200 ${isLoaded ? 'opacity-100' : 'opacity-80'}`}
         />
       )}
     </div>

@@ -34,11 +34,17 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({ student, settings:
         {/* Top Header */}
         <div className="text-center border-b border-amber-400/30 pb-3 mb-4 relative z-10">
           <div className="flex items-center justify-center gap-2 mb-1">
-            {settings?.logo_url ? (
-              <img src={settings.logo_url} alt="School Logo" className="max-h-8 max-w-[120px] w-auto h-auto object-contain flex-shrink-0" />
-            ) : (
-              <ShieldCheck className="w-6 h-6 text-amber-400" />
-            )}
+            <img
+              src={settings?.logo_url || '/logo.svg'}
+              alt="School Logo"
+              className="max-h-8 max-w-[120px] w-auto h-auto object-contain flex-shrink-0"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.src.endsWith('/logo.svg')) {
+                  target.src = '/logo.svg';
+                }
+              }}
+            />
             <h2 className="text-base font-extrabold tracking-wide uppercase text-amber-300">
               {settings?.school_name || 'Model Public School'}
             </h2>

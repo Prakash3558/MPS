@@ -66,11 +66,17 @@ export const ContactSection: React.FC = React.memo(() => {
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
                     <div className="w-11 h-11 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 flex-shrink-0 overflow-hidden p-1">
-                      {settings?.logo_url ? (
-                        <img src={settings.logo_url} alt="MPS Logo" className="w-full h-full object-contain" />
-                      ) : (
-                        <School className="w-6 h-6" />
-                      )}
+                      <img
+                        src={settings?.logo_url || '/logo.svg'}
+                        alt="MPS Logo"
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.src.endsWith('/logo.svg')) {
+                            target.src = '/logo.svg';
+                          }
+                        }}
+                      />
                     </div>
                     <div>
                       <h3 className="font-extrabold text-lg font-heading text-white">

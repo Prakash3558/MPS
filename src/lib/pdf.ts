@@ -1,6 +1,3 @@
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
-
 export async function downloadElementAsPDF(elementId: string, filename: string = 'document.pdf') {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -9,6 +6,11 @@ export async function downloadElementAsPDF(elementId: string, filename: string =
   }
 
   try {
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf')
+    ]);
+
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
@@ -41,6 +43,7 @@ export async function downloadElementAsImage(elementId: string, filename: string
   if (!element) return;
 
   try {
+    const { default: html2canvas } = await import('html2canvas');
     const canvas = await html2canvas(element, { scale: 2, useCORS: true });
     const link = document.createElement('a');
     link.download = filename;

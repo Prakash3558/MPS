@@ -3,27 +3,30 @@ import { AuthProvider } from './context/AuthContext';
 import { CMSProvider } from './context/CMSContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { Header } from './components/common/Header';
-import { Footer } from './components/common/Footer';
 import { NoticeTicker } from './components/public/NoticeTicker';
 import { HeroSection } from './components/public/HeroSection';
 import { AboutSection } from './components/public/AboutSection';
-import { FacultySection } from './components/public/FacultySection';
-import { FacilitiesSection } from './components/public/FacilitiesSection';
-import { GallerySection } from './components/public/GallerySection';
-import { FeesSection } from './components/public/FeesSection';
-import { AdmissionsSection } from './components/public/AdmissionsSection';
-import { FAQSection } from './components/public/FAQSection';
-import { ContactSection } from './components/public/ContactSection';
-import { AdminCMSToolbar } from './components/cms/AdminCMSToolbar';
-import PublicHomepageBackground from './components/common/PublicHomepageBackground';
-import { FallingStarsCanvas } from './components/common/FallingStarsCanvas';
 
-// Lazy Load Heavy Admin, Teacher & Student Portal Modules
+// Eager & Fast Fallback Shell
+const SectionSkeleton = () => <div className="w-full min-h-[80px]" />;
+
+// Lazy Load Heavy Sub-sections and Portals
+const FacilitiesSection = React.lazy(() => import('./components/public/FacilitiesSection').then(m => ({ default: m.FacilitiesSection })));
+const GallerySection = React.lazy(() => import('./components/public/GallerySection').then(m => ({ default: m.GallerySection })));
+const FeesSection = React.lazy(() => import('./components/public/FeesSection').then(m => ({ default: m.FeesSection })));
 const ThreeDSolarSystem = React.lazy(() => import('./components/common/ThreeDSolarSystem').then(m => ({ default: m.ThreeDSolarSystem })));
+const AdmissionsSection = React.lazy(() => import('./components/public/AdmissionsSection').then(m => ({ default: m.AdmissionsSection })));
+const FacultySection = React.lazy(() => import('./components/public/FacultySection').then(m => ({ default: m.FacultySection })));
+const FAQSection = React.lazy(() => import('./components/public/FAQSection').then(m => ({ default: m.FAQSection })));
+const ContactSection = React.lazy(() => import('./components/public/ContactSection').then(m => ({ default: m.ContactSection })));
+const Footer = React.lazy(() => import('./components/common/Footer').then(m => ({ default: m.Footer })));
+
 const TeacherWorkspace = React.lazy(() => import('./components/teacher/TeacherWorkspace').then(m => ({ default: m.TeacherWorkspace })));
 const AdminControlCenter = React.lazy(() => import('./components/admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
 const StudentPortal = React.lazy(() => import('./components/portal/StudentPortal').then(m => ({ default: m.StudentPortal })));
 const StudentAppShell = React.lazy(() => import('./components/portal/StudentAppShell').then(m => ({ default: m.StudentAppShell })));
+const PublicHomepageBackground = React.lazy(() => import('./components/common/PublicHomepageBackground').then(m => ({ default: m.PublicHomepageBackground })));
+const FallingStarsCanvas = React.lazy(() => import('./components/common/FallingStarsCanvas').then(m => ({ default: m.FallingStarsCanvas })));
 
 const PageLoader = () => (
   <div className="min-h-[300px] flex items-center justify-center py-16">
@@ -122,7 +125,9 @@ export default function App() {
                 <Suspense fallback={<PageLoader />}>
                   <TeacherWorkspace />
                 </Suspense>
-                <Footer />
+                <Suspense fallback={null}>
+                  <Footer />
+                </Suspense>
               </div>
             ) : route === 'admin' ? (
               <div>
@@ -130,7 +135,9 @@ export default function App() {
                 <Suspense fallback={<PageLoader />}>
                   <AdminControlCenter />
                 </Suspense>
-                <Footer />
+                <Suspense fallback={null}>
+                  <Footer />
+                </Suspense>
               </div>
             ) : route === 'portal' ? (
               <div>
@@ -138,7 +145,9 @@ export default function App() {
                 <Suspense fallback={<PageLoader />}>
                   <StudentPortal />
                 </Suspense>
-                <Footer />
+                <Suspense fallback={null}>
+                  <Footer />
+                </Suspense>
               </div>
             ) : (
               <div>
@@ -147,18 +156,34 @@ export default function App() {
                 <main>
                   <HeroSection />
                   <AboutSection />
-                  <FacilitiesSection />
-                  <GallerySection />
-                  <FeesSection />
-                  <Suspense fallback={<PageLoader />}>
+                  <Suspense fallback={<SectionSkeleton />}>
+                    <FacilitiesSection />
+                  </Suspense>
+                  <Suspense fallback={<SectionSkeleton />}>
+                    <GallerySection />
+                  </Suspense>
+                  <Suspense fallback={<SectionSkeleton />}>
+                    <FeesSection />
+                  </Suspense>
+                  <Suspense fallback={<SectionSkeleton />}>
                     <ThreeDSolarSystem />
                   </Suspense>
-                  <AdmissionsSection />
-                  <FacultySection />
-                  <FAQSection />
-                  <ContactSection />
+                  <Suspense fallback={<SectionSkeleton />}>
+                    <AdmissionsSection />
+                  </Suspense>
+                  <Suspense fallback={<SectionSkeleton />}>
+                    <FacultySection />
+                  </Suspense>
+                  <Suspense fallback={<SectionSkeleton />}>
+                    <FAQSection />
+                  </Suspense>
+                  <Suspense fallback={<SectionSkeleton />}>
+                    <ContactSection />
+                  </Suspense>
                 </main>
-                <Footer />
+                <Suspense fallback={null}>
+                  <Footer />
+                </Suspense>
               </div>
             )}
           </div>

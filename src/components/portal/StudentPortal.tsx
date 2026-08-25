@@ -462,11 +462,17 @@ export const StudentPortal: React.FC = () => {
         <div className="max-w-md w-full mx-auto space-y-6">
           <div className="text-center space-y-2">
             <div className="w-16 h-16 rounded-3xl bg-slate-900 border border-slate-800 p-2 text-white flex items-center justify-center mx-auto shadow-xl overflow-hidden ring-4 ring-amber-500/20">
-              {settings?.logo_url ? (
-                <img src={settings.logo_url} alt="MPS Logo" className="w-full h-full object-contain" />
-              ) : (
-                <GraduationCap className="w-10 h-10 text-amber-500" />
-              )}
+              <img
+                src={settings?.logo_url || '/logo.svg'}
+                alt="MPS Logo"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.endsWith('/logo.svg')) {
+                    target.src = '/logo.svg';
+                  }
+                }}
+              />
             </div>
             <h2 className="text-2xl font-bold text-white font-heading">
               Student & Parent Portal

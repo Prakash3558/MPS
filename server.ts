@@ -101,7 +101,7 @@ const initialSettings: SiteSettings = {
   principal_name: 'Mr. Waseem Aalam',
   principal_message: 'Welcome to Model Public School, Sikta. We are committed to fostering academic excellence, moral integrity, and holistic development in every child. Our modern infrastructure paired with experienced educators creates an inspiring learning atmosphere.',
   principal_photo: 'https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1786700123090_WhatsApp-Image-2026-.png',
-  logo_url: 'https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1786617173956_Screenshot_2026-08-0.png',
+  logo_url: '/logo.svg',
   theme_colors: {
     primary: '#1e3a8a',    // Rich Navy Blue
     secondary: '#d97706',  // Amber Gold

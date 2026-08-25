@@ -74,16 +74,19 @@ export const Header: React.FC = React.memo(() => {
         {/* Brand Logo & Title - Compact 1-line on mobile */}
         <a href="/" className="flex items-center gap-1.5 sm:gap-3 group min-w-0 flex-shrink hover:opacity-95 transition-opacity">
           <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 text-slate-900 flex items-center justify-center shadow-xs border border-slate-200/80 dark:border-slate-700/80 flex-shrink-0 overflow-hidden p-0.5 sm:p-1 transition-transform group-hover:scale-105">
-            {settings?.logo_url ? (
-              <EditableImage
-                src={settings.logo_url}
-                alt="MPS Logo"
-                className="max-h-full max-w-full w-auto h-auto object-contain"
-                onSaveImage={(url) => updateSettings({ logo_url: url })}
-              />
-            ) : (
-              <School className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-            )}
+            <img
+              src={settings?.logo_url || '/logo.svg'}
+              alt={settings?.school_name ? `${settings.school_name} Logo` : 'MPS Logo'}
+              loading="eager"
+              decoding="async"
+              className="max-h-full max-w-full w-auto h-auto object-contain"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.src.endsWith('/logo.svg')) {
+                  target.src = '/logo.svg';
+                }
+              }}
+            />
           </div>
           <div className="min-w-0 truncate">
             <h1 className="text-xs sm:text-base font-extrabold text-slate-900 dark:text-white leading-none sm:leading-tight font-heading tracking-tight truncate max-w-[130px] xs:max-w-[190px] sm:max-w-none">

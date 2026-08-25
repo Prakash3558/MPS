@@ -480,11 +480,17 @@ export const AdminControlCenter: React.FC = () => {
         <div className="max-w-md w-full space-y-6">
           <div className="text-center space-y-3">
             <div className="w-20 h-20 rounded-3xl bg-slate-900 border border-slate-800 p-2 text-slate-950 flex items-center justify-center mx-auto shadow-2xl ring-4 ring-amber-400/30 overflow-hidden">
-              {settings?.logo_url ? (
-                <img src={settings.logo_url} alt="MPS Logo" className="w-full h-full object-contain" />
-              ) : (
-                <ShieldAlert className="w-12 h-12 text-amber-500" />
-              )}
+              <img
+                src={settings?.logo_url || '/logo.svg'}
+                alt="MPS Logo"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.endsWith('/logo.svg')) {
+                    target.src = '/logo.svg';
+                  }
+                }}
+              />
             </div>
             <h2 className="text-3xl font-black text-white font-heading">
               Admin Master Control Center
@@ -647,11 +653,17 @@ export const AdminControlCenter: React.FC = () => {
         <div className="p-5 border-b border-slate-800/80 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full bg-slate-900 border-2 border-cyan-400 p-1 flex items-center justify-center flex-shrink-0 shadow-lg overflow-hidden">
-              {settings?.logo_url ? (
-                <img src={settings.logo_url} alt="Logo" className="max-h-full max-w-full object-contain" />
-              ) : (
-                <School className="w-6 h-6 text-amber-400" />
-              )}
+              <img
+                src={settings?.logo_url || '/logo.svg'}
+                alt="Logo"
+                className="max-h-full max-w-full object-contain"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.endsWith('/logo.svg')) {
+                    target.src = '/logo.svg';
+                  }
+                }}
+              />
             </div>
             <div>
               <h2 className="font-extrabold text-white text-base leading-tight font-heading">

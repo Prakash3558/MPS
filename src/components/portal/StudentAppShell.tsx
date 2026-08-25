@@ -76,11 +76,11 @@ export const StudentAppShell: React.FC = () => {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md border border-white/20 flex-shrink-0">
               <img
-                src={settings?.logo_url || '/logo.png'}
+                src={settings?.logo_url || '/logo.svg'}
                 alt="MPS Logo"
                 className="w-full h-full object-contain"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/logo.png';
+                  (e.target as HTMLImageElement).src = '/logo.svg';
                 }}
               />
             </div>
