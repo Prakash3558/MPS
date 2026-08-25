@@ -258,6 +258,9 @@ export const defaultStudents: Student[] = [
       admissionFeeAmount: 3000,
       examFeeAmount: 1200,
       months: [
+        { month: 'January, 2026', status: 'Paid', amount: 1100, paidDate: '2026-01-05', receiptNo: 'MPS/2026/0101' },
+        { month: 'February, 2026', status: 'Paid', amount: 1100, paidDate: '2026-02-06', receiptNo: 'MPS/2026/0212' },
+        { month: 'March, 2026', status: 'Paid', amount: 1100, paidDate: '2026-03-08', receiptNo: 'MPS/2026/0323' },
         { month: 'April, 2026', status: 'Paid', amount: 1100, paidDate: '2026-04-05', receiptNo: 'MPS/2026/0401' },
         { month: 'May, 2026', status: 'Paid', amount: 1100, paidDate: '2026-05-06', receiptNo: 'MPS/2026/0512' },
         { month: 'June, 2026', status: 'Paid', amount: 1100, paidDate: '2026-06-08', receiptNo: 'MPS/2026/0623' },
@@ -266,10 +269,7 @@ export const defaultStudents: Student[] = [
         { month: 'September, 2026', status: 'Pending', amount: 1100 },
         { month: 'October, 2026', status: 'Pending', amount: 1100 },
         { month: 'November, 2026', status: 'Pending', amount: 1100 },
-        { month: 'December, 2026', status: 'Pending', amount: 1100 },
-        { month: 'January, 2027', status: 'Pending', amount: 1100 },
-        { month: 'February, 2027', status: 'Pending', amount: 1100 },
-        { month: 'March, 2027', status: 'Pending', amount: 1100 }
+        { month: 'December, 2026', status: 'Pending', amount: 1100 }
       ]
     }
   },
@@ -297,10 +297,18 @@ export const defaultStudents: Student[] = [
       admissionFeeAmount: 3000,
       examFeeAmount: 1200,
       months: [
+        { month: 'January, 2026', status: 'Paid', amount: 1100, paidDate: '2026-01-02' },
+        { month: 'February, 2026', status: 'Paid', amount: 1100, paidDate: '2026-02-02' },
+        { month: 'March, 2026', status: 'Paid', amount: 1100, paidDate: '2026-03-02' },
         { month: 'April, 2026', status: 'Paid', amount: 1100, paidDate: '2026-04-02' },
         { month: 'May, 2026', status: 'Paid', amount: 1100, paidDate: '2026-05-02' },
         { month: 'June, 2026', status: 'Paid', amount: 1100, paidDate: '2026-06-02' },
-        { month: 'July, 2026', status: 'Paid', amount: 1100, paidDate: '2026-07-02' }
+        { month: 'July, 2026', status: 'Paid', amount: 1100, paidDate: '2026-07-02' },
+        { month: 'August, 2026', status: 'Paid', amount: 1100, paidDate: '2026-08-02' },
+        { month: 'September, 2026', status: 'Paid', amount: 1100, paidDate: '2026-09-02' },
+        { month: 'October, 2026', status: 'Paid', amount: 1100, paidDate: '2026-10-02' },
+        { month: 'November, 2026', status: 'Paid', amount: 1100, paidDate: '2026-11-02' },
+        { month: 'December, 2026', status: 'Paid', amount: 1100, paidDate: '2026-12-02' }
       ]
     }
   }

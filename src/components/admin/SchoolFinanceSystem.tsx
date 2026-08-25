@@ -18,12 +18,9 @@ import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, Legend, CartesianGrid
 } from 'recharts';
+import { STANDARD_FEE_MONTHS_2026, sortFeeMonths } from '../../lib/feeUtils';
 
-const ALL_ACADEMIC_MONTHS = [
-  'April, 2026', 'May, 2026', 'June, 2026', 'July, 2026',
-  'August, 2026', 'September, 2026', 'October, 2026', 'November, 2026',
-  'December, 2026', 'January, 2027', 'February, 2027', 'March, 2027'
-];
+const ALL_ACADEMIC_MONTHS = STANDARD_FEE_MONTHS_2026;
 
 interface SchoolFinanceSystemProps {
   students: Student[];
@@ -360,12 +357,18 @@ export const SchoolFinanceSystem: React.FC<SchoolFinanceSystemProps> = ({
 
   // Chart Data Collections
   const collectionTrendData = [
-    { month: 'Apr', collected: 210000, target: 250000 },
-    { month: 'May', collected: 245000, target: 250000 },
+    { month: 'Jan', collected: 210000, target: 250000 },
+    { month: 'Feb', collected: 225000, target: 250000 },
+    { month: 'Mar', collected: 260000, target: 250000 },
+    { month: 'Apr', collected: 245000, target: 250000 },
+    { month: 'May', collected: 230000, target: 250000 },
     { month: 'Jun', collected: 198000, target: 250000 },
     { month: 'Jul', collected: 285000, target: 250000 },
     { month: 'Aug', collected: 312000, target: 250000 },
-    { month: 'Sep', collected: 235000, target: 250000 }
+    { month: 'Sep', collected: 255000, target: 250000 },
+    { month: 'Oct', collected: 270000, target: 250000 },
+    { month: 'Nov', collected: 280000, target: 250000 },
+    { month: 'Dec', collected: 295000, target: 250000 }
   ];
 
   const feeHeadBreakdownData = [
@@ -383,12 +386,18 @@ export const SchoolFinanceSystem: React.FC<SchoolFinanceSystemProps> = ({
   ];
 
   const cashFlowData = [
+    { month: 'Jan', income: 230000, expense: 115000 },
+    { month: 'Feb', income: 245000, expense: 120000 },
+    { month: 'Mar', income: 270000, expense: 130000 },
     { month: 'Apr', income: 240000, expense: 120000 },
     { month: 'May', income: 260000, expense: 135000 },
     { month: 'Jun', income: 210000, expense: 110000 },
     { month: 'Jul', income: 290000, expense: 145000 },
     { month: 'Aug', income: 330000, expense: 160000 },
-    { month: 'Sep', income: 250000, expense: 130000 }
+    { month: 'Sep', income: 265000, expense: 130000 },
+    { month: 'Oct', income: 280000, expense: 140000 },
+    { month: 'Nov', income: 290000, expense: 145000 },
+    { month: 'Dec', income: 310000, expense: 155000 }
   ];
 
   // Handler: Open Student Fee Collection Modal
@@ -575,7 +584,7 @@ export const SchoolFinanceSystem: React.FC<SchoolFinanceSystemProps> = ({
         transportFeeStatus: payTransportFee ? (payTransportFree ? ('Exempt' as const) : ('Paid' as const)) : (selectedStudentForPay.feeInfo?.transportFeeStatus || 'Unpaid'),
         paid: (selectedStudentForPay.feeInfo?.paid || 0) + net,
         pending: Math.max(0, (selectedStudentForPay.feeInfo?.pending || 0) - net),
-        months: updatedMonths
+        months: sortFeeMonths(updatedMonths)
       };
       const updatedStudent = { ...selectedStudentForPay, feeInfo: updatedInfo };
       onUpdateStudent(updatedStudent);

@@ -11,6 +11,7 @@ import {
 } from '../../types';
 import { StudentIDCard } from '../common/StudentIDCard';
 import { OfficialFeeReceipt } from '../common/OfficialFeeReceipt';
+import { generateDefault12MonthFeeList } from '../../lib/feeUtils';
 import { CaptchaWidget } from '../common/CaptchaWidget';
 import {
   UserCheck, LogOut, Users, Calendar, Award, BookOpen, Plus, Trash2, Edit3, Save, Upload, Check,
@@ -1609,11 +1610,18 @@ export const TeacherWorkspace: React.FC = () => {
 
           // Format month display name
           const monthDisplayNames: Record<string, string> = {
-            '2026-08': 'August 2026',
-            '2026-07': 'July 2026',
-            '2026-06': 'June 2026',
+            '2026-01': 'January 2026',
+            '2026-02': 'February 2026',
+            '2026-03': 'March 2026',
+            '2026-04': 'April 2026',
             '2026-05': 'May 2026',
-            '2026-04': 'April 2026'
+            '2026-06': 'June 2026',
+            '2026-07': 'July 2026',
+            '2026-08': 'August 2026',
+            '2026-09': 'September 2026',
+            '2026-10': 'October 2026',
+            '2026-11': 'November 2026',
+            '2026-12': 'December 2026'
           };
           const currentMonthLabel = monthDisplayNames[summaryMonth] || summaryMonth;
 
@@ -1831,11 +1839,18 @@ export const TeacherWorkspace: React.FC = () => {
                           onChange={e => setSummaryMonth(e.target.value)}
                           className="p-2 border border-slate-300 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
                         >
-                          <option value="2026-08">August 2026</option>
-                          <option value="2026-07">July 2026</option>
-                          <option value="2026-06">June 2026</option>
-                          <option value="2026-05">May 2026</option>
+                          <option value="2026-01">January 2026</option>
+                          <option value="2026-02">February 2026</option>
+                          <option value="2026-03">March 2026</option>
                           <option value="2026-04">April 2026</option>
+                          <option value="2026-05">May 2026</option>
+                          <option value="2026-06">June 2026</option>
+                          <option value="2026-07">July 2026</option>
+                          <option value="2026-08">August 2026</option>
+                          <option value="2026-09">September 2026</option>
+                          <option value="2026-10">October 2026</option>
+                          <option value="2026-11">November 2026</option>
+                          <option value="2026-12">December 2026</option>
                         </select>
                       </div>
 
@@ -2464,7 +2479,7 @@ export const TeacherWorkspace: React.FC = () => {
                         address: '',
                         admissionDate: new Date().toISOString().split('T')[0],
                         password: '123',
-                        feeInfo: { totalAnnual: 25100, paid: 0, pending: 25100, months: [] }
+                        feeInfo: { totalAnnual: 25100, paid: 0, pending: 25100, months: generateDefault12MonthFeeList(1100, 2026) }
                       });
                       setShowStudentModal(true);
                     }}

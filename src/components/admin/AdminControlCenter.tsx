@@ -9,6 +9,7 @@ import { Teacher, Student, Notice, AdmissionApplication, OnlineClass, OnlineExam
 import { WebsiteCMSManager } from './WebsiteCMSManager';
 import { SchoolFinanceSystem } from './SchoolFinanceSystem';
 import { AdminGlobalSearch, AdminTabType } from './AdminGlobalSearch';
+import { generateDefault12MonthFeeList } from '../../lib/feeUtils';
 import {
   Palette, Users, GraduationCap, Megaphone, ClipboardList, Image, Settings, Home, LogOut,
   X, Menu, Plus, Trash2, Search, Check, AlertTriangle, Edit3, Download, Key, ShieldAlert,
@@ -340,6 +341,9 @@ export const AdminControlCenter: React.FC = () => {
         admissionFeeAmount: 3000,
         examFeeAmount: 1200,
         months: [
+          { month: 'January, 2026', status: 'Pending', amount: 1100 },
+          { month: 'February, 2026', status: 'Pending', amount: 1100 },
+          { month: 'March, 2026', status: 'Pending', amount: 1100 },
           { month: 'April, 2026', status: 'Pending', amount: 1100 },
           { month: 'May, 2026', status: 'Pending', amount: 1100 },
           { month: 'June, 2026', status: 'Pending', amount: 1100 },
@@ -348,10 +352,7 @@ export const AdminControlCenter: React.FC = () => {
           { month: 'September, 2026', status: 'Pending', amount: 1100 },
           { month: 'October, 2026', status: 'Pending', amount: 1100 },
           { month: 'November, 2026', status: 'Pending', amount: 1100 },
-          { month: 'December, 2026', status: 'Pending', amount: 1100 },
-          { month: 'January, 2027', status: 'Pending', amount: 1100 },
-          { month: 'February, 2027', status: 'Pending', amount: 1100 },
-          { month: 'March, 2027', status: 'Pending', amount: 1100 }
+          { month: 'December, 2026', status: 'Pending', amount: 1100 }
         ]
       },
       addons: {
@@ -462,7 +463,7 @@ export const AdminControlCenter: React.FC = () => {
           totalAnnual: 25100,
           paid: 0,
           pending: 25100,
-          months: [{ month: 'Admission Fee', status: 'Pending', amount: 3500 }]
+          months: generateDefault12MonthFeeList(1100, 2026)
         }
       });
       await api.updateAdmissionStatus(adm.id, 'Approved');

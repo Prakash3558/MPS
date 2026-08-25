@@ -15,6 +15,7 @@ import { CaptchaWidget } from '../common/CaptchaWidget';
 import { AcademicProgressAnalytics } from './AcademicProgressAnalytics';
 import { downloadElementAsPDF } from '../../lib/pdf';
 import { OfficialFeeReceipt } from '../common/OfficialFeeReceipt';
+import { sortFeeMonths, getNormalizedStudentFeeMonths } from '../../lib/feeUtils';
 import {
   GraduationCap, LogOut, Calendar, BookOpen, FileText, IndianRupee, Bell, AlertTriangle, AlertCircle,
   CheckCircle2, XCircle, Clock, Award, ShieldCheck, Download, UserCheck, Key, User, Bot, Sparkles, TrendingUp, Printer, Check,
@@ -75,7 +76,7 @@ export const StudentPortal: React.FC = () => {
     | 'ai-tutor';
 
   const [activeTab, setActiveTab] = useState<TabType>('homework');
-  const [selectedFeeMonth, setSelectedFeeMonth] = useState<string>('July, 2026');
+  const [selectedFeeMonth, setSelectedFeeMonth] = useState<string>('January, 2026');
   const [selectedHomeworkForAI, setSelectedHomeworkForAI] = useState<Homework | null>(null);
 
   const activeContentRef = useRef<HTMLDivElement>(null);
@@ -320,12 +321,19 @@ export const StudentPortal: React.FC = () => {
 
   // Month Display mapping
   const attendanceMonthLabels: Record<string, string> = {
-    '2026-08': 'August 2026',
-    '2026-07': 'July 2026',
-    '2026-06': 'June 2026',
-    '2026-05': 'May 2026',
+    '2026-01': 'January 2026',
+    '2026-02': 'February 2026',
+    '2026-03': 'March 2026',
     '2026-04': 'April 2026',
-    'all': 'Full Academic Session (Apr-Aug 2026)'
+    '2026-05': 'May 2026',
+    '2026-06': 'June 2026',
+    '2026-07': 'July 2026',
+    '2026-08': 'August 2026',
+    '2026-09': 'September 2026',
+    '2026-10': 'October 2026',
+    '2026-11': 'November 2026',
+    '2026-12': 'December 2026',
+    'all': 'Full Academic Session (2026)'
   };
 
   // Generate complete attendance timeline with "Not Mentioned" status for unrecorded days
@@ -1662,12 +1670,19 @@ export const StudentPortal: React.FC = () => {
                     onChange={e => setAttendanceMonth(e.target.value)}
                     className="bg-transparent text-xs font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
                   >
-                    <option value="2026-08" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">August 2026</option>
-                    <option value="2026-07" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">July 2026</option>
-                    <option value="2026-06" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">June 2026</option>
-                    <option value="2026-05" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">May 2026</option>
+                    <option value="2026-01" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">January 2026</option>
+                    <option value="2026-02" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">February 2026</option>
+                    <option value="2026-03" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">March 2026</option>
                     <option value="2026-04" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">April 2026</option>
-                    <option value="all" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Full Session (Apr-Aug 2026)</option>
+                    <option value="2026-05" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">May 2026</option>
+                    <option value="2026-06" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">June 2026</option>
+                    <option value="2026-07" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">July 2026</option>
+                    <option value="2026-08" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">August 2026</option>
+                    <option value="2026-09" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">September 2026</option>
+                    <option value="2026-10" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">October 2026</option>
+                    <option value="2026-11" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">November 2026</option>
+                    <option value="2026-12" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">December 2026</option>
+                    <option value="all" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Full Session (2026)</option>
                   </select>
                 </div>
               </div>
@@ -2050,9 +2065,9 @@ export const StudentPortal: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                    {student.feeInfo.months?.map((m, idx) => {
+                    {getNormalizedStudentFeeMonths(student.feeInfo.months).map((m, idx) => {
                       const isPaid = m.status === 'Paid';
-                      const isSelected = isPaid && selectedFeeMonth === m.month;
+                      const isSelected = isPaid && (selectedFeeMonth === m.month || (!selectedFeeMonth && idx === 0));
 
                       return (
                         <tr key={idx} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isSelected ? 'bg-amber-500/10 dark:bg-amber-500/20' : ''}`}>
@@ -2097,14 +2112,14 @@ export const StudentPortal: React.FC = () => {
             </div>
 
             {/* Official Fee Receipt Card (ONLY FOR PAID MONTHS) */}
-            {student.feeInfo.months?.some(m => m.status === 'Paid') ? (
+            {getNormalizedStudentFeeMonths(student.feeInfo.months).some(m => m.status === 'Paid') ? (
               <div id="student-fee-receipt" className="bg-stone-100 dark:bg-slate-950 p-4 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800">
                 <OfficialFeeReceipt
                   student={student}
                   settings={settings}
                   selectedMonth={
-                    (student.feeInfo.months?.find(m => m.month === selectedFeeMonth && m.status === 'Paid')
-                      || student.feeInfo.months?.find(m => m.status === 'Paid'))?.month || 'Paid Installment'
+                    (getNormalizedStudentFeeMonths(student.feeInfo.months).find(m => m.month === selectedFeeMonth && m.status === 'Paid')
+                      || getNormalizedStudentFeeMonths(student.feeInfo.months).find(m => m.status === 'Paid'))?.month || 'Paid Installment'
                   }
                 />
               </div>

@@ -240,6 +240,9 @@ const initialStudents: Student[] = [
       pending: 7100,
       notes: 'Quarter 1 & 2 Fees Paid successfully.',
       months: [
+        { month: 'January 2026', status: 'Paid', amount: 1800, paidDate: '2026-01-05' },
+        { month: 'February 2026', status: 'Paid', amount: 1800, paidDate: '2026-02-02' },
+        { month: 'March 2026', status: 'Paid', amount: 1800, paidDate: '2026-03-04' },
         { month: 'April 2026', status: 'Paid', amount: 1800, paidDate: '2026-04-05' },
         { month: 'May 2026', status: 'Paid', amount: 1800, paidDate: '2026-05-02' },
         { month: 'June 2026', status: 'Paid', amount: 1800, paidDate: '2026-06-04' },
@@ -267,6 +270,9 @@ const initialStudents: Student[] = [
       paid: 21600,
       pending: 3500,
       months: [
+        { month: 'January 2026', status: 'Paid', amount: 1800, paidDate: '2026-01-02' },
+        { month: 'February 2026', status: 'Paid', amount: 1800, paidDate: '2026-02-01' },
+        { month: 'March 2026', status: 'Paid', amount: 1800, paidDate: '2026-03-02' },
         { month: 'April 2026', status: 'Paid', amount: 1800, paidDate: '2026-04-02' },
         { month: 'May 2026', status: 'Paid', amount: 1800, paidDate: '2026-05-01' },
         { month: 'June 2026', status: 'Paid', amount: 1800, paidDate: '2026-06-02' },
@@ -2070,9 +2076,10 @@ app.post('/api/students', async (req, res) => {
       paid: 0,
       pending: 25100,
       months: [
-        { month: 'April 2026', status: 'Pending', amount: 1800 },
-        { month: 'May 2026', status: 'Pending', amount: 1800 },
-        { month: 'June 2026', status: 'Pending', amount: 1800 }
+        { month: 'January 2026', status: 'Pending', amount: 1800 },
+        { month: 'February 2026', status: 'Pending', amount: 1800 },
+        { month: 'March 2026', status: 'Pending', amount: 1800 },
+        { month: 'April 2026', status: 'Pending', amount: 1800 }
       ]
     }
   };
