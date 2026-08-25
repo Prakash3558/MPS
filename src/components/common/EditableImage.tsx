@@ -20,12 +20,11 @@ export const EditableImage: React.FC<EditableImageProps> = React.memo(({
   loading = 'lazy',
   decoding
 }) => {
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(true);
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     setHasError(false);
-    setIsLoaded(false);
   }, [src]);
 
   const handleImageLoad = () => {
@@ -45,14 +44,9 @@ export const EditableImage: React.FC<EditableImageProps> = React.memo(({
   const isEager = loading === 'eager';
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-slate-100 dark:bg-slate-800 select-none">
-      {!isLoaded && !isEager && (
-        <div className="absolute inset-0 bg-slate-200/50 dark:bg-slate-800/50 flex items-center justify-center pointer-events-none">
-          <div className="w-5 h-5 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
-        </div>
-      )}
+    <div className="relative w-full h-full overflow-hidden bg-slate-900 select-none">
       {hasError ? (
-        <div className={`w-full h-full min-h-[120px] flex flex-col items-center justify-center p-4 text-center bg-slate-100 dark:bg-slate-800 text-slate-400 ${className}`}>
+        <div className={`w-full h-full min-h-[120px] flex flex-col items-center justify-center p-4 text-center bg-slate-800 text-slate-400 ${className}`}>
           <ImageIcon className="w-8 h-8 mb-1 text-slate-400 opacity-60" />
           <span className="text-xs font-medium">{alt || 'Image unavailable'}</span>
         </div>
@@ -66,7 +60,7 @@ export const EditableImage: React.FC<EditableImageProps> = React.memo(({
           {...(isEager ? { fetchPriority: 'high' as const } : {})}
           onLoad={handleImageLoad}
           onError={handleImageError}
-          className={`${className}`}
+          className={`${className} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-80'}`}
         />
       )}
     </div>

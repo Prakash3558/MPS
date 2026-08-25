@@ -1,7 +1,7 @@
 import {
   SiteSettings, Teacher, Student, AttendanceRecord, ExamResult, Homework, Notice, AdmissionApplication,
   OnlineClass, OnlineExam, TimeTableSlot, StudyMaterial, SchoolDiaryEntry, SyllabusItem, TransportRoute,
-  AdmitCard, StudentDeclaration, SchoolMessage, RecordUpdateReq,
+  AdmitCard, StudentDeclaration, SchoolMessage, RecordUpdateReq, ParentComplaint,
   FeeReceiptRecord, FinancialTransaction, FeeParticularMaster, FeeDiscount, AdvanceFeeRecord
 } from '../types';
 import { uploadImageToSupabaseStorage, uploadImageToFirebaseStorage } from './supabase';
@@ -349,6 +349,78 @@ const defaultHomework: Homework[] = [
     priority: 'Medium',
     teacherName: 'Dr. Ananya Mishra',
     createdAt: '2026-08-14'
+  }
+];
+
+export const defaultRecordUpdates: RecordUpdateReq[] = [
+  {
+    id: 'req-1',
+    studentId: 's-1',
+    studentName: 'Rahul Kumar',
+    class: '10',
+    section: 'A',
+    rollNo: '1001',
+    field: 'Phone Number',
+    oldValue: '+91 98765 43210',
+    newValue: '+91 87579 68130',
+    status: 'Pending',
+    date: '2026-08-18',
+    reason: 'Father updated his official mobile SIM card.'
+  },
+  {
+    id: 'req-2',
+    studentId: 's-2',
+    studentName: 'Priya Kumari',
+    class: '10',
+    section: 'A',
+    rollNo: '1002',
+    field: 'Permanent Address',
+    oldValue: 'Bhawanipur, Sikta',
+    newValue: 'Main Market Road, Sikta, West Champaran - 845307',
+    status: 'Approved',
+    date: '2026-08-15',
+    reason: 'Family relocated to new residence in Sikta bazar.',
+    reviewedBy: 'Prakash Kumar',
+    reviewedAt: '2026-08-16'
+  }
+];
+
+export const defaultComplaints: ParentComplaint[] = [
+  {
+    id: 'cmp-1',
+    parentName: 'Manoj Kumar (Father of Rahul)',
+    studentId: 's-1',
+    studentName: 'Rahul Kumar',
+    studentRollNo: '1001',
+    class: '10',
+    section: 'A',
+    phone: '+91 98765 43210',
+    email: 'manoj.k@gmail.com',
+    category: 'Teaching & Academics',
+    subject: 'Request extra practice for Mathematics Chapter 8',
+    description: 'Rahul is finding Trigonometry proofs slightly challenging. Could the class teacher arrange 15 minutes remedial guidance during zero period?',
+    status: 'Open',
+    priority: 'High',
+    createdAt: '2026-08-19'
+  },
+  {
+    id: 'cmp-2',
+    parentName: 'Sanjay Sharma (Father of Priya)',
+    studentId: 's-2',
+    studentName: 'Priya Kumari',
+    studentRollNo: '1002',
+    class: '10',
+    section: 'A',
+    phone: '+91 98765 43211',
+    category: 'Transport & Bus',
+    subject: 'Bus Route 2 morning arrival timing query',
+    description: 'School bus arrived 10 minutes early at Bhawanipur stop yesterday. Requesting standard 7:35 AM stop time adherence.',
+    status: 'Resolved',
+    priority: 'Medium',
+    teacherReply: 'Noted with thanks. Bus incharge has been instructed to maintain strictly 7:35 AM at Bhawanipur stop.',
+    repliedBy: 'Prakash Kumar',
+    repliedAt: '2026-08-20',
+    createdAt: '2026-08-18'
   }
 ];
 
@@ -2081,36 +2153,207 @@ export const api = {
     return await safeFetch<RecordUpdateReq[]>(
       `/api/record-updates?${query.toString()}`,
       { headers: await getAuthHeaders() },
-      () => getLocalData<RecordUpdateReq[]>('record_updates', [])
+      () => getLocalData<RecordUpdateReq[]>('record_updates', defaultRecordUpdates)
     );
   },
   async createRecordUpdate(payload: Partial<RecordUpdateReq>) {
-    const all = getLocalData<RecordUpdateReq[]>('record_updates', []);
+    const all = getLocalData<RecordUpdateReq[]>('record_updates', defaultRecordUpdates);
     const newReq: RecordUpdateReq = {
       id: payload.id || 'req-' + Date.now(),
       studentId: payload.studentId || '',
       studentName: payload.studentName || '',
+      class: payload.class,
+      section: payload.section,
+      rollNo: payload.rollNo,
       field: payload.field || 'General',
       oldValue: payload.oldValue || '',
       newValue: payload.newValue || '',
       status: payload.status || 'Pending',
       date: payload.date || new Date().toISOString().split('T')[0],
+      reason: payload.reason,
       ...payload
     };
-    setLocalData('record_updates', [newReq, ...all]);
+    const updatedList = [newReq, ...all];
+    setLocalData('record_updates', updatedList);
     try {
       const res = await fetch(apiUrl('/api/record-updates'), { method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload) });
       if (res.headers.get('content-type')?.includes('application/json')) return await res.json();
     } catch (e) {}
     return { success: true, request: newReq };
   },
-  async updateRecordStatus(id: string, status: string) {
-    const all = getLocalData<RecordUpdateReq[]>('record_updates', []);
-    setLocalData('record_updates', all.map(r => r.id === id ? { ...r, status: status as any } : r));
+  async updateRecordStatus(id: string, status: 'Pending' | 'Approved' | 'Rejected', actionNote?: string, reviewerName?: string) {
+    const all = getLocalData<RecordUpdateReq[]>('record_updates', defaultRecordUpdates);
+    const updatedList = all.map(r => {
+      if (r.id === id) {
+        return {
+          ...r,
+          status,
+          actionNote: actionNote !== undefined ? actionNote : r.actionNote,
+          reviewedBy: reviewerName || r.reviewedBy,
+          reviewedAt: new Date().toISOString()
+        };
+      }
+      return r;
+    });
+    setLocalData('record_updates', updatedList);
     try {
-      const res = await fetch(apiUrl(`/api/record-updates/${id}`), { method: 'PUT', headers: await getAuthHeaders(), body: JSON.stringify({ status }) });
+      const res = await fetch(apiUrl(`/api/record-updates/${id}`), {
+        method: 'PUT',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ status, actionNote, reviewedBy: reviewerName, reviewedAt: new Date().toISOString() })
+      });
       if (res.headers.get('content-type')?.includes('application/json')) return await res.json();
     } catch (e) {}
+    return { success: true };
+  },
+  async approveRecordUpdate(reqId: string, studentId: string, field: string, newValue: string, reviewerName?: string, note?: string) {
+    // 1. Update the student in local state and database
+    if (studentId) {
+      const students = getLocalData<Student[]>('students', defaultStudents);
+      const targetStudent = students.find(s => s.id === studentId || s.userId === studentId);
+      if (targetStudent) {
+        const fieldMap: Record<string, string> = {
+          'Phone Number': 'phone',
+          'Phone': 'phone',
+          'Contact': 'phone',
+          'Mobile': 'phone',
+          'Permanent Address': 'address',
+          'Address': 'address',
+          'Father Name': 'parentName',
+          'Mother Name': 'motherName',
+          'Parent Name': 'parentName',
+          'Student Name': 'name',
+          'Name': 'name',
+          'Date of Birth': 'dob',
+          'DOB': 'dob',
+          'Email': 'email',
+          'Blood Group': 'bloodGroup',
+          'Aadhaar': 'aadhaar'
+        };
+        const propKey = fieldMap[field] || field.toLowerCase().replace(/\s+/g, '');
+        const updatedStudent = { ...targetStudent, [propKey]: newValue };
+        await this.updateStudent(targetStudent.id, updatedStudent);
+      }
+    }
+    // 2. Mark request as Approved
+    return await this.updateRecordStatus(reqId, 'Approved', note || 'Verified & Updated into student record by class teacher.', reviewerName);
+  },
+  async rejectRecordUpdate(reqId: string, note?: string, reviewerName?: string) {
+    return await this.updateRecordStatus(reqId, 'Rejected', note || 'Rejected after verification.', reviewerName);
+  },
+
+  // -------------------------------------------------------------
+  // PARENT & STUDENT COMPLAINTS API
+  // -------------------------------------------------------------
+  async getComplaints(className?: string, section?: string): Promise<ParentComplaint[]> {
+    const query = new URLSearchParams();
+    if (className) query.append('class', className);
+    if (section) query.append('section', section);
+
+    return await safeFetch<ParentComplaint[]>(
+      `/api/complaints?${query.toString()}`,
+      { headers: await getAuthHeaders() },
+      () => {
+        const all = getLocalData<ParentComplaint[]>('parent_complaints', defaultComplaints);
+        if (className && className !== 'All') {
+          return all.filter(c => c.class === className && (!section || section === 'All' || c.section === section));
+        }
+        return all;
+      }
+    );
+  },
+  async createComplaint(payload: Partial<ParentComplaint>): Promise<{ success: boolean; complaint: ParentComplaint }> {
+    const all = getLocalData<ParentComplaint[]>('parent_complaints', defaultComplaints);
+    const newComplaint: ParentComplaint = {
+      id: payload.id || 'cmp-' + Date.now(),
+      parentName: payload.parentName || 'Parent',
+      studentId: payload.studentId,
+      studentName: payload.studentName || 'Student',
+      studentRollNo: payload.studentRollNo,
+      class: payload.class || '10',
+      section: payload.section || 'A',
+      phone: payload.phone || '+91 98765 43210',
+      email: payload.email,
+      category: payload.category || 'General Complaint',
+      subject: payload.subject || 'Complaint',
+      description: payload.description || '',
+      status: payload.status || 'Open',
+      priority: payload.priority || 'Medium',
+      createdAt: payload.createdAt || new Date().toISOString().split('T')[0],
+      ...payload
+    };
+    const updated = [newComplaint, ...all];
+    setLocalData('parent_complaints', updated);
+
+    try {
+      const res = await fetch(apiUrl('/api/complaints'), {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify(newComplaint)
+      });
+      if (res.headers.get('content-type')?.includes('application/json')) {
+        const data = await res.json();
+        if (data && data.complaint) return data;
+      }
+    } catch (e) {}
+
+    return { success: true, complaint: newComplaint };
+  },
+  async replyToComplaint(id: string, replyText: string, repliedByName: string, newStatus: 'Open' | 'Under Review' | 'Resolved' | 'Closed' = 'Resolved') {
+    const all = getLocalData<ParentComplaint[]>('parent_complaints', defaultComplaints);
+    const updated = all.map(c => {
+      if (c.id === id) {
+        return {
+          ...c,
+          teacherReply: replyText,
+          repliedBy: repliedByName,
+          repliedAt: new Date().toISOString(),
+          status: newStatus
+        };
+      }
+      return c;
+    });
+    setLocalData('parent_complaints', updated);
+
+    try {
+      const res = await fetch(apiUrl(`/api/complaints/${id}/reply`), {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ reply: replyText, repliedBy: repliedByName, status: newStatus })
+      });
+      if (res.headers.get('content-type')?.includes('application/json')) return await res.json();
+    } catch (e) {}
+
+    return { success: true };
+  },
+  async updateComplaintStatus(id: string, status: 'Open' | 'Under Review' | 'Resolved' | 'Closed') {
+    const all = getLocalData<ParentComplaint[]>('parent_complaints', defaultComplaints);
+    const updated = all.map(c => c.id === id ? { ...c, status } : c);
+    setLocalData('parent_complaints', updated);
+
+    try {
+      const res = await fetch(apiUrl(`/api/complaints/${id}/status`), {
+        method: 'PUT',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ status })
+      });
+      if (res.headers.get('content-type')?.includes('application/json')) return await res.json();
+    } catch (e) {}
+
+    return { success: true };
+  },
+  async deleteComplaint(id: string) {
+    const all = getLocalData<ParentComplaint[]>('parent_complaints', defaultComplaints);
+    setLocalData('parent_complaints', all.filter(c => c.id !== id));
+
+    try {
+      const res = await fetch(apiUrl(`/api/complaints/${id}`), {
+        method: 'DELETE',
+        headers: await getAuthHeaders()
+      });
+      if (res.headers.get('content-type')?.includes('application/json')) return await res.json();
+    } catch (e) {}
+
     return { success: true };
   },
 

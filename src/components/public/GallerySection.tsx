@@ -9,7 +9,18 @@ import { GalleryItem } from '../../types';
 
 export const GallerySection: React.FC = React.memo(() => {
   const { settings } = useCMS();
-  const gallery = settings?.gallery || [];
+  const rawGallery = settings?.gallery || [];
+
+  // Strictly deduplicate gallery items to avoid duplicates
+  const gallery = useMemo(() => {
+    const seen = new Set<string>();
+    return rawGallery.filter(item => {
+      const key = `${item.id || ''}-${item.url || ''}-${item.title || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [rawGallery]);
   
   // Full Grid Lightbox Modal (opened ONLY via "See All" button)
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -39,18 +50,18 @@ export const GallerySection: React.FC = React.memo(() => {
     setCurrentIndex(Math.min(Math.max(newIdx, 0), gallery.length - 1));
   }, [gallery.length]);
 
-  // Clean navigation that aligns smoothly to cards in both directions
+  // Clean navigation that aligns smoothly to cards in both directions (forward and backward looping)
   const scrollToIndex = useCallback((targetIndex: number) => {
     if (!trackRef.current || gallery.length === 0) return;
     const el = trackRef.current;
-    const clampedIndex = (targetIndex + gallery.length) % gallery.length;
+    const normalizedIdx = (targetIndex + gallery.length) % gallery.length;
     const itemWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 20 : 340;
     
     el.scrollTo({
-      left: clampedIndex * itemWidth,
+      left: normalizedIdx * itemWidth,
       behavior: 'smooth'
     });
-    setCurrentIndex(clampedIndex);
+    setCurrentIndex(normalizedIdx);
   }, [gallery.length]);
 
   const handleManualNav = (direction: 'left' | 'right') => {
@@ -61,10 +72,10 @@ export const GallerySection: React.FC = React.memo(() => {
     const currentIdx = Math.round(el.scrollLeft / itemWidth);
     
     if (direction === 'right') {
-      const nextIdx = currentIdx >= gallery.length - 1 ? 0 : currentIdx + 1;
+      const nextIdx = (currentIdx + 1) % gallery.length;
       scrollToIndex(nextIdx);
     } else {
-      const prevIdx = currentIdx <= 0 ? gallery.length - 1 : currentIdx - 1;
+      const prevIdx = (currentIdx - 1 + gallery.length) % gallery.length;
       scrollToIndex(prevIdx);
     }
     resumeAutoPlayDelayed(4000);

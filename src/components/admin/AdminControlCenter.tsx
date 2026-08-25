@@ -189,12 +189,21 @@ export const AdminControlCenter: React.FC = () => {
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+
+    const cleanUser = loginForm.username.trim();
+    const cleanPass = loginForm.password.trim();
+
+    if (!cleanUser || !cleanPass) {
+      setLoginError('Both Administrator Username and Master Password are required.');
+      return;
+    }
+
     setLoginLoading(true);
     try {
       const res = await api.login({
         role: 'admin',
-        username: loginForm.username.trim(),
-        password: loginForm.password.trim(),
+        username: cleanUser,
+        password: cleanPass,
         captchaToken: captchaToken || undefined
       });
       if (res.success && res.user) {
@@ -528,10 +537,19 @@ export const AdminControlCenter: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loginLoading}
-                  className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-2xl shadow-xl transition-all transform hover:scale-[1.02]"
+                  className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-2xl shadow-xl transition-all transform hover:scale-[1.02] cursor-pointer"
                 >
                   {loginLoading ? 'Authenticating Credentials...' : 'Sign In To Admin Control Center'}
                 </button>
+
+                <div className="pt-3 border-t border-slate-800 text-center">
+                  <a
+                    href="/"
+                    className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+                  >
+                    <Home className="w-3.5 h-3.5" /> Return to Website Homepage
+                  </a>
+                </div>
               </form>
           </div>
         </div>

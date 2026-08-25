@@ -153,7 +153,7 @@ export const CreateTeacherSchema = z.object({
   phone: z.string().max(20).optional(),
   email: z.string().max(150).optional(),
   photo: z.string().max(5000000).optional()
-});
+}).passthrough();
 
 export const CreateStudentSchema = z.object({
   name: z.string().min(1).max(100),
@@ -166,7 +166,7 @@ export const CreateStudentSchema = z.object({
   address: z.string().max(300).optional(),
   photo: z.string().max(5000000).optional(),
   email: z.string().max(150).optional()
-});
+}).passthrough();
 
 export const CreateNoticeSchema = z.object({
   title: z.string().min(1).max(200),

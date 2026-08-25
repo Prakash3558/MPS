@@ -69,11 +69,11 @@ export const Header: React.FC = React.memo(() => {
         </div>
       </div>
 
-      {/* Main Navbar */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-2">
-        {/* Brand Logo & Title */}
-        <a href="/" className="flex items-center gap-2 sm:gap-3 group min-w-0 flex-shrink hover:opacity-95 transition-opacity">
-          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 text-slate-900 flex items-center justify-center shadow-xs border border-slate-200/80 dark:border-slate-700/80 flex-shrink-0 overflow-hidden p-0.5 sm:p-1 transition-transform group-hover:scale-105">
+      {/* Main Navbar - Ultra-sleek single-line mobile layout */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 h-12 sm:h-16 flex items-center justify-between gap-2 flex-nowrap">
+        {/* Brand Logo & Title - Compact 1-line on mobile */}
+        <a href="/" className="flex items-center gap-1.5 sm:gap-3 group min-w-0 flex-shrink hover:opacity-95 transition-opacity">
+          <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 text-slate-900 flex items-center justify-center shadow-xs border border-slate-200/80 dark:border-slate-700/80 flex-shrink-0 overflow-hidden p-0.5 sm:p-1 transition-transform group-hover:scale-105">
             {settings?.logo_url ? (
               <EditableImage
                 src={settings.logo_url}
@@ -86,10 +86,10 @@ export const Header: React.FC = React.memo(() => {
             )}
           </div>
           <div className="min-w-0 truncate">
-            <h1 className="text-[13px] sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight font-heading tracking-tight truncate">
+            <h1 className="text-xs sm:text-base font-extrabold text-slate-900 dark:text-white leading-none sm:leading-tight font-heading tracking-tight truncate max-w-[130px] xs:max-w-[190px] sm:max-w-none">
               <EditableText blockKey="header.schoolName" defaultText={settings?.school_name || 'Model Public School'} />
             </h1>
-            <p className="hidden sm:flex text-[10.5px] text-slate-500 dark:text-slate-400 font-medium tracking-wide items-center gap-1">
+            <p className="hidden sm:flex text-[10.5px] text-slate-500 dark:text-slate-400 font-medium tracking-wide items-center gap-1 mt-0.5">
               <Shield className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
               <EditableText blockKey="header.locationBadge" defaultText="MPS Sikta, West Champaran" />
             </p>
@@ -98,14 +98,14 @@ export const Header: React.FC = React.memo(() => {
 
         {/* Navigation Links Desktop */}
         <nav className="hidden lg:flex items-center gap-1 font-medium text-xs text-slate-600 dark:text-slate-300">
-          <a href="#about" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">About</a>
-          <a href="#faculty" onMouseEnter={api.prefetchTeachers} className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Faculty</a>
-          <a href="#facilities" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Facilities</a>
-          <a href="#gallery" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Gallery</a>
-          <a href="#fees" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Fees</a>
-          <a href="#faq" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">FAQ</a>
-          <a href="#admissions" onMouseEnter={api.prefetchAdmissions} className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-semibold text-blue-600 dark:text-blue-400">Admissions</a>
-          <a href="#contact" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Contact</a>
+          <a href="/#about" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">About</a>
+          <a href="/#faculty" onMouseEnter={api.prefetchTeachers} className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Faculty</a>
+          <a href="/#facilities" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Facilities</a>
+          <a href="/#gallery" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Gallery</a>
+          <a href="/#fees" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Fees</a>
+          <a href="/#faq" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">FAQ</a>
+          <a href="/#admissions" onMouseEnter={api.prefetchAdmissions} className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-semibold text-blue-600 dark:text-blue-400">Admissions</a>
+          <a href="/#contact" className="px-3 py-1.5 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Contact</a>
         </nav>
 
         {/* Portal Login Action Buttons & Theme Switcher - Desktop */}
@@ -264,42 +264,42 @@ export const Header: React.FC = React.memo(() => {
 
           <div className="grid grid-cols-2 gap-1.5 pb-2">
             <a
-              href="#about"
+              href="/#about"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 hover:text-blue-600 text-xs font-semibold"
             >
               About Us
             </a>
             <a
-              href="#faculty"
+              href="/#faculty"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 hover:text-blue-600 text-xs font-semibold"
             >
               Faculty
             </a>
             <a
-              href="#facilities"
+              href="/#facilities"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 hover:text-blue-600 text-xs font-semibold"
             >
               Facilities
             </a>
             <a
-              href="#gallery"
+              href="/#gallery"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 hover:text-blue-600 text-xs font-semibold"
             >
               Gallery
             </a>
             <a
-              href="#fees"
+              href="/#fees"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 hover:text-blue-600 text-xs font-semibold"
             >
               Fee Structure
             </a>
             <a
-              href="#faq"
+              href="/#faq"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 hover:text-blue-600 text-xs font-semibold"
             >
@@ -309,7 +309,7 @@ export const Header: React.FC = React.memo(() => {
 
           <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2">
             <a
-              href="#admissions"
+              href="/#admissions"
               onClick={() => setMobileMenuOpen(false)}
               className="w-full flex items-center justify-center gap-2 bg-slate-900 dark:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-center shadow-xs text-xs"
             >

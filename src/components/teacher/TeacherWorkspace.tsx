@@ -7,11 +7,10 @@ import { downloadElementAsPDF } from '../../lib/pdf';
 import {
   Teacher, Student, AttendanceRecord, ExamResult, Homework, OnlineClass, OnlineExam,
   TimeTableSlot, StudyMaterial, SchoolDiaryEntry, SyllabusItem, TransportRoute, AdmitCard,
-  StudentDeclaration, SchoolMessage, RecordUpdateReq
+  StudentDeclaration, SchoolMessage, RecordUpdateReq, ParentComplaint
 } from '../../types';
 import { StudentIDCard } from '../common/StudentIDCard';
 import { OfficialFeeReceipt } from '../common/OfficialFeeReceipt';
-import { AIHomeworkTutor } from '../common/AIHomeworkTutor';
 import { CaptchaWidget } from '../common/CaptchaWidget';
 import {
   UserCheck, LogOut, Users, Calendar, Award, BookOpen, Plus, Trash2, Edit3, Save, Upload, Check,
@@ -19,7 +18,7 @@ import {
   AlertCircle, RefreshCw, DollarSign, PieChart, CreditCard, Video, FileQuestion, ExternalLink,
   Link2, Home, Notebook, BookMarked, Bus, FileCheck, MessageSquare, ShieldCheck, Bot, Sparkles,
   Send, IndianRupee, CheckCircle, Truck, Building2, Printer, Download, Filter,
-  Bell, BellRing, Zap, X, ChevronRight
+  Bell, BellRing, Zap, X, ChevronRight, MessageSquareWarning, PhoneCall, CheckCheck, Reply, UserPlus
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell
@@ -43,10 +42,13 @@ export const TeacherWorkspace: React.FC = () => {
   // Teacher Data Lists
   const [students, setStudents] = useState<Student[]>([]);
 
-  // 18 Tool Types
+  // 20 Tool Types
   type TabType =
     | 'homework'
     | 'attendance'
+    | 'students'
+    | 'corrections'
+    | 'complaints'
     | 'diary'
     | 'study-material'
     | 'online-classes'
@@ -55,14 +57,12 @@ export const TeacherWorkspace: React.FC = () => {
     | 'messages'
     | 'syllabus'
     | 'marks'
-    | 'students'
     | 'idcard'
     | 'trends'
     | 'transport'
     | 'admit-card'
     | 'fee'
-    | 'declarations'
-    | 'ai-tutor';
+    | 'declarations';
 
   // Default selected tool is HOMEWORK as requested!
   const [activeTab, setActiveTab] = useState<TabType>('homework');
@@ -78,6 +78,38 @@ export const TeacherWorkspace: React.FC = () => {
   const [messagesList, setMessagesList] = useState<SchoolMessage[]>([]);
   const [declarationsList, setDeclarationsList] = useState<StudentDeclaration[]>([]);
   const [recordUpdatesList, setRecordUpdatesList] = useState<RecordUpdateReq[]>([]);
+  const [complaintsList, setComplaintsList] = useState<ParentComplaint[]>([]);
+
+  // Complaints & Grievance State
+  const [complaintFilter, setComplaintFilter] = useState<'All' | 'Open' | 'Under Review' | 'Resolved'>('All');
+  const [complaintCategoryFilter, setComplaintCategoryFilter] = useState<string>('All');
+  const [selectedComplaintForReply, setSelectedComplaintForReply] = useState<ParentComplaint | null>(null);
+  const [complaintReplyText, setComplaintReplyText] = useState('');
+  const [showNewComplaintModal, setShowNewComplaintModal] = useState(false);
+  const [newComplaintForm, setNewComplaintForm] = useState({
+    parentName: '',
+    studentName: '',
+    studentRollNo: '',
+    phone: '',
+    email: '',
+    category: 'Teaching & Academics',
+    priority: 'Medium' as 'High' | 'Medium' | 'Low' | 'Urgent',
+    subject: '',
+    description: ''
+  });
+
+  // Corrections State
+  const [correctionFilter, setCorrectionFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
+  const [showNewCorrectionModal, setShowNewCorrectionModal] = useState(false);
+  const [newCorrectionForm, setNewCorrectionForm] = useState({
+    studentId: '',
+    studentName: '',
+    rollNo: '',
+    field: 'Parent Phone Number',
+    oldValue: '',
+    newValue: '',
+    reason: ''
+  });
 
   // Selected student for ID Card or Fee Receipt
   const [selectedStudentForCard, setSelectedStudentForCard] = useState<Student | null>(null);
@@ -258,7 +290,7 @@ export const TeacherWorkspace: React.FC = () => {
 
   const loadClassData = async (cls: string, sec: string) => {
     try {
-      const [stList, hwList, attList, allAtt, ocList, oeList, ttList, smList, sdList, sylList, msgList, trList] = await Promise.all([
+      const [stList, hwList, attList, allAtt, ocList, oeList, ttList, smList, sdList, sylList, msgList, trList, reqList, cmpList] = await Promise.all([
         api.getStudents(cls, sec).catch(() => []),
         api.getHomework(cls, sec).catch(() => []),
         api.getAttendance(undefined, cls, sec, attendanceDate).catch(() => []),
@@ -270,7 +302,9 @@ export const TeacherWorkspace: React.FC = () => {
         api.getSchoolDiary(cls, sec).catch(() => []),
         api.getSyllabus(cls).catch(() => []),
         api.getSchoolMessages().catch(() => []),
-        api.getTransport().catch(() => [])
+        api.getTransport().catch(() => []),
+        api.getRecordUpdates().catch(() => []),
+        api.getComplaints(cls, sec).catch(() => [])
       ]);
 
       const validStudents = Array.isArray(stList) ? stList : [];
@@ -285,6 +319,8 @@ export const TeacherWorkspace: React.FC = () => {
       setMessagesList(Array.isArray(msgList) ? msgList : []);
       setAllClassAttendance(Array.isArray(allAtt) ? allAtt : []);
       setTransportList(Array.isArray(trList) ? trList : []);
+      setRecordUpdatesList(Array.isArray(reqList) ? reqList : []);
+      setComplaintsList(Array.isArray(cmpList) ? cmpList : []);
 
       if (validStudents.length > 0 && !selectedStudentForCard) {
         setSelectedStudentForCard(validStudents[0]);
@@ -307,12 +343,21 @@ export const TeacherWorkspace: React.FC = () => {
   const handleTeacherLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+
+    const cleanUser = loginForm.username.trim();
+    const cleanPass = loginForm.password.trim();
+
+    if (!cleanUser || !cleanPass) {
+      setLoginError('Both Teacher Username and Password are required.');
+      return;
+    }
+
     setLoginLoading(true);
     try {
       const res = await api.login({
         role: 'teacher',
-        username: loginForm.username.trim(),
-        password: loginForm.password.trim(),
+        username: cleanUser,
+        password: cleanPass,
         captchaToken: captchaToken || undefined
       });
       if (res.success && res.teacher) {
@@ -331,21 +376,29 @@ export const TeacherWorkspace: React.FC = () => {
     e.preventDefault();
     if (!editingStudent) return;
     try {
-      if (editingStudent.id && (editingStudent.id.startsWith('s-') || !editingStudent.id.startsWith('temp-'))) {
-        await api.updateStudent(editingStudent.id, editingStudent);
+      if (editingStudent.id && !editingStudent.id.startsWith('temp-')) {
+        await api.updateStudent(editingStudent.id, {
+          ...editingStudent,
+          class: editingStudent.class || selectedClass,
+          section: editingStudent.section || selectedSection
+        });
       } else {
         await api.createStudent({
           ...editingStudent,
-          id: 's-' + Date.now()
+          class: editingStudent.class || selectedClass,
+          section: editingStudent.section || selectedSection,
+          id: 's-' + Date.now(),
+          userId: editingStudent.userId || 'u-st-' + Date.now(),
+          admissionDate: editingStudent.admissionDate || new Date().toISOString().split('T')[0]
         });
       }
       setShowStudentModal(false);
       setEditingStudent(null);
-      loadClassData(selectedClass, selectedSection);
-      alert(`Student profile for "${editingStudent.name}" saved successfully!`);
-    } catch (e) {
+      await loadClassData(selectedClass, selectedSection);
+      alert(`✓ Student profile for "${editingStudent.name}" saved successfully to database!`);
+    } catch (e: any) {
       console.error('Failed to save student profile:', e);
-      alert('Failed to save student profile. Please try again.');
+      alert('Failed to save student profile: ' + (e.message || 'Please check all required fields and try again.'));
     }
   };
 
@@ -353,11 +406,162 @@ export const TeacherWorkspace: React.FC = () => {
     if (window.confirm(`Are you sure you want to delete student profile for "${name}"? This action cannot be undone.`)) {
       try {
         await api.deleteStudent(id);
-        loadClassData(selectedClass, selectedSection);
+        await loadClassData(selectedClass, selectedSection);
+        alert(`✓ Student profile for "${name}" deleted.`);
       } catch (e) {
         console.error('Failed to delete student:', e);
         alert('Failed to delete student profile.');
       }
+    }
+  };
+
+  // --- CORRECTION REQUESTS HANDLERS ---
+  const handleApproveCorrection = async (req: RecordUpdateReq) => {
+    try {
+      await api.approveRecordUpdate(req.id, req.studentId, req.field, req.newValue, teacher?.name || 'Class Teacher');
+      setRecordUpdatesList(prev =>
+        prev.map(r => (r.id === req.id ? { ...r, status: 'Approved', reviewedBy: teacher?.name, reviewedAt: new Date().toISOString() } : r))
+      );
+      await loadClassData(selectedClass, selectedSection);
+      alert(`✓ Correction request for ${req.studentName} approved and updated in student database!`);
+    } catch (e) {
+      console.error('Failed to approve correction:', e);
+      alert('Failed to approve correction request.');
+    }
+  };
+
+  const handleRejectCorrection = async (req: RecordUpdateReq) => {
+    const reason = window.prompt(`Enter reason for rejecting correction for ${req.studentName}:`, 'Details do not match school records.');
+    if (reason === null) return;
+    try {
+      await api.rejectRecordUpdate(req.id, reason, teacher?.name || 'Class Teacher');
+      setRecordUpdatesList(prev =>
+        prev.map(r => (r.id === req.id ? { ...r, status: 'Rejected', actionNote: reason, reviewedBy: teacher?.name, reviewedAt: new Date().toISOString() } : r))
+      );
+      alert(`Correction request for ${req.studentName} has been rejected.`);
+    } catch (e) {
+      console.error('Failed to reject correction:', e);
+      alert('Failed to reject correction request.');
+    }
+  };
+
+  const handleCreateCorrection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCorrectionForm.studentName) {
+      alert('Please enter student name');
+      return;
+    }
+    try {
+      const created = await api.createRecordUpdate({
+        studentId: newCorrectionForm.studentId || 's-gen-' + Date.now(),
+        studentName: newCorrectionForm.studentName,
+        class: selectedClass,
+        section: selectedSection,
+        rollNo: newCorrectionForm.rollNo,
+        field: newCorrectionForm.field,
+        oldValue: newCorrectionForm.oldValue,
+        newValue: newCorrectionForm.newValue,
+        reason: newCorrectionForm.reason
+      });
+      setRecordUpdatesList(prev => [created, ...prev]);
+      setShowNewCorrectionModal(false);
+      setNewCorrectionForm({
+        studentId: '',
+        studentName: '',
+        rollNo: '',
+        field: 'Parent Phone Number',
+        oldValue: '',
+        newValue: '',
+        reason: ''
+      });
+      alert('✓ Correction request logged successfully!');
+    } catch (e) {
+      console.error('Failed to create correction:', e);
+      alert('Failed to log correction request.');
+    }
+  };
+
+  // --- PARENT COMPLAINTS HANDLERS ---
+  const handleReplyComplaint = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedComplaintForReply || !complaintReplyText.trim()) return;
+    try {
+      const updated = await api.replyToComplaint(
+        selectedComplaintForReply.id,
+        complaintReplyText.trim(),
+        teacher?.name || 'Class Teacher',
+        'Resolved'
+      );
+      setComplaintsList(prev => prev.map(c => (c.id === updated.id ? updated : c)));
+      setSelectedComplaintForReply(null);
+      setComplaintReplyText('');
+      alert('✓ Reply sent to parent and complaint marked as Resolved!');
+    } catch (e) {
+      console.error('Failed to reply to complaint:', e);
+      alert('Failed to send reply to parent.');
+    }
+  };
+
+  const handleUpdateComplaintStatus = async (id: string, status: 'Open' | 'Under Review' | 'Resolved' | 'Closed') => {
+    try {
+      const updated = await api.updateComplaintStatus(id, status);
+      setComplaintsList(prev => prev.map(c => (c.id === id ? updated : c)));
+    } catch (e) {
+      console.error('Failed to update complaint status:', e);
+    }
+  };
+
+  const handleDeleteComplaint = async (id: string) => {
+    if (window.confirm('Are you sure you want to remove this complaint record?')) {
+      try {
+        await api.deleteComplaint(id);
+        setComplaintsList(prev => prev.filter(c => c.id !== id));
+      } catch (e) {
+        console.error('Failed to delete complaint:', e);
+      }
+    }
+  };
+
+  const handleCreateComplaint = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComplaintForm.parentName || !newComplaintForm.subject) {
+      alert('Please fill parent name and complaint subject.');
+      return;
+    }
+    try {
+      const created = await api.createComplaint({
+        parentName: newComplaintForm.parentName,
+        studentName: newComplaintForm.studentName,
+        studentRollNo: newComplaintForm.studentRollNo,
+        class: selectedClass,
+        section: selectedSection,
+        phone: newComplaintForm.phone,
+        email: newComplaintForm.email,
+        category: newComplaintForm.category,
+        priority: newComplaintForm.priority,
+        subject: newComplaintForm.subject,
+        description: newComplaintForm.description
+      });
+      const newCompl = (created as any)?.complaint || (created as any);
+      if (newCompl && newCompl.id) {
+        setComplaintsList(prev => [newCompl as ParentComplaint, ...prev]);
+      }
+      setShowNewComplaintModal(false);
+      setNewComplaintForm({
+        parentName: '',
+        studentName: '',
+        studentRollNo: '',
+        phone: '',
+        email: '',
+        category: 'Teaching & Academics',
+        priority: 'Medium',
+        subject: '',
+        description: ''
+      });
+      alert('✓ Grievance / Complaint registered successfully!');
+    } catch (e) {
+      console.error('Failed to create complaint:', e);
+      alert('Failed to register complaint.');
     }
   };
 
@@ -796,10 +1000,19 @@ export const TeacherWorkspace: React.FC = () => {
               <button
                 type="submit"
                 disabled={loginLoading}
-                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl shadow-lg transition-transform hover:scale-[1.01]"
+                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl shadow-lg transition-transform hover:scale-[1.01] cursor-pointer"
               >
                 {loginLoading ? 'Authenticating...' : 'Sign In To Teacher Workspace'}
               </button>
+
+              <div className="pt-3 border-t border-slate-800 text-center">
+                <a
+                  href="/"
+                  className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+                >
+                  <Home className="w-3.5 h-3.5" /> Return to Website Homepage
+                </a>
+              </div>
             </form>
           </div>
         </div>
@@ -807,7 +1020,7 @@ export const TeacherWorkspace: React.FC = () => {
     );
   }
 
-  // 18 Tools Definition array ordered logically: Daily use first!
+  // 20 Tools Definition array ordered logically: Daily use first!
   const TOOLS_LIST: { id: TabType; title: string; subtitle: string; icon: any; color: string; alert?: boolean }[] = [
     { id: 'homework', title: 'Homework', subtitle: `${homeworkList.length} Tasks`, icon: BookOpen, color: 'text-amber-500' },
     {
@@ -824,6 +1037,23 @@ export const TeacherWorkspace: React.FC = () => {
       color: isTodayMissed ? 'text-rose-500' : isTodayPublished ? 'text-emerald-500' : 'text-amber-500',
       alert: isTodayMissed || isTodayDraft
     },
+    { id: 'students', title: 'Students', subtitle: `${students.length} Profiles`, icon: Users, color: 'text-indigo-600' },
+    {
+      id: 'corrections',
+      title: 'Corrections',
+      subtitle: `${recordUpdatesList.filter(r => r.status === 'Pending').length} Pending`,
+      icon: ShieldCheck,
+      color: 'text-purple-600',
+      alert: recordUpdatesList.some(r => r.status === 'Pending')
+    },
+    {
+      id: 'complaints',
+      title: 'Complaints',
+      subtitle: `${complaintsList.filter(c => c.status === 'Open' || c.status === 'Under Review').length} Open`,
+      icon: MessageSquareWarning,
+      color: 'text-rose-500',
+      alert: complaintsList.some(c => c.status === 'Open' || c.status === 'Under Review')
+    },
     { id: 'diary', title: 'School Diary', subtitle: 'Teacher Notes', icon: Notebook, color: 'text-blue-500' },
     { id: 'study-material', title: 'Study Material', subtitle: 'PDFs & Notes', icon: FileText, color: 'text-purple-500' },
     { id: 'online-classes', title: 'Online Classes', subtitle: `${onlineClassesList.length} Live Zoom`, icon: Video, color: 'text-indigo-500' },
@@ -832,14 +1062,12 @@ export const TeacherWorkspace: React.FC = () => {
     { id: 'messages', title: 'Messages', subtitle: 'Broadcast Alerts', icon: MessageSquare, color: 'text-sky-500' },
     { id: 'syllabus', title: 'Course Syllabus', subtitle: 'Curriculum', icon: BookMarked, color: 'text-emerald-600' },
     { id: 'marks', title: 'Marksheets', subtitle: 'Report Card', icon: Award, color: 'text-amber-600' },
-    { id: 'students', title: 'Corrections', subtitle: `${students.length} Profiles`, icon: Users, color: 'text-indigo-600' },
     { id: 'idcard', title: 'Digital ID Card', subtitle: 'Identity', icon: CreditCard, color: 'text-emerald-500' },
     { id: 'trends', title: 'Progress Trends', subtitle: 'Analytics', icon: TrendingUp, color: 'text-amber-500' },
     { id: 'transport', title: 'School Transport', subtitle: 'Bus Route', icon: Bus, color: 'text-orange-500' },
     { id: 'admit-card', title: 'Admit Card', subtitle: 'Exam Pass', icon: FileCheck, color: 'text-rose-500' },
     { id: 'fee', title: 'Fee Receipts', subtitle: 'Billing History', icon: IndianRupee, color: 'text-teal-600' },
-    { id: 'declarations', title: 'Declarations', subtitle: 'Rules & Safety', icon: ShieldCheck, color: 'text-purple-600' },
-    { id: 'ai-tutor', title: 'AI Homework Tutor', subtitle: 'Instant Help', icon: Bot, color: 'text-amber-400' }
+    { id: 'declarations', title: 'Declarations', subtitle: 'Rules & Safety', icon: ShieldCheck, color: 'text-purple-600' }
   ];
 
   return (
@@ -1467,13 +1695,13 @@ export const TeacherWorkspace: React.FC = () => {
                         />
                         <button
                           onClick={() => handleSaveAttendance(false)}
-                          className="px-3.5 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl flex items-center gap-1.5 hover:bg-slate-300 transition-all"
+                          className="px-3.5 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 active:scale-95 active:shadow-inner text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer select-none"
                         >
                           <Save className="w-4 h-4" /> Save Draft
                         </button>
                         <button
                           onClick={() => handleSaveAttendance(true)}
-                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow flex items-center gap-1.5 transition-all"
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 active:shadow-inner text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer select-none ring-2 ring-emerald-500/50"
                         >
                           <CheckCircle2 className="w-4 h-4" /> Publish Daily Attendance
                         </button>
@@ -1507,7 +1735,7 @@ export const TeacherWorkspace: React.FC = () => {
                           students.forEach(s => newMap[s.id] = 'Present');
                           setAttendanceMap(newMap);
                         }}
-                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] rounded-xl transition-all shadow-xs"
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 active:shadow-inner text-white font-extrabold text-[11px] rounded-xl transition-all shadow-xs cursor-pointer select-none"
                       >
                         ✓ Mark All Present
                       </button>
@@ -1517,7 +1745,7 @@ export const TeacherWorkspace: React.FC = () => {
                           students.forEach(s => newMap[s.id] = 'Absent');
                           setAttendanceMap(newMap);
                         }}
-                        className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-[11px] rounded-xl transition-all shadow-xs"
+                        className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 active:shadow-inner text-white font-extrabold text-[11px] rounded-xl transition-all shadow-xs cursor-pointer select-none"
                       >
                         ✕ Mark All Absent
                       </button>
@@ -1527,7 +1755,7 @@ export const TeacherWorkspace: React.FC = () => {
                           students.forEach(s => newMap[s.id] = 'Holiday');
                           setAttendanceMap(newMap);
                         }}
-                        className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-[11px] rounded-xl transition-all shadow-sm flex items-center gap-1"
+                        className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 active:scale-95 active:shadow-inner text-white font-black text-[11px] rounded-xl transition-all shadow-sm flex items-center gap-1 cursor-pointer select-none"
                       >
                         🌴 Mark as Holiday
                       </button>
@@ -1546,18 +1774,18 @@ export const TeacherWorkspace: React.FC = () => {
                               <button
                                 key={status}
                                 onClick={() => setAttendanceMap({ ...attendanceMap, [st.id]: status })}
-                                className={`px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all ${
+                                className={`px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all active:scale-90 active:shadow-inner cursor-pointer select-none ${
                                   attendanceMap[st.id] === status
                                     ? status === 'Holiday'
                                       ? 'bg-purple-600 text-white shadow-sm ring-2 ring-purple-400'
                                       : status === 'Present'
-                                      ? 'bg-emerald-600 text-white shadow-sm'
+                                      ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400'
                                       : status === 'Absent'
-                                      ? 'bg-rose-600 text-white shadow-sm'
+                                      ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400'
                                       : status === 'Late'
-                                      ? 'bg-amber-500 text-slate-950 shadow-sm'
-                                      : 'bg-blue-600 text-white shadow-sm'
-                                    : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                      ? 'bg-amber-500 text-slate-950 shadow-sm ring-2 ring-amber-400'
+                                      : 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-400'
+                                    : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 shadow-xs'
                                 }`}
                               >
                                 {status === 'Holiday' ? '🌴 Holiday' : status}
@@ -2182,7 +2410,7 @@ export const TeacherWorkspace: React.FC = () => {
           </div>
         )}
 
-        {/* Tool 11: Class Students & Profile Corrections */}
+        {/* Tool: Class Students Management */}
         {activeTab === 'students' && (() => {
           const filteredList = students.filter(s =>
             s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
@@ -2191,14 +2419,17 @@ export const TeacherWorkspace: React.FC = () => {
             (s.phone && s.phone.includes(studentSearch))
           );
 
+          const feeClearedCount = students.filter(s => !s.feeInfo || (s.feeInfo.pending || 0) <= 0).length;
+          const totalDuesSum = students.reduce((acc, curr) => acc + (curr.feeInfo?.pending || 0), 0);
+
           return (
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <h3 className="text-lg font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
-                    <Users className="w-5 h-5 text-indigo-600" /> Class {selectedClass}-{selectedSection} Student Profiles & Management
+                    <Users className="w-5 h-5 text-indigo-600" /> Class {selectedClass}-{selectedSection} Student Profiles & Registry
                   </h3>
-                  <p className="text-xs text-slate-500">Edit student details, credentials, parent contact numbers, and profile corrections</p>
+                  <p className="text-xs text-slate-500">Add, edit, manage student login credentials, fee status, and parent records</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -2231,10 +2462,30 @@ export const TeacherWorkspace: React.FC = () => {
                       });
                       setShowStudentModal(true);
                     }}
-                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl shadow flex items-center gap-1.5 transition-transform hover:scale-[1.01]"
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 active:shadow-inner text-slate-950 font-extrabold text-xs rounded-xl shadow flex items-center gap-1.5 transition-all cursor-pointer select-none"
                   >
-                    <Plus className="w-4 h-4" /> Add New Student
+                    <UserPlus className="w-4 h-4" /> Add New Student
                   </button>
+                </div>
+              </div>
+
+              {/* Quick Metrics Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
+                <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-2xl border border-indigo-200 dark:border-indigo-800/60 text-indigo-900 dark:text-indigo-300">
+                  <span className="text-[10px] text-slate-500 uppercase block font-bold">Enrolled Students</span>
+                  <span className="text-xl font-extrabold">{students.length}</span>
+                </div>
+                <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-300">
+                  <span className="text-[10px] text-slate-500 uppercase block font-bold">Fee Cleared</span>
+                  <span className="text-xl font-extrabold">{feeClearedCount}</span>
+                </div>
+                <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 rounded-2xl border border-rose-200 dark:border-rose-800/60 text-rose-900 dark:text-rose-300">
+                  <span className="text-[10px] text-slate-500 uppercase block font-bold">Total Dues Pending</span>
+                  <span className="text-xl font-extrabold">₹{totalDuesSum.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="p-3.5 bg-purple-50 dark:bg-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800/60 text-purple-900 dark:text-purple-300">
+                  <span className="text-[10px] text-slate-500 uppercase block font-bold">Section Assigned</span>
+                  <span className="text-xl font-extrabold">Class {selectedClass}-{selectedSection}</span>
                 </div>
               </div>
 
@@ -2243,30 +2494,30 @@ export const TeacherWorkspace: React.FC = () => {
                 {filteredList.map(st => (
                   <div
                     key={st.id}
-                    className="p-5 bg-stone-50 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3 relative hover:border-amber-400/80 transition-all shadow-xs flex flex-col justify-between"
+                    className="p-5 bg-stone-50 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3 relative hover:border-indigo-400/80 transition-all shadow-xs flex flex-col justify-between"
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-600 dark:text-amber-400 font-black text-sm flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/40 text-indigo-600 dark:text-indigo-400 font-black text-sm flex items-center justify-center">
                             {st.rollNo || '#'}
                           </div>
                           <div>
                             <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight">{st.name}</h4>
                             <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                              Class {st.class}-{st.section} | ID: {st.userId || 'N/A'}
+                              Roll #{st.rollNo} • ID: {st.userId || st.id}
                             </span>
                           </div>
                         </div>
 
-                        <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-extrabold text-[10px] rounded-lg border border-indigo-500/20">
+                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold text-[10px] rounded-lg border border-emerald-500/20">
                           Active
                         </span>
                       </div>
 
-                      <div className="text-xs space-y-1 pt-1 text-slate-600 dark:text-slate-300 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <div className="text-xs space-y-1.5 pt-1 text-slate-600 dark:text-slate-300 border-t border-slate-200/60 dark:border-slate-700/60">
                         <p className="flex justify-between">
-                          <span className="text-slate-400 font-medium">Father/Parent:</span>
+                          <span className="text-slate-400 font-medium">Father / Guardian:</span>
                           <strong className="text-slate-800 dark:text-slate-200">{st.parentName || 'Not Listed'}</strong>
                         </p>
                         <p className="flex justify-between">
@@ -2278,20 +2529,22 @@ export const TeacherWorkspace: React.FC = () => {
                           <span className="text-slate-800 dark:text-slate-200 font-semibold truncate max-w-[160px]">{st.address || 'Sikta, West Champaran'}</span>
                         </p>
                         <p className="flex justify-between">
-                          <span className="text-slate-400 font-medium">Pending Dues:</span>
-                          <strong className="text-rose-600 dark:text-rose-400 font-extrabold">₹{st.feeInfo?.pending || 0}</strong>
+                          <span className="text-slate-400 font-medium">Fee Balance:</span>
+                          <strong className={(st.feeInfo?.pending || 0) > 0 ? "text-rose-600 dark:text-rose-400 font-extrabold" : "text-emerald-600 dark:text-emerald-400 font-extrabold"}>
+                            ₹{(st.feeInfo?.pending || 0).toLocaleString('en-IN')}
+                          </strong>
                         </p>
                       </div>
                     </div>
 
                     {/* Action Bar */}
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-1.5 text-[11px] font-bold">
+                    <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-1.5 text-[11px] font-bold">
                       <button
                         onClick={() => {
                           setEditingStudent(st);
                           setShowStudentModal(true);
                         }}
-                        className="flex-1 py-1.5 px-2 bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30 rounded-xl flex items-center justify-center gap-1 font-extrabold transition-colors"
+                        className="flex-1 py-1.5 px-2 bg-indigo-500/10 hover:bg-indigo-500/20 active:scale-95 text-indigo-700 dark:text-indigo-300 rounded-xl flex items-center justify-center gap-1 font-extrabold transition-all cursor-pointer"
                         title="Edit Student Profile"
                       >
                         <Edit3 className="w-3.5 h-3.5" /> Edit Profile
@@ -2302,7 +2555,7 @@ export const TeacherWorkspace: React.FC = () => {
                           setPassResetStudent(st);
                           setPassResetVal(st.password || st.rollNo + '123');
                         }}
-                        className="py-1.5 px-2.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-300 rounded-xl flex items-center gap-1 font-bold"
+                        className="py-1.5 px-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 active:scale-95 text-slate-800 dark:text-slate-200 rounded-xl flex items-center gap-1 font-bold transition-all cursor-pointer"
                         title="Reset Student Login Password"
                       >
                         <Key className="w-3.5 h-3.5" /> Pass
@@ -2313,7 +2566,7 @@ export const TeacherWorkspace: React.FC = () => {
                           setSelectedStudentForCard(st);
                           setActiveTab('idcard');
                         }}
-                        className="py-1.5 px-2.5 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/30 rounded-xl flex items-center gap-1 font-bold"
+                        className="py-1.5 px-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 text-emerald-700 dark:text-emerald-300 rounded-xl flex items-center gap-1 font-bold transition-all cursor-pointer"
                         title="View Digital ID Pass"
                       >
                         <CreditCard className="w-3.5 h-3.5" /> ID
@@ -2321,7 +2574,7 @@ export const TeacherWorkspace: React.FC = () => {
 
                       <button
                         onClick={() => handleDeleteStudent(st.id, st.name)}
-                        className="p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/50 rounded-xl"
+                        className="p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/50 active:scale-90 rounded-xl transition-all cursor-pointer"
                         title="Delete Student Profile"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -2336,39 +2589,712 @@ export const TeacherWorkspace: React.FC = () => {
                   No student records found matching "{studentSearch}". Click "Add New Student" to create a profile.
                 </div>
               )}
+            </div>
+          );
+        })()}
 
-              {/* Correction Requests Sub-Section */}
-              <div className="p-5 bg-indigo-50/60 dark:bg-indigo-950/20 rounded-2xl border border-indigo-200 dark:border-indigo-800/60 space-y-3">
-                <h4 className="font-extrabold text-indigo-900 dark:text-indigo-300 text-xs flex items-center gap-1.5 uppercase tracking-wide">
-                  <ShieldCheck className="w-4 h-4 text-indigo-600" /> Pending Student Profile Correction Requests
-                </h4>
-                <p className="text-xs text-indigo-700 dark:text-indigo-300/80">
-                  Review and verify student profile update requests submitted by parents or students.
-                </p>
+        {/* Tool: Student & Parent Record Correction Requests */}
+        {activeTab === 'corrections' && (() => {
+          const pendingCorrections = recordUpdatesList.filter(r => r.status === 'Pending');
+          const approvedCorrections = recordUpdatesList.filter(r => r.status === 'Approved');
+          const rejectedCorrections = recordUpdatesList.filter(r => r.status === 'Rejected');
 
-                <div className="space-y-2">
-                  <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-indigo-200/80 dark:border-indigo-800/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
-                    <div>
-                      <span className="font-extrabold text-slate-900 dark:text-white">Rahul Kumar (Roll #04)</span>
-                      <p className="text-slate-500 text-[11px]">Requested Change: Parent Phone updated to +91 98350 11223</p>
+          const displayedCorrections = recordUpdatesList.filter(r => {
+            if (correctionFilter === 'Pending') return r.status === 'Pending';
+            if (correctionFilter === 'Approved') return r.status === 'Approved';
+            if (correctionFilter === 'Rejected') return r.status === 'Rejected';
+            return true;
+          });
+
+          return (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h3 className="text-lg font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-purple-600" /> Student Profile & Record Correction Requests
+                  </h3>
+                  <p className="text-xs text-slate-500">Review, verify, and synchronize parent/student requested profile modifications to the database</p>
+                </div>
+
+                <button
+                  onClick={() => setShowNewCorrectionModal(true)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 active:scale-95 active:shadow-inner text-white font-extrabold text-xs rounded-xl shadow flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Log Correction Request
+                </button>
+              </div>
+
+              {/* Status Filter Tabs & Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
+                <button
+                  onClick={() => setCorrectionFilter('All')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer ${
+                    correctionFilter === 'All'
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                      : 'bg-stone-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className="text-[10px] opacity-80 uppercase block font-bold">Total Requests</span>
+                  <span className="text-xl font-extrabold">{recordUpdatesList.length}</span>
+                </button>
+
+                <button
+                  onClick={() => setCorrectionFilter('Pending')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer ${
+                    correctionFilter === 'Pending'
+                      ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md'
+                      : 'bg-stone-50 dark:bg-slate-800 text-amber-600 dark:text-amber-400 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className="text-[10px] opacity-80 uppercase block font-bold">Action Pending</span>
+                  <span className="text-xl font-extrabold">{pendingCorrections.length}</span>
+                </button>
+
+                <button
+                  onClick={() => setCorrectionFilter('Approved')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer ${
+                    correctionFilter === 'Approved'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                      : 'bg-stone-50 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className="text-[10px] opacity-80 uppercase block font-bold">Approved & Synced</span>
+                  <span className="text-xl font-extrabold">{approvedCorrections.length}</span>
+                </button>
+
+                <button
+                  onClick={() => setCorrectionFilter('Rejected')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer ${
+                    correctionFilter === 'Rejected'
+                      ? 'bg-rose-600 text-white border-rose-600 shadow-md'
+                      : 'bg-stone-50 dark:bg-slate-800 text-rose-600 dark:text-rose-400 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className="text-[10px] opacity-80 uppercase block font-bold">Rejected</span>
+                  <span className="text-xl font-extrabold">{rejectedCorrections.length}</span>
+                </button>
+              </div>
+
+              {/* Correction List */}
+              <div className="space-y-3">
+                {displayedCorrections.length === 0 ? (
+                  <div className="text-center py-12 bg-stone-50 dark:bg-slate-800/40 rounded-2xl border border-dashed text-xs text-slate-500">
+                    No correction requests found for the selected filter.
+                  </div>
+                ) : (
+                  displayedCorrections.map(req => (
+                    <div
+                      key={req.id}
+                      className="p-5 bg-stone-50 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-purple-300 transition-all shadow-xs"
+                    >
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                            {req.studentName} {req.rollNo ? `(Roll #${req.rollNo})` : ''}
+                          </h4>
+                          <span className="text-[10px] px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg">
+                            Class {req.class || selectedClass}-{req.section || selectedSection}
+                          </span>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              req.status === 'Approved'
+                                ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-400/30'
+                                : req.status === 'Rejected'
+                                ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-400/30'
+                                : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-400/30 animate-pulse'
+                            }`}
+                          >
+                            {req.status}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+                          <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <span className="text-slate-400 text-[10px] uppercase font-bold block">Target Field:</span>
+                            <span className="font-bold text-slate-900 dark:text-white">{req.field}</span>
+                          </div>
+
+                          <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-2">
+                            <div>
+                              <span className="text-slate-400 text-[10px] uppercase font-bold block">Old Value:</span>
+                              <span className="text-slate-500 line-through font-semibold text-[11px]">{req.oldValue || '—'}</span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                            <div>
+                              <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-bold block">New Value:</span>
+                              <span className="text-emerald-700 dark:text-emerald-300 font-extrabold text-[11px]">{req.newValue}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {req.reason && (
+                          <p className="text-[11px] text-slate-500 italic pt-1">
+                            <strong>Reason/Note:</strong> "{req.reason}"
+                          </p>
+                        )}
+
+                        {req.reviewedBy && (
+                          <p className="text-[10px] text-slate-400 pt-0.5">
+                            Reviewed by <strong>{req.reviewedBy}</strong> {req.reviewedAt ? `on ${new Date(req.reviewedAt).toLocaleDateString()}` : ''}
+                            {req.actionNote ? ` • Note: ${req.actionNote}` : ''}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      {req.status === 'Pending' && (
+                        <div className="flex flex-wrap sm:flex-col gap-2 w-full sm:w-auto">
+                          <button
+                            onClick={() => handleApproveCorrection(req)}
+                            className="flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 active:shadow-inner text-white font-extrabold text-xs rounded-xl shadow flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none"
+                          >
+                            <CheckCircle2 className="w-4 h-4" /> Approve & Sync DB
+                          </button>
+                          <button
+                            onClick={() => handleRejectCorrection(req)}
+                            className="flex-1 sm:flex-initial px-4 py-2 bg-rose-600/10 hover:bg-rose-600/20 active:scale-95 text-rose-700 dark:text-rose-300 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none"
+                          >
+                            <XCircle className="w-4 h-4" /> Reject Request
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => alert('Student profile correction approved and updated!')}
-                        className="px-3 py-1 bg-emerald-600 text-white font-bold rounded-lg text-[11px]"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => alert('Correction request rejected.')}
-                        className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-[11px]"
-                      >
-                        Reject
+                  ))
+                )}
+              </div>
+
+              {/* Log Correction Modal */}
+              {showNewCorrectionModal && (
+                <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+                  <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-xs font-medium">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-purple-600" /> Log Student Record Correction
+                      </h4>
+                      <button onClick={() => setShowNewCorrectionModal(false)} className="text-slate-400 hover:text-slate-600">
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
+
+                    <form onSubmit={handleCreateCorrection} className="space-y-3">
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Select / Enter Student Name</label>
+                        <select
+                          value={newCorrectionForm.studentId}
+                          onChange={e => {
+                            const found = students.find(s => s.id === e.target.value);
+                            setNewCorrectionForm({
+                              ...newCorrectionForm,
+                              studentId: e.target.value,
+                              studentName: found ? found.name : '',
+                              rollNo: found ? found.rollNo : ''
+                            });
+                          }}
+                          className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold"
+                        >
+                          <option value="">-- Choose Student from Class --</option>
+                          {students.map(s => (
+                            <option key={s.id} value={s.id}>
+                              Roll #{s.rollNo} - {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {!newCorrectionForm.studentId && (
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Or Student Full Name</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Rahul Sharma"
+                            value={newCorrectionForm.studentName}
+                            onChange={e => setNewCorrectionForm({ ...newCorrectionForm, studentName: e.target.value })}
+                            className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Field to Correct</label>
+                        <select
+                          value={newCorrectionForm.field}
+                          onChange={e => setNewCorrectionForm({ ...newCorrectionForm, field: e.target.value })}
+                          className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold"
+                        >
+                          <option value="Parent Phone Number">Parent Phone Number</option>
+                          <option value="Father / Guardian Name">Father / Guardian Name</option>
+                          <option value="Permanent Home Address">Permanent Home Address</option>
+                          <option value="Student Name Spelling">Student Name Spelling</option>
+                          <option value="Date of Birth">Date of Birth</option>
+                          <option value="Transport Bus Route">Transport Bus Route</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Old Value</label>
+                          <input
+                            type="text"
+                            placeholder="Current incorrect value"
+                            value={newCorrectionForm.oldValue}
+                            onChange={e => setNewCorrectionForm({ ...newCorrectionForm, oldValue: e.target.value })}
+                            className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New Value</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Corrected value"
+                            value={newCorrectionForm.newValue}
+                            onChange={e => setNewCorrectionForm({ ...newCorrectionForm, newValue: e.target.value })}
+                            className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Reason / Notes</label>
+                        <textarea
+                          rows={2}
+                          placeholder="e.g. Parent requested during PTM meeting"
+                          value={newCorrectionForm.reason}
+                          onChange={e => setNewCorrectionForm({ ...newCorrectionForm, reason: e.target.value })}
+                          className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowNewCorrectionModal(false)}
+                          className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl font-bold"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white rounded-xl font-extrabold shadow"
+                        >
+                          Submit Correction
+                        </button>
+                      </div>
+                    </form>
                   </div>
                 </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Tool: Parent Complaints & Grievance Desk */}
+        {activeTab === 'complaints' && (() => {
+          const openComplaints = complaintsList.filter(c => c.status === 'Open');
+          const underReviewComplaints = complaintsList.filter(c => c.status === 'Under Review');
+          const resolvedComplaints = complaintsList.filter(c => c.status === 'Resolved');
+
+          const displayedComplaints = complaintsList.filter(c => {
+            const statusMatch =
+              complaintFilter === 'All' ? true : c.status === complaintFilter;
+            const categoryMatch =
+              complaintCategoryFilter === 'All' ? true : c.category === complaintCategoryFilter;
+            return statusMatch && categoryMatch;
+          });
+
+          return (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h3 className="text-lg font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
+                    <MessageSquareWarning className="w-5 h-5 text-rose-500" /> Parent Grievances & Complaints Desk
+                  </h3>
+                  <p className="text-xs text-slate-500">Monitor parent concerns, view academic/bus grievances, and reply directly with official solutions</p>
+                </div>
+
+                <button
+                  onClick={() => setShowNewComplaintModal(true)}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 active:shadow-inner text-white font-extrabold text-xs rounded-xl shadow flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Register Parent Grievance
+                </button>
               </div>
+
+              {/* Status Filter Tabs & Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-bold">
+                <button
+                  onClick={() => setComplaintFilter('All')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer ${
+                    complaintFilter === 'All'
+                      ? 'bg-rose-600 text-white border-rose-600 shadow-md'
+                      : 'bg-stone-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className="text-[10px] opacity-80 uppercase block font-bold">Total Complaints</span>
+                  <span className="text-xl font-extrabold">{complaintsList.length}</span>
+                </button>
+
+                <button
+                  onClick={() => setComplaintFilter('Open')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer ${
+                    complaintFilter === 'Open'
+                      ? 'bg-rose-500 text-white border-rose-500 shadow-md'
+                      : 'bg-stone-50 dark:bg-slate-800 text-rose-600 dark:text-rose-400 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className="text-[10px] opacity-80 uppercase block font-bold">Action Required (Open)</span>
+                  <span className="text-xl font-extrabold">{openComplaints.length}</span>
+                </button>
+
+                <button
+                  onClick={() => setComplaintFilter('Under Review')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer ${
+                    complaintFilter === 'Under Review'
+                      ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md'
+                      : 'bg-stone-50 dark:bg-slate-800 text-amber-600 dark:text-amber-400 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className="text-[10px] opacity-80 uppercase block font-bold">Under Review</span>
+                  <span className="text-xl font-extrabold">{underReviewComplaints.length}</span>
+                </button>
+
+                <button
+                  onClick={() => setComplaintFilter('Resolved')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer ${
+                    complaintFilter === 'Resolved'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                      : 'bg-stone-50 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <span className="text-[10px] opacity-80 uppercase block font-bold">Resolved</span>
+                  <span className="text-xl font-extrabold">{resolvedComplaints.length}</span>
+                </button>
+              </div>
+
+              {/* Category Filter Bar */}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-slate-400 font-bold">Category:</span>
+                {['All', 'Teaching & Academics', 'Discipline & Behavior', 'Transport & Bus', 'Campus Cleanliness & Facilities', 'Fees & Accounts'].map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setComplaintCategoryFilter(cat)}
+                    className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all active:scale-95 cursor-pointer ${
+                      complaintCategoryFilter === cat
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        : 'bg-stone-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Complaints List */}
+              <div className="space-y-4">
+                {displayedComplaints.length === 0 ? (
+                  <div className="text-center py-12 bg-stone-50 dark:bg-slate-800/40 rounded-2xl border border-dashed text-xs text-slate-500">
+                    No parent complaints or grievances logged matching this filter.
+                  </div>
+                ) : (
+                  displayedComplaints.map(cmp => (
+                    <div
+                      key={cmp.id}
+                      className="p-5 bg-stone-50 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3 hover:border-rose-300 transition-all shadow-xs"
+                    >
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              cmp.priority === 'Urgent'
+                                ? 'bg-rose-600 text-white animate-pulse'
+                                : cmp.priority === 'High'
+                                ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-400/30'
+                                : cmp.priority === 'Medium'
+                                ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-400/30'
+                                : 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-400/30'
+                            }`}
+                          >
+                            {cmp.priority} Priority
+                          </span>
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 px-2.5 py-0.5 rounded-lg border">
+                            {cmp.category}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            {new Date(cmp.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={cmp.status}
+                            onChange={e => handleUpdateComplaintStatus(cmp.id, e.target.value as any)}
+                            className={`p-1 px-2.5 rounded-xl text-[11px] font-extrabold border ${
+                              cmp.status === 'Resolved'
+                                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300'
+                                : cmp.status === 'Under Review'
+                                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300'
+                                : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-300'
+                            }`}
+                          >
+                            <option value="Open">Status: Open</option>
+                            <option value="Under Review">Status: Under Review</option>
+                            <option value="Resolved">Status: Resolved ✓</option>
+                          </select>
+
+                          <button
+                            onClick={() => handleDeleteComplaint(cmp.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg"
+                            title="Delete Complaint"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">{cmp.subject}</h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{cmp.description}</p>
+                      </div>
+
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3 text-xs">
+                        <div className="space-y-0.5">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Parent & Student Info:</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">
+                            {cmp.parentName} (Parent of <strong>{cmp.studentName}</strong>, Roll #{cmp.studentRollNo || '—'}, Class {cmp.class}-{cmp.section})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {cmp.phone && (
+                            <a
+                              href={`tel:${cmp.phone}`}
+                              className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 text-emerald-700 dark:text-emerald-300 font-bold rounded-xl flex items-center gap-1.5 text-[11px] transition-all"
+                            >
+                              <PhoneCall className="w-3.5 h-3.5" /> Call Parent ({cmp.phone})
+                            </a>
+                          )}
+                          <button
+                            onClick={() => {
+                              setSelectedComplaintForReply(cmp);
+                              setComplaintReplyText(cmp.teacherReply || '');
+                            }}
+                            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-extrabold rounded-xl flex items-center gap-1.5 text-[11px] shadow transition-all cursor-pointer"
+                          >
+                            <Reply className="w-3.5 h-3.5" /> {cmp.teacherReply ? 'Edit Reply' : 'Send Solution Reply'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Official Teacher Resolution Note */}
+                      {cmp.teacherReply && (
+                        <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800/50 space-y-1 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-emerald-900 dark:text-emerald-300 flex items-center gap-1 text-[11px]">
+                              <CheckCheck className="w-4 h-4 text-emerald-600" /> Official Teacher / School Reply:
+                            </span>
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                              By {cmp.repliedBy || 'Class Teacher'} {cmp.repliedAt ? `• ${new Date(cmp.repliedAt).toLocaleDateString()}` : ''}
+                            </span>
+                          </div>
+                          <p className="text-emerald-800 dark:text-emerald-200 leading-relaxed font-medium">{cmp.teacherReply}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Reply Modal */}
+              {selectedComplaintForReply && (
+                <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+                  <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-xs font-medium">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Reply className="w-4 h-4 text-rose-500" /> Reply to Parent Grievance
+                      </h4>
+                      <button onClick={() => setSelectedComplaintForReply(null)} className="text-slate-400 hover:text-slate-600">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="p-3 bg-stone-50 dark:bg-slate-800 rounded-xl border space-y-1">
+                      <p className="font-bold text-slate-900 dark:text-white">Subject: {selectedComplaintForReply.subject}</p>
+                      <p className="text-slate-500 text-[11px]">Parent: {selectedComplaintForReply.parentName} ({selectedComplaintForReply.phone})</p>
+                      <p className="text-slate-700 dark:text-slate-300 text-xs italic">"{selectedComplaintForReply.description}"</p>
+                    </div>
+
+                    <form onSubmit={handleReplyComplaint} className="space-y-3">
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
+                          Teacher's Official Solution & Response to Parent
+                        </label>
+                        <textarea
+                          rows={4}
+                          required
+                          placeholder="Write clear explanation or resolution taken by the school..."
+                          value={complaintReplyText}
+                          onChange={e => setComplaintReplyText(e.target.value)}
+                          className="w-full p-3 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-normal"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedComplaintForReply(null)}
+                          className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl font-bold"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-xl font-extrabold shadow"
+                        >
+                          Send Official Reply & Mark Resolved
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Log New Grievance Modal */}
+              {showNewComplaintModal && (
+                <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+                  <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-xs font-medium">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <MessageSquareWarning className="w-4 h-4 text-rose-500" /> Log Parent Grievance / Complaint
+                      </h4>
+                      <button onClick={() => setShowNewComplaintModal(false)} className="text-slate-400 hover:text-slate-600">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleCreateComplaint} className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Parent Name</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Ramesh Sah"
+                            value={newComplaintForm.parentName}
+                            onChange={e => setNewComplaintForm({ ...newComplaintForm, parentName: e.target.value })}
+                            className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Parent Phone</label>
+                          <input
+                            type="tel"
+                            placeholder="+91 98350..."
+                            value={newComplaintForm.phone}
+                            onChange={e => setNewComplaintForm({ ...newComplaintForm, phone: e.target.value })}
+                            className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Student Name</label>
+                          <input
+                            type="text"
+                            placeholder="Student name"
+                            value={newComplaintForm.studentName}
+                            onChange={e => setNewComplaintForm({ ...newComplaintForm, studentName: e.target.value })}
+                            className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Student Roll No</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 05"
+                            value={newComplaintForm.studentRollNo}
+                            onChange={e => setNewComplaintForm({ ...newComplaintForm, studentRollNo: e.target.value })}
+                            className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Category</label>
+                          <select
+                            value={newComplaintForm.category}
+                            onChange={e => setNewComplaintForm({ ...newComplaintForm, category: e.target.value })}
+                            className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold"
+                          >
+                            <option value="Teaching & Academics">Teaching & Academics</option>
+                            <option value="Transport & Bus">Transport & Bus</option>
+                            <option value="Discipline & Behavior">Discipline & Behavior</option>
+                            <option value="Campus Cleanliness & Facilities">Campus Cleanliness & Facilities</option>
+                            <option value="Fees & Accounts">Fees & Accounts</option>
+                            <option value="General Complaint">General Complaint</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Priority</label>
+                          <select
+                            value={newComplaintForm.priority}
+                            onChange={e => setNewComplaintForm({ ...newComplaintForm, priority: e.target.value as any })}
+                            className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold"
+                          >
+                            <option value="Urgent">Urgent</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Subject / Summary</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Brief topic of complaint"
+                          value={newComplaintForm.subject}
+                          onChange={e => setNewComplaintForm({ ...newComplaintForm, subject: e.target.value })}
+                          className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Full Description</label>
+                        <textarea
+                          rows={3}
+                          required
+                          placeholder="Detailed notes from parent..."
+                          value={newComplaintForm.description}
+                          onChange={e => setNewComplaintForm({ ...newComplaintForm, description: e.target.value })}
+                          className="w-full p-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowNewComplaintModal(false)}
+                          className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl font-bold"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-xl font-extrabold shadow"
+                        >
+                          Register Grievance
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
@@ -2562,16 +3488,6 @@ export const TeacherWorkspace: React.FC = () => {
               <h4 className="font-bold text-slate-900 dark:text-white">Active Safety Declaration 2026</h4>
               <p className="text-slate-600 dark:text-slate-300">1. Attendance above 75% is required for term exams.<br />2. Mobile phones are forbidden during school hours.<br />3. Parents must acknowledge diary notes daily.</p>
             </div>
-          </div>
-        )}
-
-        {/* Tool 18: AI Homework Tutor */}
-        {activeTab === 'ai-tutor' && (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-            <h3 className="text-lg font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
-              <Bot className="w-5 h-5 text-amber-400" /> Teacher AI Lesson & Homework Assistant
-            </h3>
-            <AIHomeworkTutor className={selectedClass} subject={teacher.subject} />
           </div>
         )}
 

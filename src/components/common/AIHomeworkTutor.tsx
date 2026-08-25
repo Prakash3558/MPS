@@ -48,6 +48,7 @@ interface AIHomeworkTutorProps {
   className?: string;
   classGrade?: string;
   subject?: string;
+  initialPrompt?: string;
 }
 
 export const AIHomeworkTutor: React.FC<AIHomeworkTutorProps> = ({ 
@@ -56,7 +57,8 @@ export const AIHomeworkTutor: React.FC<AIHomeworkTutorProps> = ({
   isWidgetMode = false,
   className: initialClassName,
   classGrade,
-  subject: initialSubject
+  subject: initialSubject,
+  initialPrompt
 }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -77,15 +79,27 @@ Select your subject and grade below, or ask me directly!`,
     }
   ]);
 
-  const [inputPrompt, setInputPrompt] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('Mathematics');
-  const [selectedGrade, setSelectedGrade] = useState('Class 10');
+  const [inputPrompt, setInputPrompt] = useState(initialPrompt || '');
+  const [selectedSubject, setSelectedSubject] = useState(initialSubject || 'Mathematics');
+  const [selectedGrade, setSelectedGrade] = useState(classGrade || (initialClassName ? `Class ${initialClassName}` : 'Class 10'));
   const [selectedMode, setSelectedMode] = useState('step-by-step');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState<string | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    if (initialPrompt) {
+      setInputPrompt(initialPrompt);
+    }
+    if (initialSubject) {
+      setSelectedSubject(initialSubject);
+    }
+    if (classGrade) {
+      setSelectedGrade(classGrade);
+    }
+  }, [initialPrompt, initialSubject, classGrade]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);

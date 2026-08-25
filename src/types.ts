@@ -411,11 +411,39 @@ export interface RecordUpdateReq {
   id: string;
   studentId: string;
   studentName: string;
+  class?: string;
+  section?: string;
+  rollNo?: string;
   field: string;
   oldValue: string;
   newValue: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   date: string;
+  reason?: string;
+  actionNote?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
+
+export interface ParentComplaint {
+  id: string;
+  parentName: string;
+  studentId?: string;
+  studentName: string;
+  studentRollNo?: string;
+  class: string;
+  section: string;
+  phone: string;
+  email?: string;
+  category: 'Teaching & Academics' | 'Discipline & Behavior' | 'Transport & Bus' | 'Campus Cleanliness & Facilities' | 'Fees & Accounts' | 'Harassment / Safety' | 'General Complaint' | string;
+  subject: string;
+  description: string;
+  status: 'Open' | 'Under Review' | 'Resolved' | 'Closed';
+  priority: 'High' | 'Medium' | 'Low' | 'Urgent';
+  teacherReply?: string;
+  repliedBy?: string;
+  repliedAt?: string;
+  createdAt: string;
 }
 
 // ==================== SCHOOL FEES & FINANCE SYSTEM TYPES ====================

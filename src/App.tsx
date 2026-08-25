@@ -24,7 +24,6 @@ const TeacherWorkspace = React.lazy(() => import('./components/teacher/TeacherWo
 const AdminControlCenter = React.lazy(() => import('./components/admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
 const StudentPortal = React.lazy(() => import('./components/portal/StudentPortal').then(m => ({ default: m.StudentPortal })));
 const StudentAppShell = React.lazy(() => import('./components/portal/StudentAppShell').then(m => ({ default: m.StudentAppShell })));
-const FloatingAIWidget = React.lazy(() => import('./components/common/FloatingAIWidget').then(m => ({ default: m.FloatingAIWidget })));
 
 const PageLoader = () => (
   <div className="min-h-[300px] flex items-center justify-center py-16">
@@ -67,8 +66,41 @@ export default function App() {
       else setRoute('public');
     };
 
+    const handleLinkClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest('a');
+      if (!target) return;
+      const href = target.getAttribute('href');
+      if (!href) return;
+
+      // Handle internal relative paths like /, /portal, /teacher, /admin, /#about
+      if (href.startsWith('/') && !href.startsWith('//') && !target.getAttribute('target') && !target.getAttribute('download')) {
+        const url = new URL(href, window.location.origin);
+        if (url.origin === window.location.origin) {
+          // If just an in-page hash jump on current path
+          if (url.pathname === window.location.pathname && url.hash) {
+            return;
+          }
+          e.preventDefault();
+          window.history.pushState({}, '', href);
+          handlePopState();
+          if (url.hash) {
+            setTimeout(() => {
+              const el = document.querySelector(url.hash);
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }
+      }
+    };
+
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    document.addEventListener('click', handleLinkClick);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('click', handleLinkClick);
+    };
   }, []);
 
   return (
@@ -128,12 +160,6 @@ export default function App() {
                 </main>
                 <Footer />
               </div>
-            )}
-
-            {(route === 'portal' || route === 'student-app') && (
-              <Suspense fallback={null}>
-                <FloatingAIWidget />
-              </Suspense>
             )}
           </div>
         </CMSProvider>

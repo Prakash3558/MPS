@@ -76,6 +76,7 @@ export const StudentPortal: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>('homework');
   const [selectedFeeMonth, setSelectedFeeMonth] = useState<string>('July, 2026');
+  const [selectedHomeworkForAI, setSelectedHomeworkForAI] = useState<Homework | null>(null);
 
   const activeContentRef = useRef<HTMLDivElement>(null);
 
@@ -209,19 +210,31 @@ export const StudentPortal: React.FC = () => {
   const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+
+    const cleanName = loginForm.studentName.trim();
+    const cleanClass = loginForm.className.trim();
+    const cleanSection = loginForm.section.trim();
+    const cleanRoll = loginForm.rollNo.trim();
+    const cleanDigits = loginForm.phone.replace(/\D/g, '');
+    const cleanPassword = loginForm.password.trim();
+
+    if (!cleanName || !cleanClass || !cleanSection || !cleanRoll || !cleanDigits || !cleanPassword) {
+      setLoginError('All student details (Student Name, Class, Section, Roll Number, Phone Number, and Password) are strictly required to sign in.');
+      return;
+    }
+
     setLoginLoading(true);
     try {
-      const cleanDigits = loginForm.phone.replace(/\D/g, '');
       const fullPhone = `${selectedCountryCode}${cleanDigits}`;
 
       const res = await api.login({
         role: 'student',
-        studentName: loginForm.studentName.trim(),
-        className: loginForm.className.trim(),
-        section: loginForm.section.trim(),
-        rollNo: loginForm.rollNo.trim(),
+        studentName: cleanName,
+        className: cleanClass,
+        section: cleanSection,
+        rollNo: cleanRoll,
         phone: fullPhone,
-        password: loginForm.password.trim(),
+        password: cleanPassword,
         captchaToken: captchaToken || undefined
       });
 
@@ -579,7 +592,7 @@ export const StudentPortal: React.FC = () => {
               <button
                 type="submit"
                 disabled={loginLoading}
-                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-medium rounded-xl shadow-lg transition-transform hover:scale-[1.01]"
+                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-lg transition-transform hover:scale-[1.01] cursor-pointer"
               >
                 {loginLoading ? 'Authenticating Credentials...' : 'Sign In To Student Portal'}
               </button>
@@ -1926,8 +1939,11 @@ export const StudentPortal: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => setActiveTab('ai-tutor')}
-                    className="w-full py-2 bg-blue-50 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-blue-900 dark:text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 border border-blue-200 dark:border-slate-700 mt-2"
+                    onClick={() => {
+                      setSelectedHomeworkForAI(hw);
+                      handleSwitchTab('ai-tutor');
+                    }}
+                    className="w-full py-2 bg-blue-50 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-blue-900 dark:text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 border border-blue-200 dark:border-slate-700 mt-2 cursor-pointer"
                   >
                     <Bot className="w-4 h-4 text-amber-500" /> Get Step-by-Step AI Help with this Homework
                   </button>
@@ -1939,7 +1955,11 @@ export const StudentPortal: React.FC = () => {
 
         {activeTab === 'ai-tutor' && (
           <div className="space-y-4">
-            <AIHomeworkTutor />
+            <AIHomeworkTutor
+              classGrade={`Class ${student?.class || '10'}`}
+              subject={selectedHomeworkForAI?.subject || 'Mathematics'}
+              initialPrompt={selectedHomeworkForAI ? `Help me solve and understand this homework assignment:\n\n**Subject**: ${selectedHomeworkForAI.subject}\n**Title**: ${selectedHomeworkForAI.title}\n**Assignment Details**: ${selectedHomeworkForAI.description}\n**Due Date**: ${selectedHomeworkForAI.dueDate}\n\nPlease provide a clear, step-by-step NCERT explanation with relevant formulas and solution.` : undefined}
+            />
           </div>
         )}
 
