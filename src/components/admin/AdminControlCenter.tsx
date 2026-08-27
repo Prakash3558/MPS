@@ -14,7 +14,7 @@ import {
   Palette, Users, GraduationCap, Megaphone, ClipboardList, Image, Settings, Home, LogOut,
   X, Menu, Plus, Trash2, Search, Check, AlertTriangle, Edit3, Download, Key, ShieldAlert,
   Upload, Phone, Mail, UserPlus, CheckCircle, XCircle, Clock, Sparkles, School, Eye, EyeOff,
-  Video, FileQuestion, DollarSign
+  Video, FileQuestion, DollarSign, Camera, Bus, User, ShieldCheck, RefreshCw, Layers, Calendar
 } from 'lucide-react';
 
 export const AdminControlCenter: React.FC = () => {
@@ -73,23 +73,32 @@ export const AdminControlCenter: React.FC = () => {
   });
 
   const [showStudentModal, setShowStudentModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [studentPhotoPreview, setStudentPhotoPreview] = useState<string>('');
   const [newStudent, setNewStudent] = useState({
     name: '',
     rollNo: '',
     class: '10',
     section: 'A',
     parentName: '',
+    motherName: '',
+    enrollmentNo: '',
     phone: '',
     email: '',
-    address: 'Sikta, West Champaran',
-    feePending: 3500,
+    address: 'Sikta, West Champaran, Bihar',
+    dob: '2010-05-15',
+    gender: 'Male' as 'Male' | 'Female' | 'Other',
+    password: '123',
+    photo: '',
+    feePending: 0,
     annualFeeFree: false,
     admissionFeeFree: false,
     examFeeFree: false,
     hostelAddon: false,
     hostelAmount: 5000,
     transportAddon: false,
-    transportAmount: 750
+    transportAmount: 750,
+    transportRoute: 'Route 1 (Main Bazaar)'
   });
 
   const [showNoticeModal, setShowNoticeModal] = useState(false);
@@ -315,62 +324,160 @@ export const AdminControlCenter: React.FC = () => {
     }
   };
 
-  const handleCreateStudent = async (e: React.FormEvent) => {
+  const handleOpenAddStudent = () => {
+    setEditingStudent(null);
+    setStudentPhotoPreview('');
+    setNewStudent({
+      name: '',
+      rollNo: '',
+      class: '10',
+      section: 'A',
+      parentName: '',
+      motherName: '',
+      enrollmentNo: '',
+      phone: '',
+      email: '',
+      address: 'Sikta, West Champaran, Bihar',
+      dob: '2010-05-15',
+      gender: 'Male',
+      password: '123',
+      photo: '',
+      feePending: 0,
+      annualFeeFree: false,
+      admissionFeeFree: false,
+      examFeeFree: false,
+      hostelAddon: false,
+      hostelAmount: 5000,
+      transportAddon: false,
+      transportAmount: 750,
+      transportRoute: 'Route 1 (Main Sikta Chowk)'
+    });
+    setShowStudentModal(true);
+  };
+
+  const handleOpenEditStudent = (s: Student) => {
+    setEditingStudent(s);
+    setStudentPhotoPreview(s.photo || '');
+    setNewStudent({
+      name: s.name || '',
+      rollNo: s.rollNo || '',
+      class: s.class || '10',
+      section: s.section || 'A',
+      parentName: s.parentName || '',
+      motherName: s.motherName || '',
+      enrollmentNo: s.enrollmentNo || '',
+      phone: s.phone || '',
+      email: s.email || '',
+      address: s.address || 'Sikta, West Champaran, Bihar',
+      dob: s.dob || '2010-05-15',
+      gender: (s.gender as any) || 'Male',
+      password: s.password || '123',
+      photo: s.photo || '',
+      feePending: s.feeInfo?.pending || 0,
+      annualFeeFree: s.feeInfo?.annualFeeStatus === 'Exempt',
+      admissionFeeFree: s.feeInfo?.admissionFeeStatus === 'Exempt',
+      examFeeFree: s.feeInfo?.examFeeStatus === 'Exempt',
+      hostelAddon: Boolean(s.addons?.hostel?.enabled),
+      hostelAmount: s.addons?.hostel?.amount || 5000,
+      transportAddon: Boolean(s.addons?.transportation?.enabled),
+      transportAmount: s.addons?.transportation?.amount || 750,
+      transportRoute: 'Route 1 (Main Sikta Chowk)'
+    });
+    setShowStudentModal(true);
+  };
+
+  const handleSaveStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    const stId = 's-' + Date.now();
-    const tempStudent: Student = {
+    const isEdit = Boolean(editingStudent);
+    const stId = isEdit && editingStudent ? editingStudent.id : 's-' + Date.now();
+    const userId = isEdit && editingStudent ? (editingStudent.userId || 'u-' + stId) : 'u-' + stId;
+
+    const baseMonthlyTuition = 1100;
+    const hostelMonthly = newStudent.hostelAddon ? Number(newStudent.hostelAmount || 0) : 0;
+    const transportMonthly = newStudent.transportAddon ? Number(newStudent.transportAmount || 0) : 0;
+    const combinedMonthlyFee = baseMonthlyTuition + hostelMonthly + transportMonthly;
+
+    const annualAmt = newStudent.annualFeeFree ? 0 : 2500;
+    const admissionAmt = newStudent.admissionFeeFree ? 0 : 3000;
+    const examAmt = newStudent.examFeeFree ? 0 : 1200;
+    const totalAnnualCalculated = (combinedMonthlyFee * 12) + annualAmt + admissionAmt + examAmt;
+
+    // Build or preserve months with auto-addon calculation
+    const existingMonths = isEdit && editingStudent?.feeInfo?.months ? editingStudent.feeInfo.months : [];
+    const months = generateDefault12MonthFeeList(combinedMonthlyFee, 2026).map(m => {
+      const existing = existingMonths.find(em => em.month.toLowerCase().includes(m.month.split(',')[0].toLowerCase()));
+      if (existing && existing.status === 'Paid') {
+        return { ...existing };
+      }
+      return { ...m, amount: combinedMonthlyFee };
+    });
+
+    const paidTotal = months.filter(m => m.status === 'Paid').reduce((sum, m) => sum + m.amount, 0) +
+      (newStudent.annualFeeFree ? 2500 : (editingStudent?.feeInfo?.annualFeeStatus === 'Paid' ? 2500 : 0)) +
+      (newStudent.admissionFeeFree ? 3000 : (editingStudent?.feeInfo?.admissionFeeStatus === 'Paid' ? 3000 : 0)) +
+      (newStudent.examFeeFree ? 1200 : (editingStudent?.feeInfo?.examFeeStatus === 'Paid' ? 1200 : 0));
+
+    const pendingCalculated = Math.max(0, totalAnnualCalculated - paidTotal);
+
+    const studentRecord: Student = {
       id: stId,
-      userId: 'u-' + stId,
+      userId: userId,
       name: newStudent.name,
       rollNo: newStudent.rollNo || 'ST-' + Math.floor(1000 + Math.random() * 9000),
       class: newStudent.class,
       section: newStudent.section,
       parentName: newStudent.parentName,
+      motherName: newStudent.motherName,
+      enrollmentNo: newStudent.enrollmentNo,
       phone: newStudent.phone,
       email: newStudent.email,
       address: newStudent.address,
-      admissionDate: new Date().toISOString().split('T')[0],
+      dob: newStudent.dob,
+      gender: newStudent.gender,
+      password: newStudent.password || '123',
+      photo: newStudent.photo || (isEdit ? editingStudent?.photo : ''),
+      admissionDate: (isEdit && editingStudent?.admissionDate) ? editingStudent.admissionDate : new Date().toISOString().split('T')[0],
+      feePending: pendingCalculated,
       feeInfo: {
-        totalAnnual: 25100,
-        paid: (newStudent.annualFeeFree ? 2500 : 0) + (newStudent.examFeeFree ? 1200 : 0) + (newStudent.admissionFeeFree ? 3000 : 0),
-        pending: Number(newStudent.feePending || 0),
-        annualFeeStatus: newStudent.annualFeeFree ? 'Exempt' : 'Unpaid',
-        admissionFeeStatus: newStudent.admissionFeeFree ? 'Exempt' : 'Unpaid',
-        examFeeStatus: newStudent.examFeeFree ? 'Exempt' : 'Unpaid',
+        totalAnnual: totalAnnualCalculated,
+        paid: paidTotal,
+        pending: pendingCalculated,
+        annualFeeStatus: newStudent.annualFeeFree ? 'Exempt' : (editingStudent?.feeInfo?.annualFeeStatus || 'Unpaid'),
+        admissionFeeStatus: newStudent.admissionFeeFree ? 'Exempt' : (editingStudent?.feeInfo?.admissionFeeStatus || 'Unpaid'),
+        examFeeStatus: newStudent.examFeeFree ? 'Exempt' : (editingStudent?.feeInfo?.examFeeStatus || 'Unpaid'),
+        hostelFeeStatus: newStudent.hostelAddon ? (editingStudent?.feeInfo?.hostelFeeStatus || 'Unpaid') : 'Exempt',
+        transportFeeStatus: newStudent.transportAddon ? (editingStudent?.feeInfo?.transportFeeStatus || 'Unpaid') : 'Exempt',
         annualFeeAmount: 2500,
         admissionFeeAmount: 3000,
         examFeeAmount: 1200,
-        months: [
-          { month: 'January, 2026', status: 'Pending', amount: 1100 },
-          { month: 'February, 2026', status: 'Pending', amount: 1100 },
-          { month: 'March, 2026', status: 'Pending', amount: 1100 },
-          { month: 'April, 2026', status: 'Pending', amount: 1100 },
-          { month: 'May, 2026', status: 'Pending', amount: 1100 },
-          { month: 'June, 2026', status: 'Pending', amount: 1100 },
-          { month: 'July, 2026', status: 'Pending', amount: 1100 },
-          { month: 'August, 2026', status: 'Pending', amount: 1100 },
-          { month: 'September, 2026', status: 'Pending', amount: 1100 },
-          { month: 'October, 2026', status: 'Pending', amount: 1100 },
-          { month: 'November, 2026', status: 'Pending', amount: 1100 },
-          { month: 'December, 2026', status: 'Pending', amount: 1100 }
-        ]
+        months: months
       },
       addons: {
-        hostel: { enabled: newStudent.hostelAddon, amount: newStudent.hostelAddon ? newStudent.hostelAmount : 0 },
-        transportation: { enabled: newStudent.transportAddon, amount: newStudent.transportAddon ? newStudent.transportAmount : 0 }
+        hostel: { enabled: newStudent.hostelAddon, amount: hostelMonthly },
+        transportation: { enabled: newStudent.transportAddon, amount: transportMonthly }
       }
     };
-    setStudents(prev => [tempStudent, ...prev]);
-    setShowStudentModal(false);
-    setNewStudent({ name: '', rollNo: '', class: '10', section: 'A', parentName: '', phone: '', email: '', address: 'Sikta, West Champaran', feePending: 3500, annualFeeFree: false, admissionFeeFree: false, examFeeFree: false, hostelAddon: false, hostelAmount: 5000, transportAddon: false, transportAmount: 750 });
-    
-    try {
-      await api.createStudent(tempStudent);
-      loadAdminData();
-    } catch (err) {
-      console.error('Failed to create student:', err);
-      loadAdminData();
+
+    if (isEdit) {
+      setStudents(prev => prev.map(s => s.id === stId ? studentRecord : s));
+      try {
+        await api.updateStudent(stId, studentRecord);
+      } catch (err) {
+        console.error('Failed to update student:', err);
+      }
+    } else {
+      setStudents(prev => [studentRecord, ...prev]);
+      try {
+        await api.createStudent(studentRecord);
+      } catch (err) {
+        console.error('Failed to create student:', err);
+      }
     }
+
+    setShowStudentModal(false);
+    setEditingStudent(null);
+    setStudentPhotoPreview('');
+    loadAdminData();
   };
 
   const handleDeleteStudent = async (id: string) => {
@@ -1071,23 +1178,24 @@ export const AdminControlCenter: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() => setShowStudentModal(true)}
-                      className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 flex-shrink-0"
+                      onClick={handleOpenAddStudent}
+                      className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 flex-shrink-0 cursor-pointer transition-all"
                     >
-                      <Plus className="w-4 h-4" /> Add Student
+                      <Plus className="w-4 h-4" /> Enroll New Student
                     </button>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* Desktop / Tablet Table View */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-800 text-slate-300 font-extrabold uppercase">
                       <tr>
+                        <th className="p-3.5">Student</th>
                         <th className="p-3.5">Roll No</th>
-                        <th className="p-3.5">Student Name</th>
                         <th className="p-3.5">Class & Sec</th>
-                        <th className="p-3.5">Parent Name</th>
-                        <th className="p-3.5">Phone</th>
+                        <th className="p-3.5">Parent Details</th>
+                        <th className="p-3.5">Active Add-ons</th>
                         <th className="p-3.5">Fee Status</th>
                         <th className="p-3.5 text-right">Actions</th>
                       </tr>
@@ -1095,35 +1203,165 @@ export const AdminControlCenter: React.FC = () => {
                     <tbody className="divide-y divide-slate-800 font-medium text-slate-200">
                       {filteredStudents.map(s => (
                         <tr key={s.id} className="hover:bg-slate-800/40 transition-colors">
-                          <td className="p-3.5 font-bold text-amber-400">{s.rollNo}</td>
-                          <td className="p-3.5 font-bold text-white">{s.name}</td>
-                          <td className="p-3.5 font-bold">Class {s.class}-{s.section}</td>
-                          <td className="p-3.5">{s.parentName}</td>
-                          <td className="p-3.5">{s.phone}</td>
                           <td className="p-3.5">
-                            {s.feeInfo?.pending > 0 ? (
+                            <div className="flex items-center gap-2.5">
+                              {s.photo ? (
+                                <img
+                                  src={s.photo}
+                                  alt={s.name}
+                                  className="w-9 h-9 rounded-full object-cover border border-amber-500/40 shrink-0"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 font-black flex items-center justify-center text-xs shrink-0 shadow-inner">
+                                  {s.name?.slice(0, 2).toUpperCase() || 'ST'}
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-bold text-white text-sm">{s.name}</p>
+                                <p className="text-[11px] text-slate-400 font-mono">{s.enrollmentNo || s.email || 'ID: ' + s.id.slice(0, 8)}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3.5 font-mono font-bold text-amber-400">{s.rollNo}</td>
+                          <td className="p-3.5 font-bold">
+                            <span className="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-md">
+                              Class {s.class}-{s.section || 'A'}
+                            </span>
+                          </td>
+                          <td className="p-3.5">
+                            <p className="text-slate-200 font-semibold">{s.parentName || 'N/A'}</p>
+                            <p className="text-slate-400 text-[11px]">{s.phone || 'No phone'}</p>
+                          </td>
+                          <td className="p-3.5">
+                            <div className="flex flex-wrap gap-1">
+                              {s.addons?.hostel?.enabled ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                  🏠 Hostel ₹{s.addons.hostel.amount || 5000}
+                                </span>
+                              ) : null}
+                              {s.addons?.transportation?.enabled ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  🚌 Bus ₹{s.addons.transportation.amount || 750}
+                                </span>
+                              ) : null}
+                              {!s.addons?.hostel?.enabled && !s.addons?.transportation?.enabled && (
+                                <span className="text-slate-500 text-[11px]">Standard</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3.5">
+                            {(s.feeInfo?.pending || 0) > 0 ? (
                               <span className="text-amber-400 bg-amber-950/60 border border-amber-800 px-2.5 py-1 rounded-lg font-bold text-[11px]">
-                                Pending ₹{s.feeInfo.pending}
+                                Pending ₹{(s.feeInfo?.pending || 0).toLocaleString('en-IN')}
                               </span>
                             ) : (
                               <span className="text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2.5 py-1 rounded-lg font-bold text-[11px]">
-                                Fee Clear
+                                Fee Clear ✓
                               </span>
                             )}
                           </td>
                           <td className="p-3.5 text-right">
-                            <button
-                              onClick={() => handleDeleteStudent(s.id)}
-                              className="p-2 bg-rose-950/60 text-rose-400 hover:bg-rose-900 rounded-xl transition-colors"
-                              title="Delete Student"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditStudent(s)}
+                                className="px-2.5 py-1.5 bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/80 text-indigo-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                                title="Edit Student Profile & Fee Structure"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" /> Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStudent(s.id)}
+                                className="p-1.5 bg-rose-950/60 text-rose-400 hover:bg-rose-900 border border-rose-800/80 rounded-xl transition-colors cursor-pointer"
+                                title="Delete Student"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3">
+                  {filteredStudents.map(s => (
+                    <div key={s.id} className="p-4 bg-slate-800/80 rounded-2xl border border-slate-700/80 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          {s.photo ? (
+                            <img
+                              src={s.photo}
+                              alt={s.name}
+                              className="w-11 h-11 rounded-full object-cover border border-amber-500/40 shrink-0"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 font-black flex items-center justify-center text-sm shrink-0">
+                              {s.name?.slice(0, 2).toUpperCase() || 'ST'}
+                            </div>
+                          )}
+                          <div>
+                            <h4 className="font-extrabold text-white text-sm">{s.name}</h4>
+                            <p className="text-xs text-amber-400 font-bold font-mono">Roll: {s.rollNo} • Class {s.class}-{s.section || 'A'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          {(s.feeInfo?.pending || 0) > 0 ? (
+                            <span className="text-amber-400 bg-amber-950/80 border border-amber-800/80 px-2 py-0.5 rounded-lg font-bold text-[10px]">
+                              Due ₹{(s.feeInfo?.pending || 0).toLocaleString('en-IN')}
+                            </span>
+                          ) : (
+                            <span className="text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-2 py-0.5 rounded-lg font-bold text-[10px]">
+                              Clear ✓
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-slate-300 space-y-1 pt-1 border-t border-slate-700/60">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Parent:</span>
+                          <span className="font-semibold text-white">{s.parentName || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Phone:</span>
+                          <span className="font-semibold text-white">{s.phone || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-1">
+                          <span className="text-slate-400">Add-ons:</span>
+                          <div className="flex gap-1">
+                            {s.addons?.hostel?.enabled && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-300 font-bold">🏠 Hostel</span>
+                            )}
+                            {s.addons?.transportation?.enabled && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-bold">🚌 Bus</span>
+                            )}
+                            {!s.addons?.hostel?.enabled && !s.addons?.transportation?.enabled && (
+                              <span className="text-[10px] text-slate-500">None</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-2 border-t border-slate-700/60">
+                        <button
+                          onClick={() => handleOpenEditStudent(s)}
+                          className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" /> Edit Profile & Fees
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStudent(s.id)}
+                          className="p-2 bg-rose-950 text-rose-400 hover:bg-rose-900 border border-rose-800/80 rounded-xl"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -2088,227 +2326,493 @@ export const AdminControlCenter: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: ADD STUDENT */}
+      {/* MODAL: ADD / EDIT STUDENT */}
       {showStudentModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-800 space-y-4 text-slate-100">
-            <h3 className="text-lg font-black font-heading text-white">Enroll New Student</h3>
-            <form onSubmit={handleCreateStudent} className="space-y-3 text-xs font-medium">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-800 space-y-4 text-slate-100 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <label className="block mb-1 text-slate-300 font-bold">Student Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={newStudent.name}
-                  onChange={e => setNewStudent({ ...newStudent, name: e.target.value })}
-                  placeholder="e.g. Rahul Kumar"
-                  className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white"
-                />
+                <h3 className="text-lg sm:text-xl font-black font-heading text-white flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-amber-400" />
+                  {editingStudent ? `Edit Student: ${editingStudent.name}` : 'Enroll New Student Profile'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {editingStudent ? 'Update student identity, photo, contact, and fee add-on structures' : 'Add new student with automatic fee ledger calculations'}
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowStudentModal(false);
+                  setEditingStudent(null);
+                }}
+                className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1 text-slate-300 font-bold">Roll Number</label>
-                  <input
-                    type="text"
-                    value={newStudent.rollNo}
-                    onChange={e => setNewStudent({ ...newStudent, rollNo: e.target.value })}
-                    placeholder="Auto or e.g. 1005"
-                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white"
-                  />
+            <form onSubmit={handleSaveStudent} className="space-y-4 text-xs font-medium">
+              {/* Photo Upload & Preview Section */}
+              <div className="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-extrabold text-white text-xs flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-amber-400" /> Student Profile Photo
+                  </label>
+                  {newStudent.photo && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewStudent({ ...newStudent, photo: '' });
+                        setStudentPhotoPreview('');
+                      }}
+                      className="text-rose-400 hover:text-rose-300 text-[11px] font-bold cursor-pointer"
+                    >
+                      Remove Photo
+                    </button>
+                  )}
                 </div>
 
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  {/* Photo Preview Thumbnail */}
+                  <div className="relative group shrink-0">
+                    {newStudent.photo || studentPhotoPreview ? (
+                      <img
+                        src={newStudent.photo || studentPhotoPreview}
+                        alt="Preview"
+                        className="w-20 h-20 rounded-2xl object-cover border-2 border-amber-400 shadow-md"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-2xl bg-slate-700/80 border-2 border-dashed border-slate-600 flex flex-col items-center justify-center text-slate-400 gap-1 text-center p-1">
+                        <Camera className="w-6 h-6 text-slate-500" />
+                        <span className="text-[10px] font-bold">No Photo</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Upload and URL controls */}
+                  <div className="flex-1 space-y-2 w-full">
+                    <div className="flex flex-wrap gap-2">
+                      <label className="flex-1 min-w-[140px] px-3 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 rounded-xl font-black text-center cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow">
+                        <Upload className="w-3.5 h-3.5" /> Upload from Phone / Device
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                if (reader.result) {
+                                  const str = reader.result.toString();
+                                  setStudentPhotoPreview(str);
+                                  setNewStudent(prev => ({ ...prev, photo: str }));
+                                  api.uploadFile(str, file.name).then(res => {
+                                    if (res?.url) {
+                                      setNewStudent(prev => ({ ...prev, photo: res.url }));
+                                    }
+                                  });
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    <input
+                      type="url"
+                      placeholder="Or paste direct image URL (https://...)"
+                      value={newStudent.photo.startsWith('data:') ? '' : newStudent.photo}
+                      onChange={e => {
+                        setNewStudent({ ...newStudent, photo: e.target.value });
+                        setStudentPhotoPreview(e.target.value);
+                      }}
+                      className="w-full p-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono text-[11px]"
+                    />
+
+                    {/* Quick Avatar Presets */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <span className="text-[10px] text-slate-400 font-bold">Quick Avatars:</span>
+                      <div className="flex gap-1.5">
+                        {[
+                          'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80',
+                          'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&q=80',
+                          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
+                          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80'
+                        ].map((url, idx) => (
+                          <img
+                            key={idx}
+                            src={url}
+                            alt="Preset"
+                            onClick={() => {
+                              setNewStudent({ ...newStudent, photo: url });
+                              setStudentPhotoPreview(url);
+                            }}
+                            className="w-6 h-6 rounded-full object-cover border border-slate-600 hover:border-amber-400 cursor-pointer transition-all hover:scale-110"
+                            referrerPolicy="no-referrer"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Student Academic & Basic Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block mb-1 text-slate-300 font-bold">Class</label>
+                  <label className="block mb-1 text-slate-300 font-bold">Student Full Name *</label>
                   <input
                     type="text"
                     required
-                    value={newStudent.class}
-                    onChange={e => setNewStudent({ ...newStudent, class: e.target.value })}
-                    placeholder="10"
+                    value={newStudent.name}
+                    onChange={e => setNewStudent({ ...newStudent, name: e.target.value })}
+                    placeholder="e.g. Rahul Kumar"
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white font-bold"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block mb-1 text-slate-300 font-bold">Roll Number *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newStudent.rollNo}
+                      onChange={e => setNewStudent({ ...newStudent, rollNo: e.target.value })}
+                      placeholder="e.g. 1005"
+                      className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white font-mono font-bold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <label className="block mb-1 text-slate-300 font-bold">Class *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newStudent.class}
+                        onChange={e => setNewStudent({ ...newStudent, class: e.target.value })}
+                        placeholder="10"
+                        className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white text-center font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-slate-300 font-bold">Sec</label>
+                      <select
+                        value={newStudent.section}
+                        onChange={e => setNewStudent({ ...newStudent, section: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white text-center font-bold cursor-pointer"
+                      >
+                        {['A', 'B', 'C', 'D'].map(sec => (
+                          <option key={sec} value={sec}>{sec}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block mb-1 text-slate-300 font-bold">Date of Birth</label>
+                  <input
+                    type="date"
+                    value={newStudent.dob}
+                    onChange={e => setNewStudent({ ...newStudent, dob: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-slate-300 font-bold">Gender</label>
+                  <select
+                    value={newStudent.gender}
+                    onChange={e => setNewStudent({ ...newStudent, gender: e.target.value as any })}
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white font-bold cursor-pointer"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-slate-300 font-bold">Admission / Reg No</label>
+                  <input
+                    type="text"
+                    value={newStudent.enrollmentNo}
+                    onChange={e => setNewStudent({ ...newStudent, enrollmentNo: e.target.value })}
+                    placeholder="e.g. ADM-2026-89"
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Guardian & Contact Information */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1 text-slate-300 font-bold">Father / Guardian Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newStudent.parentName}
+                    onChange={e => setNewStudent({ ...newStudent, parentName: e.target.value })}
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-slate-300 font-bold">Mother Name</label>
+                  <input
+                    type="text"
+                    value={newStudent.motherName}
+                    onChange={e => setNewStudent({ ...newStudent, motherName: e.target.value })}
+                    placeholder="e.g. Sunita Devi"
                     className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block mb-1 text-slate-300 font-bold">Email Address (Optional)</label>
-                <input
-                  type="email"
-                  value={newStudent.email}
-                  onChange={e => setNewStudent({ ...newStudent, email: e.target.value })}
-                  placeholder="student1005@modelpublicschool.com"
-                  className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block mb-1 text-slate-300 font-bold">Phone Number *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={newStudent.phone}
+                    onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })}
+                    placeholder="+91 9876543210"
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-slate-300 font-bold">Email Address</label>
+                  <input
+                    type="email"
+                    value={newStudent.email}
+                    onChange={e => setNewStudent({ ...newStudent, email: e.target.value })}
+                    placeholder="student@modelpublicschool.com"
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-slate-300 font-bold">Student Portal Password</label>
+                  <input
+                    type="text"
+                    value={newStudent.password}
+                    onChange={e => setNewStudent({ ...newStudent, password: e.target.value })}
+                    placeholder="e.g. 123"
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white font-mono font-bold"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block mb-1 text-slate-300 font-bold">Parent / Guardian Name *</label>
+                <label className="block mb-1 text-slate-300 font-bold">Residential Address</label>
                 <input
                   type="text"
-                  required
-                  value={newStudent.parentName}
-                  onChange={e => setNewStudent({ ...newStudent, parentName: e.target.value })}
-                  placeholder="e.g. Ramesh Kumar"
-                  className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1 text-slate-300 font-bold">Phone Number *</label>
-                <input
-                  type="tel"
-                  required
-                  value={newStudent.phone}
-                  onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })}
-                  placeholder="+91 9876543210"
-                  className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1 text-slate-300 font-bold">Pending Fee Amount (₹)</label>
-                <input
-                  type="number"
-                  value={newStudent.feePending}
-                  onChange={e => setNewStudent({ ...newStudent, feePending: Number(e.target.value) })}
+                  value={newStudent.address}
+                  onChange={e => setNewStudent({ ...newStudent, address: e.target.value })}
+                  placeholder="Street, City, West Champaran, Bihar"
                   className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white"
                 />
               </div>
 
               {/* Fee Exemptions (Mark as Free) */}
-              <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700 space-y-2 text-xs">
+              <div className="p-3 bg-slate-800/90 rounded-2xl border border-slate-700 space-y-2 text-xs">
                 <h4 className="font-bold text-slate-200 flex justify-between items-center text-[11px]">
-                  <span>Special Fee Exemptions (Free / Waived)</span>
-                  <span className="text-emerald-400 font-semibold">Marked as Paid / ₹0</span>
+                  <span>Special Fee Exemptions (Free / Concession)</span>
+                  <span className="text-emerald-400 font-semibold">Marked as ₹0 Exempt</span>
                 </h4>
-                <div className="grid grid-cols-3 gap-2 pt-1">
-                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-medium text-[11px]">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-300 font-medium text-xs bg-slate-900/50 p-2 rounded-xl border border-slate-800">
                     <input
                       type="checkbox"
                       checked={newStudent.annualFeeFree}
                       onChange={e => setNewStudent({ ...newStudent, annualFeeFree: e.target.checked })}
-                      className="rounded text-amber-500"
+                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
                     />
-                    Free Annual Fee
+                    <span>Free Annual Fee</span>
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-medium text-[11px]">
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-300 font-medium text-xs bg-slate-900/50 p-2 rounded-xl border border-slate-800">
                     <input
                       type="checkbox"
                       checked={newStudent.admissionFeeFree}
                       onChange={e => setNewStudent({ ...newStudent, admissionFeeFree: e.target.checked })}
-                      className="rounded text-amber-500"
+                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
                     />
-                    Free Admission Fee
+                    <span>Free Admission Fee</span>
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-medium text-[11px]">
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-300 font-medium text-xs bg-slate-900/50 p-2 rounded-xl border border-slate-800">
                     <input
                       type="checkbox"
                       checked={newStudent.examFeeFree}
                       onChange={e => setNewStudent({ ...newStudent, examFeeFree: e.target.checked })}
-                      className="rounded text-amber-500"
+                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
                     />
-                    Free Exam Fee
+                    <span>Free Exam Fee</span>
                   </label>
                 </div>
               </div>
 
-              {/* Fee Add-ons: Hostel & Transportation */}
-              <div className="p-3 bg-amber-500/10 rounded-2xl border border-amber-500/30 space-y-3">
-                <h4 className="font-bold text-white text-xs flex justify-between items-center">
-                  <span>Optional Fee Add-ons</span>
-                  <span className="text-[10px] text-amber-400">Hostel & Transport</span>
-                </h4>
-
-                {/* Hostel */}
-                <div className="p-2.5 bg-slate-800 rounded-xl space-y-2 text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={newStudent.hostelAddon}
-                      onChange={e => setNewStudent({ ...newStudent, hostelAddon: e.target.checked })}
-                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
-                    />
-                    <span>🏠 Hostel Add-on</span>
-                  </label>
-                  {newStudent.hostelAddon && (
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setNewStudent({ ...newStudent, hostelAmount: 5000 })}
-                        className={`px-2 py-1 rounded-lg font-bold border text-[11px] ${
-                          newStudent.hostelAmount === 5000 ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-700 text-slate-300 border-slate-600'
-                        }`}
-                      >
-                        Standard (₹5000)
-                      </button>
-                      <div className="flex items-center gap-1 flex-1">
-                        <span className="text-[10px] text-slate-400">Custom:</span>
-                        <input
-                          type="number"
-                          value={newStudent.hostelAmount}
-                          onChange={e => setNewStudent({ ...newStudent, hostelAmount: Number(e.target.value) })}
-                          className="w-full p-1 rounded-lg bg-slate-900 border border-slate-700 text-white font-bold text-xs"
-                        />
-                      </div>
-                    </div>
-                  )}
+              {/* Fee Add-ons: Hostel & Transportation with Auto Monthly Calculation */}
+              <div className="p-3.5 bg-gradient-to-br from-amber-500/10 via-indigo-500/5 to-slate-800 rounded-2xl border border-amber-500/30 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-extrabold text-white text-xs flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-amber-400" /> Optional Fee Add-ons & Auto-Integration
+                  </h4>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold border border-amber-500/30">
+                    Admin Managed
+                  </span>
                 </div>
 
-                {/* Transport */}
-                <div className="p-2.5 bg-slate-800 rounded-xl space-y-2 text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={newStudent.transportAddon}
-                      onChange={e => setNewStudent({ ...newStudent, transportAddon: e.target.checked })}
-                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
-                    />
-                    <span>🚌 Transportation Add-on</span>
-                  </label>
-                  {newStudent.transportAddon && (
-                    <div className="space-y-2 pt-1">
-                      <div className="flex flex-wrap gap-1">
-                        {[750, 900, 1000, 1200, 1500].map(amt => (
-                          <button
-                            key={amt}
-                            type="button"
-                            onClick={() => setNewStudent({ ...newStudent, transportAmount: amt })}
-                            className={`px-2 py-1 rounded-lg font-bold border text-[11px] ${
-                              newStudent.transportAmount === amt ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-700 text-slate-300 border-slate-600'
-                            }`}
-                          >
-                            ₹{amt}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-slate-400">Custom:</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Hostel Addon */}
+                  <div className={`p-3 rounded-2xl border transition-all ${newStudent.hostelAddon ? 'bg-indigo-950/40 border-indigo-500/60 ring-1 ring-indigo-500/30' : 'bg-slate-800 border-slate-700'}`}>
+                    <label className="flex items-center justify-between gap-2 cursor-pointer font-extrabold text-white text-xs">
+                      <div className="flex items-center gap-2">
                         <input
-                          type="number"
-                          value={newStudent.transportAmount}
-                          onChange={e => setNewStudent({ ...newStudent, transportAmount: Number(e.target.value) })}
-                          className="w-full p-1 rounded-lg bg-slate-900 border border-slate-700 text-white font-bold text-xs"
+                          type="checkbox"
+                          checked={newStudent.hostelAddon}
+                          onChange={e => setNewStudent({ ...newStudent, hostelAddon: e.target.checked })}
+                          className="w-4 h-4 rounded text-indigo-500 focus:ring-indigo-400 cursor-pointer"
                         />
+                        <span>🏠 Hostel & Residency</span>
                       </div>
-                    </div>
-                  )}
+                      {newStudent.hostelAddon && (
+                        <span className="text-indigo-300 font-mono font-bold text-[11px]">
+                          +₹{newStudent.hostelAmount}/mo
+                        </span>
+                      )}
+                    </label>
+
+                    {newStudent.hostelAddon && (
+                      <div className="space-y-2 pt-2.5 border-t border-slate-700/60 mt-2">
+                        <div className="flex flex-wrap gap-1">
+                          {[3500, 4000, 4500, 5000, 5500].map(amt => (
+                            <button
+                              key={amt}
+                              type="button"
+                              onClick={() => setNewStudent({ ...newStudent, hostelAmount: amt })}
+                              className={`px-2 py-1 rounded-lg font-bold border text-[11px] cursor-pointer transition-all ${
+                                newStudent.hostelAmount === amt
+                                  ? 'bg-indigo-600 text-white border-indigo-400 shadow-xs'
+                                  : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'
+                              }`}
+                            >
+                              ₹{amt}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-400 font-bold shrink-0">Custom Amount:</span>
+                          <input
+                            type="number"
+                            value={newStudent.hostelAmount}
+                            onChange={e => setNewStudent({ ...newStudent, hostelAmount: Number(e.target.value) })}
+                            className="w-full p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono font-bold text-xs"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Transportation Addon */}
+                  <div className={`p-3 rounded-2xl border transition-all ${newStudent.transportAddon ? 'bg-amber-950/40 border-amber-500/60 ring-1 ring-amber-500/30' : 'bg-slate-800 border-slate-700'}`}>
+                    <label className="flex items-center justify-between gap-2 cursor-pointer font-extrabold text-white text-xs">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={newStudent.transportAddon}
+                          onChange={e => setNewStudent({ ...newStudent, transportAddon: e.target.checked })}
+                          className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 cursor-pointer"
+                        />
+                        <span>🚌 School Bus / Transport</span>
+                      </div>
+                      {newStudent.transportAddon && (
+                        <span className="text-amber-300 font-mono font-bold text-[11px]">
+                          +₹{newStudent.transportAmount}/mo
+                        </span>
+                      )}
+                    </label>
+
+                    {newStudent.transportAddon && (
+                      <div className="space-y-2 pt-2.5 border-t border-slate-700/60 mt-2">
+                        <div className="flex flex-wrap gap-1">
+                          {[600, 750, 900, 1000, 1200, 1500].map(amt => (
+                            <button
+                              key={amt}
+                              type="button"
+                              onClick={() => setNewStudent({ ...newStudent, transportAmount: amt })}
+                              className={`px-2 py-1 rounded-lg font-bold border text-[11px] cursor-pointer transition-all ${
+                                newStudent.transportAmount === amt
+                                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-xs'
+                                  : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'
+                              }`}
+                            >
+                              ₹{amt}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-400 font-bold shrink-0">Custom Amount:</span>
+                          <input
+                            type="number"
+                            value={newStudent.transportAmount}
+                            onChange={e => setNewStudent({ ...newStudent, transportAmount: Number(e.target.value) })}
+                            className="w-full p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono font-bold text-xs"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Auto-addon calculation summary badge */}
+                <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="text-slate-300">
+                    <span className="text-amber-400 font-extrabold">💡 Auto-Calculated Monthly Installment: </span>
+                    <span>
+                      Base (₹1,100)
+                      {newStudent.hostelAddon ? ` + Hostel (₹${newStudent.hostelAmount})` : ''}
+                      {newStudent.transportAddon ? ` + Bus (₹${newStudent.transportAmount})` : ''}
+                      {' = '}
+                      <strong className="text-white font-extrabold text-sm">
+                        ₹{(1100 + (newStudent.hostelAddon ? Number(newStudent.hostelAmount || 0) : 0) + (newStudent.transportAddon ? Number(newStudent.transportAmount || 0) : 0)).toLocaleString('en-IN')}/month
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-emerald-400 font-bold">
+                    ✓ Applied to all 12 fee months automatically
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowStudentModal(false)}
-                  className="px-4 py-2 bg-slate-800 rounded-xl"
+                  onClick={() => {
+                    setShowStudentModal(false);
+                    setEditingStudent(null);
+                  }}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow"
+                  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer transition-all"
                 >
-                  Save Student
+                  <Check className="w-4 h-4" />
+                  {editingStudent ? 'Update Student Profile' : 'Enroll Student'}
                 </button>
               </div>
             </form>

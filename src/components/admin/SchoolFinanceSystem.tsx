@@ -403,8 +403,14 @@ export const SchoolFinanceSystem: React.FC<SchoolFinanceSystemProps> = ({
   // Handler: Open Student Fee Collection Modal
   const handleOpenCollectFee = (st: Student) => {
     setSelectedStudentForPay(st);
-    const tuitionMonthly = Math.round((st.feeInfo?.totalAnnual || 13200) / 12);
-    setPayTuitionAmount(tuitionMonthly);
+    
+    // Auto-calculate combined monthly fee (Tuition + Active Hostel + Active Transport)
+    const baseTuition = 1100;
+    const hostelMonthly = st.addons?.hostel?.enabled ? (st.addons.hostel.amount || 5000) : 0;
+    const transportMonthly = st.addons?.transportation?.enabled ? (st.addons.transportation.amount || 750) : 0;
+    const autoMonthly = (st.feeInfo?.months?.[0]?.amount) || (baseTuition + hostelMonthly + transportMonthly);
+    
+    setPayTuitionAmount(autoMonthly);
     setPayTuitionFree(false);
     setPaySelectedMonths(['August, 2026']);
 
@@ -423,14 +429,13 @@ export const SchoolFinanceSystem: React.FC<SchoolFinanceSystemProps> = ({
     setPayAdmissionAmount(st.feeInfo?.admissionFeeAmount || 3000);
     setPayAdmissionFree(st.feeInfo?.admissionFeeStatus === 'Exempt');
 
-    const isHostelEnabled = st.addons?.hostel?.enabled || false;
-    setPayHostelFee(isHostelEnabled && st.feeInfo?.hostelFeeStatus !== 'Paid');
-    setPayHostelAmount(st.addons?.hostel?.amount || 4500);
+    // If addons are already merged into monthly installment, separate addon checkboxes default to false so they aren't double billed
+    setPayHostelFee(false);
+    setPayHostelAmount(st.addons?.hostel?.amount || 5000);
     setPayHostelFree(st.feeInfo?.hostelFeeStatus === 'Exempt');
 
-    const isTransportEnabled = st.addons?.transportation?.enabled || false;
-    setPayTransportFee(isTransportEnabled && st.feeInfo?.transportFeeStatus !== 'Paid');
-    setPayTransportAmount(st.addons?.transportation?.amount || 1500);
+    setPayTransportFee(false);
+    setPayTransportAmount(st.addons?.transportation?.amount || 750);
     setPayTransportFree(st.feeInfo?.transportFeeStatus === 'Exempt');
 
     setPayConcessionDiscount(0);

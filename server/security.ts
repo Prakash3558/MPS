@@ -162,10 +162,20 @@ export const CreateStudentSchema = z.object({
   section: z.string().max(50).optional(),
   password: z.string().max(200).optional(),
   parentName: z.string().max(100).optional(),
+  motherName: z.string().max(100).optional(),
   phone: z.string().max(20).optional(),
   address: z.string().max(300).optional(),
   photo: z.string().max(5000000).optional(),
-  email: z.string().max(150).optional()
+  email: z.string().max(150).optional(),
+  dob: z.string().max(50).optional(),
+  gender: z.string().max(50).optional(),
+  enrollmentNo: z.string().max(100).optional(),
+  transportRoute: z.string().max(200).optional(),
+  hostelEnrolled: z.boolean().optional(),
+  transportEnrolled: z.boolean().optional(),
+  hostelFee: z.number().optional(),
+  transportFee: z.number().optional(),
+  feeMonthly: z.number().optional()
 }).passthrough();
 
 export const CreateNoticeSchema = z.object({

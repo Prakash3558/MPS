@@ -7,7 +7,7 @@ import { CountryPhoneInput, detectUserCountryCode, fetchUserCountryCodeFromIP } 
 import {
   Student, Homework, AttendanceRecord, ExamResult, Notice,
   OnlineClass, OnlineExam, TimeTableSlot, StudyMaterial, SchoolDiaryEntry,
-  SyllabusItem, TransportRoute, AdmitCard, StudentDeclaration, SchoolMessage, RecordUpdateReq
+  SyllabusItem, TransportRoute, AdmitCard, StudentDeclaration, SchoolMessage, RecordUpdateReq, ParentComplaint
 } from '../../types';
 import { StudentIDCard } from '../common/StudentIDCard';
 import { AIHomeworkTutor } from '../common/AIHomeworkTutor';
@@ -19,7 +19,8 @@ import { sortFeeMonths, getNormalizedStudentFeeMonths } from '../../lib/feeUtils
 import {
   GraduationCap, LogOut, Calendar, BookOpen, FileText, IndianRupee, Bell, AlertTriangle, AlertCircle,
   CheckCircle2, XCircle, Clock, Award, ShieldCheck, Download, UserCheck, Key, User, Bot, Sparkles, TrendingUp, Printer, Check,
-  Video, FileQuestion, BookMarked, Notebook, FileCode, Bus, CreditCard, FileCheck, MessageSquare, Edit3, ExternalLink, Home, Send
+  Video, FileQuestion, BookMarked, Notebook, FileCode, Bus, CreditCard, FileCheck, MessageSquare, Edit3, ExternalLink, Home, Send,
+  ShieldAlert, LifeBuoy, PhoneCall, HelpCircle
 } from 'lucide-react';
 
 export const StudentPortal: React.FC = () => {
@@ -107,6 +108,17 @@ export const StudentPortal: React.FC = () => {
   const [declarations, setDeclarations] = useState<StudentDeclaration[]>([]);
   const [schoolMessages, setSchoolMessages] = useState<SchoolMessage[]>([]);
   const [recordUpdates, setRecordUpdates] = useState<RecordUpdateReq[]>([]);
+  const [complaintsList, setComplaintsList] = useState<ParentComplaint[]>([]);
+  const [complaintSubTab, setComplaintSubTab] = useState<'complaints' | 'corrections'>('complaints');
+  const [complaintForm, setComplaintForm] = useState({
+    category: 'Teaching & Academics',
+    priority: 'Medium' as 'High' | 'Medium' | 'Low' | 'Urgent',
+    subject: '',
+    description: '',
+    contactPhone: ''
+  });
+  const [complaintSuccess, setComplaintSuccess] = useState('');
+  const [complaintSubmitting, setComplaintSubmitting] = useState(false);
 
   const [dataLoading, setDataLoading] = useState(false);
   const [autoJoinNotice, setAutoJoinNotice] = useState<string | null>(null);
@@ -130,7 +142,7 @@ export const StudentPortal: React.FC = () => {
 
       const [
         hw, att, exams, nots,
-        oc, oe, tt, sm, sd, syl, tr, ac, dec, msgs, reqs
+        oc, oe, tt, sm, sd, syl, tr, ac, dec, msgs, reqs, cmps
       ] = await Promise.all([
         api.getHomework(st.class, st.section),
         api.getAttendance(st.id),
@@ -146,7 +158,8 @@ export const StudentPortal: React.FC = () => {
         api.getAdmitCards(st.id),
         api.getDeclarations(),
         api.getSchoolMessages(st.id, st.class, st.section),
-        api.getRecordUpdates(st.id)
+        api.getRecordUpdates(st.id),
+        api.getComplaints(st.class, st.section)
       ]);
 
       const cleanStr = (v?: string) => String(v || '').replace(/^class/i, '').trim().toLowerCase();
@@ -172,6 +185,9 @@ export const StudentPortal: React.FC = () => {
       setDeclarations(dec);
       setSchoolMessages(msgs.filter(m => matchClassSec(m.class, m.section)));
       setRecordUpdates(reqs);
+      if (Array.isArray(cmps)) {
+        setComplaintsList(cmps.filter(c => c.studentId === st.id || c.studentRollNo === st.rollNo || c.studentName === st.name));
+      }
     } catch (e) {
       console.error('Error loading student dashboard data:', e);
     } finally {
@@ -288,6 +304,44 @@ export const StudentPortal: React.FC = () => {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  // Submit Parent Complaint / Grievance Handler
+  const handleSendComplaint = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!student || !complaintForm.subject || !complaintForm.description) return;
+    setComplaintSubmitting(true);
+    try {
+      const res = await api.createComplaint({
+        studentId: student.id,
+        studentName: student.name,
+        studentRollNo: student.rollNo,
+        parentName: student.parentName || student.motherName || 'Parent of ' + student.name,
+        phone: complaintForm.contactPhone || student.phone || '',
+        email: student.email || '',
+        category: complaintForm.category,
+        priority: complaintForm.priority,
+        subject: complaintForm.subject,
+        description: complaintForm.description
+      });
+      if (res.success) {
+        setComplaintSuccess('✓ Grievance / Complaint submitted successfully to the Principal and School Management.');
+        setComplaintForm({
+          category: 'Teaching & Academics',
+          priority: 'Medium',
+          subject: '',
+          description: '',
+          contactPhone: student.phone || ''
+        });
+        const updated = await api.getComplaints(student.class, student.section);
+        setComplaintsList(updated.filter(c => c.studentId === student.id || c.studentRollNo === student.rollNo || c.studentName === student.name));
+        setTimeout(() => setComplaintSuccess(''), 5000);
+      }
+    } catch (err) {
+      console.error('Failed to submit complaint:', err);
+    } finally {
+      setComplaintSubmitting(false);
     }
   };
 
@@ -627,11 +681,11 @@ export const StudentPortal: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-6" id="student-full-dossier">
+    <div className="min-h-screen bg-stone-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors py-4 sm:py-8 px-2 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6" id="student-full-dossier">
         
         {/* Top Student Banner Bar */}
-        <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 shadow-xl border border-amber-400/40 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl border border-amber-400/40 relative overflow-hidden">
           <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
           
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
@@ -976,19 +1030,19 @@ export const StudentPortal: React.FC = () => {
               </span>
             </button>
 
-            {/* 16. Corrections */}
+            {/* 16. Corrections & Complaints */}
             <button
               onClick={() => handleSwitchTab('record-updates')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
+              className={`p-2.5 sm:p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[84px] sm:min-h-[92px] ${
                 activeTab === 'record-updates'
                   ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
                   : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
               }`}
             >
               <Edit3 className={`w-5 h-5 ${activeTab === 'record-updates' ? 'text-slate-950' : 'text-orange-500'}`} />
-              <span className="font-extrabold leading-tight">Corrections</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'record-updates' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                Edit Profile
+              <span className="font-extrabold leading-tight text-[11px] sm:text-xs">Correction & Complaints</span>
+              <span className={`text-[9px] sm:text-[10px] font-semibold ${activeTab === 'record-updates' ? 'text-slate-900/80' : 'text-slate-500'}`}>
+                Grievance & Edits
               </span>
             </button>
 
@@ -1551,88 +1605,298 @@ export const StudentPortal: React.FC = () => {
           </div>
         )}
 
-        {/* --- TAB 11: PROFILE RECORD CORRECTION REQUESTS --- */}
+        {/* --- TAB 16: PROFILE CORRECTIONS & PARENT GRIEVANCE / COMPLAINT DESK --- */}
         {activeTab === 'record-updates' && (
           <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
-                <Edit3 className="w-5 h-5 text-orange-500" /> Profile & Record Correction Request Desk
-              </h3>
-              <p className="text-xs text-slate-500">Request updates or corrections for student name, parent name, date of birth, or contact phone.</p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 className="text-lg font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-orange-500" /> Parent Grievance Desk & Profile Corrections
+                </h3>
+                <p className="text-xs text-slate-500">Submit formal complaints directly to the Principal, or request typo corrections for student records.</p>
+              </div>
+
+              {/* Sub-Tab Navigation Toggle */}
+              <div className="flex items-center gap-1 bg-stone-200 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setComplaintSubTab('complaints')}
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    complaintSubTab === 'complaints'
+                      ? 'bg-rose-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
+                  }`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" /> Submit Complaint ({complaintsList.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setComplaintSubTab('corrections')}
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    complaintSubTab === 'corrections'
+                      ? 'bg-orange-500 text-slate-950 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
+                  }`}
+                >
+                  <Edit3 className="w-3.5 h-3.5" /> Record Corrections ({recordUpdates.length})
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleSendUpdateReq} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-              <h4 className="text-sm font-bold text-slate-900 dark:text-white">Submit Record Update Request</h4>
-              {updateReqSuccess && (
-                <div className="p-3 bg-emerald-100 text-emerald-800 text-xs rounded-xl font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" /> {updateReqSuccess}
-                </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Field to Update</label>
-                  <select
-                    value={newUpdateReq.field}
-                    onChange={e => setNewUpdateReq({ ...newUpdateReq, field: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
-                  >
-                    <option value="Student Name">Student Name</option>
-                    <option value="Parent Name">Parent / Guardian Name</option>
-                    <option value="Phone / Contact Number">Phone / Contact Number</option>
-                    <option value="Date of Birth">Date of Birth</option>
-                    <option value="Address">Address</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Current Recorded Value</label>
-                  <input
-                    type="text"
-                    value={newUpdateReq.oldValue}
-                    onChange={e => setNewUpdateReq({ ...newUpdateReq, oldValue: e.target.value })}
-                    placeholder="e.g. Existing typo"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Corrected New Value</label>
-                  <input
-                    type="text"
-                    required
-                    value={newUpdateReq.newValue}
-                    onChange={e => setNewUpdateReq({ ...newUpdateReq, newValue: e.target.value })}
-                    placeholder="e.g. Correct spelling"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow text-xs flex items-center gap-1.5"
-              >
-                <Edit3 className="w-4 h-4" /> Submit Request To Admin
-              </button>
-            </form>
-
-            <div className="space-y-3">
-              <h4 className="text-sm font-bold text-slate-900 dark:text-white">Request History</h4>
-              {recordUpdates.length === 0 ? (
-                <div className="text-xs text-slate-500 py-4 text-center">No record correction requests submitted yet.</div>
-              ) : (
-                recordUpdates.map(req => (
-                  <div key={req.id} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs flex justify-between items-center">
-                    <div>
-                      <strong className="text-slate-900 dark:text-white block">{req.field} Update</strong>
-                      <span className="text-slate-500">New Value: {req.newValue} (Old: {req.oldValue || 'N/A'})</span>
-                    </div>
-                    <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] ${
-                      req.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {req.status}
+            {/* SUB-PANEL A: PARENT GRIEVANCE / COMPLAINT SUBMISSION */}
+            {complaintSubTab === 'complaints' && (
+              <div className="space-y-6">
+                <form onSubmit={handleSendComplaint} className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-rose-500" /> Lodge a Formal Complaint / Grievance
+                    </h4>
+                    <span className="text-[11px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-900">
+                      Confidential & Direct to Principal
                     </span>
                   </div>
-                ))
-              )}
-            </div>
+
+                  {complaintSuccess && (
+                    <div className="p-3 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 text-xs rounded-xl font-bold flex items-center gap-2 border border-emerald-300 dark:border-emerald-800">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> {complaintSuccess}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Complaint Category</label>
+                      <select
+                        value={complaintForm.category}
+                        onChange={e => setComplaintForm({ ...complaintForm, category: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                      >
+                        <option value="Teaching & Academics">Teaching & Academics</option>
+                        <option value="Bus & Transport Route">Bus & Transport Route</option>
+                        <option value="Hostel & Food Facility">Hostel & Food Facility</option>
+                        <option value="Fee Billing & Accounts">Fee Billing & Accounts</option>
+                        <option value="Discipline & Anti-Bullying">Discipline & Anti-Bullying</option>
+                        <option value="Infrastructure & Restroom">Infrastructure & Sanitation</option>
+                        <option value="General Grievance">General Grievance</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Urgency / Priority</label>
+                      <select
+                        value={complaintForm.priority}
+                        onChange={e => setComplaintForm({ ...complaintForm, priority: e.target.value as any })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                      >
+                        <option value="Low">Low (General Feedback)</option>
+                        <option value="Medium">Medium (Standard Issue)</option>
+                        <option value="High">High (Needs Urgent Attention)</option>
+                        <option value="Urgent">Urgent (Safety / Critical)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Contact Phone for Callback</label>
+                      <input
+                        type="tel"
+                        value={complaintForm.contactPhone}
+                        onChange={e => setComplaintForm({ ...complaintForm, contactPhone: e.target.value })}
+                        placeholder="e.g. 9876543210"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-xs space-y-3">
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Subject / Title</label>
+                      <input
+                        type="text"
+                        required
+                        value={complaintForm.subject}
+                        onChange={e => setComplaintForm({ ...complaintForm, subject: e.target.value })}
+                        placeholder="e.g. Issue with Bus Route 4 timing / Homework feedback"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Detailed Explanation of Grievance</label>
+                      <textarea
+                        required
+                        rows={4}
+                        value={complaintForm.description}
+                        onChange={e => setComplaintForm({ ...complaintForm, description: e.target.value })}
+                        placeholder="Please describe the issue in detail, including date, time, subject or location involved..."
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                    <p className="text-[11px] text-slate-500">
+                      🔒 All complaints are forwarded immediately to the Principal Office with time-stamped tracking.
+                    </p>
+                    <button
+                      type="submit"
+                      disabled={complaintSubmitting}
+                      className="w-full sm:w-auto px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <Send className="w-4 h-4" /> {complaintSubmitting ? 'Submitting...' : 'Submit Complaint to Principal'}
+                    </button>
+                  </div>
+                </form>
+
+                {/* Complaint History */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                    <span>Submitted Grievances & Status</span>
+                    <span className="text-xs text-slate-500 font-normal">{complaintsList.length} Tickets</span>
+                  </h4>
+
+                  {complaintsList.length === 0 ? (
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 space-y-2">
+                      <LifeBuoy className="w-8 h-8 mx-auto text-slate-400 opacity-60" />
+                      <p className="font-bold">No grievances logged for this student.</p>
+                      <p className="text-[11px]">If you have any feedback or concerns, use the form above to reach the administration directly.</p>
+                    </div>
+                  ) : (
+                    complaintsList.map(cmp => (
+                      <div key={cmp.id} className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs space-y-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-slate-900 dark:text-white text-sm">{cmp.subject}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                                cmp.priority === 'Urgent' ? 'bg-rose-100 text-rose-800' :
+                                cmp.priority === 'High' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {cmp.priority}
+                              </span>
+                            </div>
+                            <span className="text-slate-500 text-[11px]">Category: <strong>{cmp.category}</strong> • Date: {cmp.createdAt || 'Recent'}</span>
+                          </div>
+
+                          <span className={`px-3 py-1 rounded-full font-black text-xs ${
+                            cmp.status === 'Resolved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                            cmp.status === 'Under Review' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                            'bg-amber-100 text-amber-800 border border-amber-300'
+                          }`}>
+                            {cmp.status || 'Pending Review'}
+                          </span>
+                        </div>
+
+                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">{cmp.description}</p>
+
+                        {(cmp.teacherReply || (cmp as any).resolutionNote) && (
+                          <div className="p-3 bg-stone-50 dark:bg-slate-800/80 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-slate-800 dark:text-slate-200 space-y-1">
+                            <strong className="text-emerald-600 dark:text-emerald-400 font-bold block text-[11px] flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Official Management Resolution:
+                            </strong>
+                            <p className="text-xs">{cmp.teacherReply || (cmp as any).resolutionNote}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Grievance Officer Helpline */}
+                <div className="bg-stone-50 dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-slate-800 text-blue-900 dark:text-blue-300 flex items-center justify-center font-bold shrink-0">
+                      <PhoneCall className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <strong className="block text-slate-900 dark:text-white font-bold">Direct Principal & Grievance Helpline</strong>
+                      <span className="text-slate-500">Model Public School, Sikta, West Champaran, Bihar</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a href="tel:+918757968130" className="px-3 py-1.5 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 transition-colors">
+                      +91 87579 68130
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-PANEL B: PROFILE RECORD CORRECTION REQUESTS */}
+            {complaintSubTab === 'corrections' && (
+              <div className="space-y-6">
+                <form onSubmit={handleSendUpdateReq} className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Submit Record Update Request</h4>
+                  {updateReqSuccess && (
+                    <div className="p-3 bg-emerald-100 text-emerald-800 text-xs rounded-xl font-bold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> {updateReqSuccess}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Field to Update</label>
+                      <select
+                        value={newUpdateReq.field}
+                        onChange={e => setNewUpdateReq({ ...newUpdateReq, field: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                      >
+                        <option value="Student Name">Student Name</option>
+                        <option value="Parent Name">Parent / Guardian Name</option>
+                        <option value="Phone / Contact Number">Phone / Contact Number</option>
+                        <option value="Date of Birth">Date of Birth</option>
+                        <option value="Address">Address</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Current Recorded Value</label>
+                      <input
+                        type="text"
+                        value={newUpdateReq.oldValue}
+                        onChange={e => setNewUpdateReq({ ...newUpdateReq, oldValue: e.target.value })}
+                        placeholder="e.g. Existing typo"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 mb-1 font-bold">Corrected New Value</label>
+                      <input
+                        type="text"
+                        required
+                        value={newUpdateReq.newValue}
+                        onChange={e => setNewUpdateReq({ ...newUpdateReq, newValue: e.target.value })}
+                        placeholder="e.g. Correct spelling"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Edit3 className="w-4 h-4" /> Submit Request To Admin
+                  </button>
+                </form>
+
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Request History</h4>
+                  {recordUpdates.length === 0 ? (
+                    <div className="text-xs text-slate-500 py-4 text-center">No record correction requests submitted yet.</div>
+                  ) : (
+                    recordUpdates.map(req => (
+                      <div key={req.id} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs flex justify-between items-center">
+                        <div>
+                          <strong className="text-slate-900 dark:text-white block">{req.field} Update</strong>
+                          <span className="text-slate-500">New Value: {req.newValue} (Old: {req.oldValue || 'N/A'})</span>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] ${
+                          req.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {req.status}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

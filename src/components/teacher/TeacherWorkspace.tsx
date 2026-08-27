@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCMS } from '../../context/CMSContext';
 import { api } from '../../lib/api';
@@ -18,7 +18,7 @@ import {
   AlertTriangle, Key, Search, FileText, BarChart2, TrendingUp, CheckCircle2, XCircle, Clock,
   AlertCircle, RefreshCw, DollarSign, PieChart, CreditCard, Video, FileQuestion, ExternalLink,
   Link2, Home, Notebook, BookMarked, Bus, FileCheck, MessageSquare, ShieldCheck, Bot, Sparkles,
-  Send, IndianRupee, CheckCircle, Truck, Building2, Printer, Download, Filter,
+  Send, IndianRupee, CheckCircle, Truck, Building2, Printer, Download, Filter, Camera,
   Bell, BellRing, Zap, X, ChevronRight, MessageSquareWarning, PhoneCall, CheckCheck, Reply, UserPlus
 } from 'lucide-react';
 import {
@@ -67,6 +67,16 @@ export const TeacherWorkspace: React.FC = () => {
 
   // Default selected tool is HOMEWORK as requested!
   const [activeTab, setActiveTab] = useState<TabType>('homework');
+  const activeContentRef = useRef<HTMLDivElement>(null);
+
+  const handleSwitchTab = (tab: TabType) => {
+    setActiveTab(tab);
+    setTimeout(() => {
+      if (activeContentRef.current) {
+        activeContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  };
 
   // Data states for all tools
   const [homeworkList, setHomeworkList] = useState<Homework[]>([]);
@@ -251,13 +261,51 @@ export const TeacherWorkspace: React.FC = () => {
     { subject: 'Sanskrit/Urdu', maxMarks: 100, marksObtained: 86, grade: 'A2' }
   ];
 
-  // Marks Form States
+  // Marks Form States & Full Marks Selection
   const [selectedExamStudent, setSelectedExamStudent] = useState<Student | null>(null);
   const [examType, setExamType] = useState('Mid-Term Examination');
   const [customExamType, setCustomExamType] = useState('');
   const [isCustomExam, setIsCustomExam] = useState(false);
   const [subjectsList, setSubjectsList] = useState(DEFAULT_SUBJECTS);
   const [teacherRemarks, setTeacherRemarks] = useState('Good academic progress.');
+  const [defaultFullMarks, setDefaultFullMarks] = useState<number>(100);
+  const [customFullMarksInput, setCustomFullMarksInput] = useState<string>('100');
+  const [newSubjectInput, setNewSubjectInput] = useState<string>('');
+  const [examResultsList, setExamResultsList] = useState<ExamResult[]>([]);
+  const [marksheetSearch, setMarksheetSearch] = useState('');
+
+  // Grade calculation helper based on CBSE standard percentage
+  const calculateGrade = (obtained: number, max: number): string => {
+    if (!max || max <= 0) return 'N/A';
+    const pct = (obtained / max) * 100;
+    if (pct >= 91) return 'A1';
+    if (pct >= 81) return 'A2';
+    if (pct >= 71) return 'B1';
+    if (pct >= 61) return 'B2';
+    if (pct >= 51) return 'C1';
+    if (pct >= 41) return 'C2';
+    if (pct >= 33) return 'D';
+    return 'E (Needs Improvement)';
+  };
+
+  // Handler to apply a batch full marks to all subjects
+  const handleApplyFullMarksToAll = (marks: number) => {
+    const validMarks = Math.max(1, Number(marks) || 100);
+    setDefaultFullMarks(validMarks);
+    setCustomFullMarksInput(String(validMarks));
+    setSubjectsList(prev =>
+      prev.map(sub => {
+        const newMax = validMarks;
+        const newObt = Math.min(Number(sub.marksObtained) || 0, newMax);
+        return {
+          ...sub,
+          maxMarks: newMax,
+          marksObtained: newObt,
+          grade: calculateGrade(newObt, newMax)
+        };
+      })
+    );
+  };
 
   // Global Realtime Refresh hook for Teacher workspace
   const teacherTopics = [
@@ -626,7 +674,7 @@ export const TeacherWorkspace: React.FC = () => {
   const handleOpenTodayAttendance = () => {
     setAttendanceDate(todayDateStr);
     setAttendanceViewMode('daily');
-    setActiveTab('attendance');
+    handleSwitchTab('attendance');
   };
 
   const handleQuickSetPassword = async (e: React.FormEvent) => {
@@ -925,8 +973,6 @@ export const TeacherWorkspace: React.FC = () => {
     if (!selectedExamStudent) return;
     const activeExamType = isCustomExam ? (customExamType || 'Custom Exam') : examType;
     const studentName = selectedExamStudent.name;
-    setSelectedExamStudent(null);
-    alert(`Marks recorded for ${studentName} (${activeExamType})`);
     try {
       await api.saveExamResult({
         studentId: selectedExamStudent.id,
@@ -935,8 +981,15 @@ export const TeacherWorkspace: React.FC = () => {
         subjects: subjectsList,
         teacherRemarks
       });
-    } catch (e) {
+      alert(`✓ Marksheet successfully published for ${studentName} (${activeExamType}) with Full Marks standard applied!`);
+      setSelectedExamStudent(null);
+      // Reload class exam results
+      api.getExamResults(undefined, true).then(res => {
+        if (Array.isArray(res)) setExamResultsList(res);
+      }).catch(() => {});
+    } catch (e: any) {
       console.error(e);
+      alert('Failed to record exam marks: ' + (e.message || 'Please try again.'));
     }
   };
 
@@ -1078,10 +1131,10 @@ export const TeacherWorkspace: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-stone-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 py-4 sm:py-8 px-2 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Top Header Bar */}
-        <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-xl border border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 relative">
+        <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl border border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 relative">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 font-bold">
               <UserCheck className="w-8 h-8" />
@@ -1395,7 +1448,7 @@ export const TeacherWorkspace: React.FC = () => {
             ✓ Target Protection Active
           </span>
         </div>
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-amber-500" /> Teacher Workspace Tools Grid
@@ -1403,15 +1456,15 @@ export const TeacherWorkspace: React.FC = () => {
             <span className="text-[11px] text-slate-500 font-bold">18 Editable Features</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-2.5">
             {TOOLS_LIST.map(tool => {
               const IconComp = tool.icon;
               const isActive = activeTab === tool.id;
               return (
                 <button
                   key={tool.id}
-                  onClick={() => setActiveTab(tool.id)}
-                  className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] relative ${
+                  onClick={() => handleSwitchTab(tool.id)}
+                  className={`p-2.5 sm:p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[84px] sm:min-h-[92px] relative cursor-pointer ${
                     isActive
                       ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
                       : 'bg-stone-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 hover:bg-amber-500/5 text-slate-700 dark:text-slate-200'
@@ -1420,10 +1473,10 @@ export const TeacherWorkspace: React.FC = () => {
                   {tool.alert && (
                     <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
                   )}
-                  <IconComp className={`w-6 h-6 ${isActive ? 'text-slate-950' : tool.color}`} />
+                  <IconComp className={`w-5 h-5 sm:w-6 sm:h-6 ${isActive ? 'text-slate-950' : tool.color}`} />
                   <div>
-                    <span className="block leading-tight">{tool.title}</span>
-                    <span className={`text-[10px] font-normal block ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
+                    <span className="block leading-tight text-[11px] sm:text-xs">{tool.title}</span>
+                    <span className={`text-[9px] sm:text-[10px] font-normal block ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
                       {tool.subtitle}
                     </span>
                   </div>
@@ -1432,6 +1485,9 @@ export const TeacherWorkspace: React.FC = () => {
             })}
           </div>
         </div>
+
+        {/* Scroll Target Anchor for smooth transition to output */}
+        <div ref={activeContentRef} className="scroll-mt-6" />
 
         {/* Tool 1: Homework Hub (DEFAULT SELECTED) */}
         {activeTab === 'homework' && (
@@ -2375,57 +2431,566 @@ export const TeacherWorkspace: React.FC = () => {
           </div>
         )}
 
-        {/* Tool 10: Marksheets */}
+        {/* Tool 10: Marksheets & Gradebook Entry Studio */}
         {activeTab === 'marks' && (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-            <h3 className="text-lg font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
-              <Award className="w-5 h-5 text-amber-600" /> Gradebook & Marksheet Entry Manager
-            </h3>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 className="text-lg sm:text-xl font-black font-heading text-slate-900 dark:text-white flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-500" /> Gradebook & Marksheet Publishing Studio
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Publish official report cards with configurable full marks (100, 25, or custom), subject weights, and auto grades for Class {selectedClass}-{selectedSection}
+                </p>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {students.map(st => (
-                <div key={st.id} className="p-4 bg-stone-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex justify-between items-center text-xs">
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white">{st.name}</h4>
-                    <p className="text-slate-500">Roll No: {st.rollNo}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedExamStudent(st);
-                      setSubjectsList(DEFAULT_SUBJECTS);
-                    }}
-                    className="px-3 py-1.5 bg-amber-500 text-slate-950 rounded-xl font-bold"
-                  >
-                    Enter Marks
-                  </button>
-                </div>
-              ))}
+              {selectedExamStudent && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedExamStudent(null)}
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                >
+                  ← Select Different Student
+                </button>
+              )}
             </div>
 
-            {selectedExamStudent && (
-              <form onSubmit={handleSaveMarks} className="p-5 bg-stone-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4 text-xs font-medium">
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm">Enter Exam Result for {selectedExamStudent.name}</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {subjectsList.map((subj, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white dark:bg-slate-900 p-2.5 rounded-xl border">
-                      <span className="font-bold text-slate-900 dark:text-white">{subj.subject}</span>
+            {/* Student Selector Cards */}
+            {!selectedExamStudent ? (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <input
+                      type="text"
+                      placeholder="Search student by name or roll number..."
+                      value={marksheetSearch}
+                      onChange={e => setMarksheetSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2.5 bg-stone-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <span className="text-xs text-slate-500 font-bold self-center">
+                    {students.length} Students in Class {selectedClass}-{selectedSection}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {students
+                    .filter(st =>
+                      st.name.toLowerCase().includes(marksheetSearch.toLowerCase()) ||
+                      st.rollNo.toLowerCase().includes(marksheetSearch.toLowerCase())
+                    )
+                    .map(st => (
+                      <div
+                        key={st.id}
+                        onClick={() => {
+                          setSelectedExamStudent(st);
+                          // Initialize subjects with current default full marks
+                          setSubjectsList(
+                            DEFAULT_SUBJECTS.map(s => ({
+                              ...s,
+                              maxMarks: defaultFullMarks,
+                              marksObtained: Math.min(s.marksObtained, defaultFullMarks),
+                              grade: calculateGrade(Math.min(s.marksObtained, defaultFullMarks), defaultFullMarks)
+                            }))
+                          );
+                        }}
+                        className="p-3.5 bg-stone-50 dark:bg-slate-800/90 hover:bg-amber-50 dark:hover:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-amber-400 transition-all cursor-pointer flex items-center justify-between gap-3 shadow-xs group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {st.photo ? (
+                            <img
+                              src={st.photo}
+                              alt={st.name}
+                              className="w-10 h-10 rounded-xl object-cover border border-slate-300 dark:border-slate-600 shrink-0"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 font-black text-xs flex items-center justify-center shrink-0 border border-amber-500/30">
+                              #{st.rollNo}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <h4 className="font-extrabold text-slate-900 dark:text-white text-xs truncate group-hover:text-amber-500 transition-colors">
+                              {st.name}
+                            </h4>
+                            <p className="text-[11px] text-slate-500 truncate">
+                              Roll No: <strong className="text-slate-700 dark:text-slate-300 font-mono">{st.rollNo}</strong> • Class {st.class}-{st.section}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="px-3 py-1.5 bg-amber-500 group-hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-xs shrink-0 transition-all"
+                        >
+                          Enter Marks
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ) : (
+              /* MARK ENTRY STUDIO FOR SELECTED STUDENT */
+              <form onSubmit={handleSaveMarks} className="space-y-6">
+                {/* Student Banner */}
+                <div className="p-4 bg-gradient-to-r from-amber-500/15 via-indigo-500/10 to-transparent dark:from-amber-950/40 dark:via-indigo-950/30 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {selectedExamStudent.photo ? (
+                      <img
+                        src={selectedExamStudent.photo}
+                        alt={selectedExamStudent.name}
+                        className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400 shadow"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 font-black text-base flex items-center justify-center shadow">
+                        #{selectedExamStudent.rollNo}
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-black text-slate-900 dark:text-white text-base">
+                          {selectedExamStudent.name}
+                        </h4>
+                        <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-extrabold text-[10px] rounded-full border border-indigo-500/20">
+                          Class {selectedExamStudent.class}-{selectedExamStudent.section}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Roll: <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{selectedExamStudent.rollNo}</span>
+                        {selectedExamStudent.parentName && ` • Parent: ${selectedExamStudent.parentName}`}
+                        {selectedExamStudent.enrollmentNo && ` • Reg: ${selectedExamStudent.enrollmentNo}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-amber-700 dark:text-amber-300 font-bold bg-amber-500/20 px-2.5 py-1 rounded-xl border border-amber-500/30">
+                      Academic Year 2025-2026
+                    </span>
+                  </div>
+                </div>
+
+                {/* Exam Title Selector & Presets */}
+                <div className="p-4 bg-stone-50 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <label className="font-extrabold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-amber-500" /> Examination / Assessment Name *
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer font-bold">
+                      <input
+                        type="checkbox"
+                        checked={isCustomExam}
+                        onChange={e => setIsCustomExam(e.target.checked)}
+                        className="rounded text-amber-500"
+                      />
+                      Custom Exam Name
+                    </label>
+                  </div>
+
+                  {isCustomExam ? (
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Unit Test 1 (July 2026), Weekly Surprise Test..."
+                      value={customExamType}
+                      onChange={e => setCustomExamType(e.target.value)}
+                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white"
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      <select
+                        value={examType}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setExamType(val);
+                          // Suggest appropriate default full marks based on exam type
+                          if (val.includes('Unit Test') || val.includes('Weekly')) {
+                            handleApplyFullMarksToAll(25);
+                          } else if (val.includes('Periodic') || val.includes('PT-')) {
+                            handleApplyFullMarksToAll(50);
+                          } else if (val.includes('Annual') || val.includes('Board') || val.includes('Half Yearly')) {
+                            handleApplyFullMarksToAll(100);
+                          }
+                        }}
+                        className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
+                      >
+                        <option value="Unit Test 1 (25 Marks)">Unit Test 1 (25 Marks)</option>
+                        <option value="Unit Test 2 (25 Marks)">Unit Test 2 (25 Marks)</option>
+                        <option value="Weekly Class Test (20 Marks)">Weekly Class Test (20 Marks)</option>
+                        <option value="Periodic Test 1 (PT-1 - 50 Marks)">Periodic Test 1 (PT-1 - 50 Marks)</option>
+                        <option value="Periodic Test 2 (PT-2 - 50 Marks)">Periodic Test 2 (PT-2 - 50 Marks)</option>
+                        <option value="Half-Yearly Examination (80/100 Marks)">Half-Yearly Examination (80/100 Marks)</option>
+                        <option value="Mid-Term Examination (100 Marks)">Mid-Term Examination (100 Marks)</option>
+                        <option value="Pre-Board Examination (100 Marks)">Pre-Board Examination (100 Marks)</option>
+                        <option value="Annual Final Examination (100 Marks)">Annual Final Examination (100 Marks)</option>
+                      </select>
+
+                      {/* Quick preset chips */}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        <span className="text-[10px] text-slate-400 font-bold self-center">Quick Select:</span>
+                        {[
+                          { label: 'Unit Test 1 (25M)', full: 25 },
+                          { label: 'Unit Test 2 (25M)', full: 25 },
+                          { label: 'PT-1 (50M)', full: 50 },
+                          { label: 'Half Yearly (100M)', full: 100 },
+                          { label: 'Annual Final (100M)', full: 100 }
+                        ].map((p, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setExamType(p.label);
+                              setIsCustomExam(false);
+                              handleApplyFullMarksToAll(p.full);
+                            }}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                              examType === p.label && !isCustomExam
+                                ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-xs'
+                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-amber-400'
+                            }`}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* FULL MARKS SELECTION BAR (Default 100, 25, or Custom) */}
+                <div className="p-4 bg-gradient-to-br from-indigo-500/10 via-amber-500/5 to-transparent dark:bg-indigo-950/20 rounded-2xl border border-indigo-500/30 space-y-3">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                      <h4 className="font-black text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                        <Award className="w-4 h-4 text-indigo-500" /> Full Marks / Max Marks Setting (Batch Default)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Choose standard maximum score (e.g. 100 for finals, 25 for unit tests, or custom value) to apply across all subjects
+                      </p>
+                    </div>
+                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-xl border border-indigo-500/20">
+                      Standard: {defaultFullMarks} Marks
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-slate-600 dark:text-slate-400 font-bold">Standard Presets:</span>
+                    {[100, 80, 75, 50, 40, 25, 20].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => handleApplyFullMarksToAll(amt)}
+                        className={`px-3 py-1.5 rounded-xl font-black text-xs border transition-all cursor-pointer ${
+                          defaultFullMarks === amt
+                            ? 'bg-indigo-600 text-white border-indigo-500 shadow-md scale-105'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-indigo-400'
+                        }`}
+                      >
+                        {amt} Marks
+                      </button>
+                    ))}
+
+                    <div className="flex items-center gap-1.5 ml-auto w-full sm:w-auto pt-2 sm:pt-0">
+                      <span className="text-xs text-slate-500 font-bold">Custom Full Marks:</span>
                       <input
                         type="number"
-                        max={100}
-                        value={subj.marksObtained}
-                        onChange={e => {
-                          const updated = [...subjectsList];
-                          updated[idx].marksObtained = Number(e.target.value);
-                          setSubjectsList(updated);
-                        }}
-                        className="w-20 p-1.5 border rounded-lg text-right font-bold"
+                        min="1"
+                        max="500"
+                        value={customFullMarksInput}
+                        onChange={e => setCustomFullMarksInput(e.target.value)}
+                        placeholder="e.g. 35"
+                        className="w-20 p-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-center font-black text-xs text-slate-900 dark:text-white"
                       />
+                      <button
+                        type="button"
+                        onClick={() => handleApplyFullMarksToAll(Number(customFullMarksInput) || 100)}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all"
+                      >
+                        Apply
+                      </button>
                     </div>
-                  ))}
+                  </div>
                 </div>
-                <button type="submit" className="px-5 py-2.5 bg-amber-500 text-slate-950 font-black rounded-xl">
-                  Save Exam Result
-                </button>
+
+                {/* Subject-Wise Marks Entry Table */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-extrabold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                      <BookOpen className="w-4 h-4 text-amber-500" /> Subject-wise Score Breakdown
+                    </h4>
+                    <span className="text-[11px] text-slate-500">
+                      {subjectsList.length} Subjects Configured
+                    </span>
+                  </div>
+
+                  {/* Responsive Grid for Subjects */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {subjectsList.map((subj, idx) => {
+                      const max = Number(subj.maxMarks) || defaultFullMarks;
+                      const obt = Number(subj.marksObtained) || 0;
+                      const pct = max > 0 ? Math.round((obt / max) * 100) : 0;
+                      const isPassing = pct >= 33;
+
+                      return (
+                        <div
+                          key={idx}
+                          className="p-3.5 bg-stone-50 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5 shadow-xs"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <input
+                              type="text"
+                              value={subj.subject}
+                              onChange={e => {
+                                const updated = [...subjectsList];
+                                updated[idx].subject = e.target.value;
+                                setSubjectsList(updated);
+                              }}
+                              className="font-black text-xs text-slate-900 dark:text-white bg-transparent border-b border-dashed border-slate-300 dark:border-slate-700 focus:border-amber-400 outline-none pb-0.5 flex-1"
+                            />
+                            
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`px-2 py-0.5 text-[11px] font-black rounded-lg border ${
+                                  isPassing
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                                }`}
+                              >
+                                {subj.grade || calculateGrade(obt, max)} ({pct}%)
+                              </span>
+
+                              {subjectsList.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSubjectsList(subjectsList.filter((_, i) => i !== idx));
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-rose-500 rounded-lg cursor-pointer"
+                                  title="Remove Subject"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <label className="block text-[10px] text-slate-500 font-bold mb-1">
+                                Full / Max Marks
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={subj.maxMarks || defaultFullMarks}
+                                onChange={e => {
+                                  const updated = [...subjectsList];
+                                  const newMax = Math.max(1, Number(e.target.value) || 1);
+                                  updated[idx].maxMarks = newMax;
+                                  updated[idx].marksObtained = Math.min(Number(updated[idx].marksObtained) || 0, newMax);
+                                  updated[idx].grade = calculateGrade(updated[idx].marksObtained, newMax);
+                                  setSubjectsList(updated);
+                                }}
+                                className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl font-mono font-bold text-center text-slate-900 dark:text-white"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] text-slate-500 font-bold mb-1">
+                                Marks Obtained *
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                max={subj.maxMarks || defaultFullMarks}
+                                value={subj.marksObtained}
+                                onChange={e => {
+                                  const updated = [...subjectsList];
+                                  const currentMax = Number(updated[idx].maxMarks) || defaultFullMarks;
+                                  const rawVal = Number(e.target.value);
+                                  const clampedVal = Math.min(Math.max(0, rawVal), currentMax);
+                                  updated[idx].marksObtained = clampedVal;
+                                  updated[idx].grade = calculateGrade(clampedVal, currentMax);
+                                  setSubjectsList(updated);
+                                }}
+                                className="w-full p-2 bg-white dark:bg-slate-900 border-2 border-amber-400/60 dark:border-amber-500/60 rounded-xl font-mono font-black text-center text-slate-900 dark:text-white text-sm focus:border-amber-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add Extra Subject */}
+                  <div className="p-3 bg-stone-50 dark:bg-slate-800/60 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 space-y-2">
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Add custom subject (e.g. Drawing, Moral Science, General Knowledge)..."
+                        value={newSubjectInput}
+                        onChange={e => setNewSubjectInput(e.target.value)}
+                        className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newSubjectInput.trim()) {
+                            setSubjectsList([
+                              ...subjectsList,
+                              {
+                                subject: newSubjectInput.trim(),
+                                maxMarks: defaultFullMarks,
+                                marksObtained: Math.round(defaultFullMarks * 0.8),
+                                grade: calculateGrade(Math.round(defaultFullMarks * 0.8), defaultFullMarks)
+                              }
+                            ]);
+                            setNewSubjectInput('');
+                          }
+                        }}
+                        className="w-full sm:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs rounded-xl shadow flex items-center justify-center gap-1 shrink-0 cursor-pointer transition-all"
+                      >
+                        <Plus className="w-4 h-4" /> Add Subject
+                      </button>
+                    </div>
+
+                    {/* Pre-made subject chips */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <span className="text-[10px] text-slate-400 font-bold self-center">Quick Add:</span>
+                      {['Drawing / Art', 'Moral Science', 'General Knowledge', 'Physical Education', 'EVS'].map(sName => (
+                        <button
+                          key={sName}
+                          type="button"
+                          onClick={() => {
+                            if (!subjectsList.some(s => s.subject.toLowerCase() === sName.toLowerCase())) {
+                              setSubjectsList([
+                                ...subjectsList,
+                                {
+                                  subject: sName,
+                                  maxMarks: defaultFullMarks,
+                                  marksObtained: Math.round(defaultFullMarks * 0.8),
+                                  grade: calculateGrade(Math.round(defaultFullMarks * 0.8), defaultFullMarks)
+                                }
+                              ]);
+                            }
+                          }}
+                          className="px-2 py-0.5 bg-white dark:bg-slate-800 hover:bg-amber-500/10 text-slate-700 dark:text-slate-300 text-[10px] font-bold rounded-lg border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer"
+                        >
+                          + {sName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Scoreboard Summary */}
+                {(() => {
+                  const totalObtained = subjectsList.reduce((acc, curr) => acc + (Number(curr.marksObtained) || 0), 0);
+                  const grandMax = subjectsList.reduce((acc, curr) => acc + (Number(curr.maxMarks) || defaultFullMarks), 0);
+                  const overallPct = grandMax > 0 ? Math.round((totalObtained / grandMax) * 100) : 0;
+                  const overallGrade = calculateGrade(totalObtained, grandMax);
+                  const isPassed = overallPct >= 33;
+
+                  return (
+                    <div className="p-4 bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950 text-white rounded-3xl border border-slate-800 shadow-xl space-y-3">
+                      <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                          Official Result Summary Preview
+                        </span>
+                        <span
+                          className={`px-3 py-0.5 rounded-full font-black text-xs border ${
+                            isPassed
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                          }`}
+                        >
+                          {isPassed ? '✓ PASSED' : '✕ NEEDS IMPROVEMENT'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                        <div className="p-2.5 bg-white/5 rounded-2xl border border-white/10">
+                          <span className="text-[10px] text-slate-400 block font-bold">Total Marks</span>
+                          <span className="text-lg sm:text-xl font-black text-amber-400 font-mono">
+                            {totalObtained} / {grandMax}
+                          </span>
+                        </div>
+                        <div className="p-2.5 bg-white/5 rounded-2xl border border-white/10">
+                          <span className="text-[10px] text-slate-400 block font-bold">Aggregate Percentage</span>
+                          <span className="text-lg sm:text-xl font-black text-indigo-300 font-mono">
+                            {overallPct}%
+                          </span>
+                        </div>
+                        <div className="p-2.5 bg-white/5 rounded-2xl border border-white/10">
+                          <span className="text-[10px] text-slate-400 block font-bold">Final Grade</span>
+                          <span className="text-lg sm:text-xl font-black text-emerald-400 font-mono">
+                            {overallGrade}
+                          </span>
+                        </div>
+                        <div className="p-2.5 bg-white/5 rounded-2xl border border-white/10">
+                          <span className="text-[10px] text-slate-400 block font-bold">Subjects Count</span>
+                          <span className="text-lg sm:text-xl font-black text-white font-mono">
+                            {subjectsList.length}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Teacher Remarks */}
+                <div className="space-y-2">
+                  <label className="block font-extrabold text-slate-900 dark:text-white text-xs">
+                    Class Teacher / Academic Remarks
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={teacherRemarks}
+                    onChange={e => setTeacherRemarks(e.target.value)}
+                    placeholder="Enter teacher feedback for the student report card..."
+                    className="w-full p-3 bg-stone-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                  {/* Quick remarks chips */}
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="text-[10px] text-slate-400 font-bold self-center">Quick Remarks:</span>
+                    {[
+                      'Outstanding academic performance! Keep it up.',
+                      'Very sincere and hard working student.',
+                      'Good academic progress, shows great potential.',
+                      'Needs improvement in mathematics and sciences.',
+                      'Regular practice and revision recommended.'
+                    ].map((rem, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setTeacherRemarks(rem)}
+                        className="px-2 py-0.5 bg-stone-100 dark:bg-slate-800 hover:bg-amber-500/10 text-slate-700 dark:text-slate-300 text-[10px] rounded-lg border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer"
+                      >
+                        {rem}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedExamStudent(null)}
+                    className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-7 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black rounded-xl shadow-lg text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  >
+                    <Check className="w-4 h-4" />
+                    Publish & Save Marksheet to Student Portal
+                  </button>
+                </div>
               </form>
             )}
           </div>
@@ -2519,35 +3084,58 @@ export const TeacherWorkspace: React.FC = () => {
                   >
                     <div className="space-y-2.5">
                       <div className="flex justify-between items-start gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/40 text-indigo-600 dark:text-indigo-400 font-black text-sm flex items-center justify-center">
-                            {st.rollNo || '#'}
-                          </div>
-                          <div>
-                            <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight">{st.name}</h4>
-                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                              Roll #{st.rollNo} • ID: {st.userId || st.id}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {st.photo ? (
+                            <img
+                              src={st.photo}
+                              alt={st.name}
+                              className="w-11 h-11 rounded-2xl object-cover border border-slate-300 dark:border-slate-600 shrink-0 shadow-xs"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 text-indigo-600 dark:text-indigo-400 font-black text-sm flex items-center justify-center shrink-0">
+                              {st.rollNo || '#'}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight truncate">{st.name}</h4>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+                              Roll #{st.rollNo} • Class {st.class}-{st.section}
                             </span>
                           </div>
                         </div>
 
-                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold text-[10px] rounded-lg border border-emerald-500/20">
+                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold text-[10px] rounded-lg border border-emerald-500/20 shrink-0">
                           Active
                         </span>
                       </div>
 
+                      {/* Facility Badges (Hostel & Transport) */}
+                      {(st.hostelEnrolled || st.transportEnrolled) && (
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {st.hostelEnrolled && (
+                            <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-black text-[10px] rounded-lg border border-indigo-500/20 flex items-center gap-1">
+                              <Home className="w-3 h-3" /> Hostel
+                            </span>
+                          )}
+                          {st.transportEnrolled && (
+                            <span className="px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-black text-[10px] rounded-lg border border-amber-500/20 flex items-center gap-1 truncate max-w-[200px]">
+                              <Bus className="w-3 h-3" /> {st.transportRoute ? `Bus: ${st.transportRoute}` : 'School Bus'}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       <div className="text-xs space-y-1.5 pt-1 text-slate-600 dark:text-slate-300 border-t border-slate-200/60 dark:border-slate-700/60">
                         <p className="flex justify-between">
-                          <span className="text-slate-400 font-medium">Father / Guardian:</span>
-                          <strong className="text-slate-800 dark:text-slate-200">{st.parentName || 'Not Listed'}</strong>
+                          <span className="text-slate-400 font-medium">Parents:</span>
+                          <strong className="text-slate-800 dark:text-slate-200 truncate max-w-[170px]">
+                            {st.parentName || 'N/A'}{st.motherName ? ` & ${st.motherName}` : ''}
+                          </strong>
                         </p>
                         <p className="flex justify-between">
                           <span className="text-slate-400 font-medium">Phone:</span>
                           <strong className="text-slate-800 dark:text-slate-200">{st.phone || 'N/A'}</strong>
-                        </p>
-                        <p className="flex justify-between">
-                          <span className="text-slate-400 font-medium">Address:</span>
-                          <span className="text-slate-800 dark:text-slate-200 font-semibold truncate max-w-[160px]">{st.address || 'Sikta, West Champaran'}</span>
                         </p>
                         <p className="flex justify-between">
                           <span className="text-slate-400 font-medium">Fee Balance:</span>
@@ -2585,7 +3173,7 @@ export const TeacherWorkspace: React.FC = () => {
                       <button
                         onClick={() => {
                           setSelectedStudentForCard(st);
-                          setActiveTab('idcard');
+                          handleSwitchTab('idcard');
                         }}
                         className="py-1.5 px-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 text-emerald-700 dark:text-emerald-300 rounded-xl flex items-center gap-1 font-bold transition-all cursor-pointer"
                         title="View Digital ID Pass"
@@ -3541,25 +4129,125 @@ export const TeacherWorkspace: React.FC = () => {
 
       {/* Student Profile Edit Modal */}
       {showStudentModal && editingStudent && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-2xl w-full border border-slate-200 dark:border-slate-800 space-y-5 text-xs font-medium shadow-2xl my-8">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 max-w-2xl w-full border border-slate-200 dark:border-slate-800 space-y-5 text-xs font-medium shadow-2xl my-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2 font-heading">
-                <Edit3 className="w-5 h-5 text-amber-500" />
-                {editingStudent.name ? `Edit Profile: ${editingStudent.name}` : 'Register New Student Profile'}
-              </h3>
+              <div>
+                <h3 className="font-black text-slate-900 dark:text-white text-base sm:text-lg flex items-center gap-2 font-heading">
+                  <Edit3 className="w-5 h-5 text-amber-500" />
+                  {editingStudent.name ? `Edit Student: ${editingStudent.name}` : 'Register New Student Profile'}
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Update student identity, photo, and view facility enrollments for Class {editingStudent.class || selectedClass}-{editingStudent.section || selectedSection}
+                </p>
+              </div>
               <button
+                type="button"
                 onClick={() => {
                   setShowStudentModal(false);
                   setEditingStudent(null);
                 }}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl bg-slate-100 dark:bg-slate-800 font-bold"
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl bg-slate-100 dark:bg-slate-800 font-bold cursor-pointer transition-colors"
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleSaveStudentProfile} className="space-y-4">
+              {/* Photo Upload & Preview Section */}
+              <div className="p-3.5 bg-stone-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+                <label className="block text-slate-800 dark:text-slate-200 font-extrabold text-xs flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-amber-500" /> Student Profile Photo
+                </label>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  {/* Photo Preview */}
+                  <div className="relative group shrink-0">
+                    {editingStudent.photo ? (
+                      <img
+                        src={editingStudent.photo}
+                        alt="Student preview"
+                        className="w-20 h-20 rounded-2xl object-cover border-2 border-amber-400 shadow-md"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-2xl bg-amber-500/10 border-2 border-dashed border-amber-400/60 flex flex-col items-center justify-center text-amber-600 dark:text-amber-400 gap-1">
+                        <Camera className="w-6 h-6" />
+                        <span className="text-[10px] font-bold">No Photo</span>
+                      </div>
+                    )}
+                    {editingStudent.photo && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingStudent({ ...editingStudent, photo: '' })}
+                        className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full text-[10px] shadow hover:bg-rose-600 cursor-pointer"
+                        title="Remove photo"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Photo Action Controls */}
+                  <div className="flex-1 space-y-2 w-full">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload from Phone / PC</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 2 * 1024 * 1024) {
+                                alert('Please select an image smaller than 2MB.');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                setEditingStudent({ ...editingStudent, photo: reader.result as string });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+
+                      {/* Avatar Quick Presets */}
+                      <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                        <span>Presets:</span>
+                        {[
+                          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                          'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
+                          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+                          'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80'
+                        ].map((url, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setEditingStudent({ ...editingStudent, photo: url })}
+                            className="w-6 h-6 rounded-full overflow-hidden border border-slate-300 hover:scale-110 transition-transform cursor-pointer"
+                          >
+                            <img src={url} alt="preset" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <input
+                      type="url"
+                      value={editingStudent.photo || ''}
+                      onChange={e => setEditingStudent({ ...editingStudent, photo: e.target.value })}
+                      placeholder="Or paste direct image URL (https://...)"
+                      className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Student Identity Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Student Full Name *</label>
@@ -3580,7 +4268,8 @@ export const TeacherWorkspace: React.FC = () => {
                     required
                     value={editingStudent.rollNo}
                     onChange={e => setEditingStudent({ ...editingStudent, rollNo: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                    placeholder="e.g. 101"
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-bold"
                   />
                 </div>
 
@@ -3625,6 +4314,17 @@ export const TeacherWorkspace: React.FC = () => {
                 </div>
 
                 <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Mother Name</label>
+                  <input
+                    type="text"
+                    value={editingStudent.motherName || ''}
+                    onChange={e => setEditingStudent({ ...editingStudent, motherName: e.target.value })}
+                    placeholder="e.g. Sunita Devi"
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Parent Phone Number *</label>
                   <input
                     type="text"
@@ -3633,6 +4333,40 @@ export const TeacherWorkspace: React.FC = () => {
                     onChange={e => setEditingStudent({ ...editingStudent, phone: e.target.value })}
                     placeholder="+91 98350 12345"
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Date of Birth (DOB)</label>
+                  <input
+                    type="date"
+                    value={editingStudent.dob || ''}
+                    onChange={e => setEditingStudent({ ...editingStudent, dob: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Gender</label>
+                  <select
+                    value={editingStudent.gender || 'Male'}
+                    onChange={e => setEditingStudent({ ...editingStudent, gender: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Enrollment / Reg Number</label>
+                  <input
+                    type="text"
+                    value={editingStudent.enrollmentNo || ''}
+                    onChange={e => setEditingStudent({ ...editingStudent, enrollmentNo: e.target.value })}
+                    placeholder="MPS-2026-001"
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
                   />
                 </div>
 
@@ -3647,7 +4381,7 @@ export const TeacherWorkspace: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Account Password</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Portal Password</label>
                   <input
                     type="text"
                     value={editingStudent.password || '123'}
@@ -3669,41 +4403,89 @@ export const TeacherWorkspace: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800/60 text-xs">
-                <div>
-                  <span className="block text-amber-900 dark:text-amber-300 font-bold mb-1">Annual Fee Structure (Read-Only)</span>
-                  <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-800 font-extrabold text-slate-900 dark:text-white">
-                    ₹{(editingStudent.feeInfo?.totalAnnual || 25100).toLocaleString()}
+              {/* HOSTEL & TRANSPORTATION FACILITIES (VIEW ONLY / READ ONLY FOR TEACHERS) */}
+              <div className="p-4 bg-gradient-to-r from-amber-500/10 via-indigo-500/5 to-slate-50 dark:from-slate-800/80 dark:to-slate-800/40 rounded-2xl border border-amber-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-amber-500" />
+                    Hostel & Transportation Facilities (Admin Managed — View Only)
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+                    Read-Only for Teachers
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {/* Hostel Facility Status */}
+                  <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Home className="w-4 h-4 text-indigo-500" />
+                      <span className="font-bold text-slate-800 dark:text-slate-200">Hostel Accommodation</span>
+                    </div>
+                    {editingStudent.hostelEnrolled ? (
+                      <div className="flex items-center gap-2 pt-1">
+                        <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-black text-[11px] rounded-lg border border-indigo-500/20">
+                          🏠 Enrolled
+                        </span>
+                        <span className="text-slate-600 dark:text-slate-400 font-bold font-mono">
+                          ₹{(editingStudent.hostelFee || 5000).toLocaleString()}/mo
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-slate-500 text-[11px] pt-1">Not Enrolled (Day Scholar)</p>
+                    )}
+                  </div>
+
+                  {/* Transportation Facility Status */}
+                  <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Bus className="w-4 h-4 text-amber-500" />
+                      <span className="font-bold text-slate-800 dark:text-slate-200">School Bus / Transport</span>
+                    </div>
+                    {editingStudent.transportEnrolled ? (
+                      <div className="space-y-0.5 pt-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-black text-[11px] rounded-lg border border-amber-500/20">
+                            🚌 Active Route
+                          </span>
+                          <span className="text-slate-600 dark:text-slate-400 font-bold font-mono">
+                            ₹{(editingStudent.transportFee || 1000).toLocaleString()}/mo
+                          </span>
+                        </div>
+                        {editingStudent.transportRoute && (
+                          <p className="text-[10px] text-slate-500 font-medium truncate">
+                            Route: {editingStudent.transportRoute}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-slate-500 text-[11px] pt-1">Self Transport / Private</p>
+                    )}
                   </div>
                 </div>
 
-                <div>
-                  <span className="block text-amber-900 dark:text-amber-300 font-bold mb-1">Pending Fee Dues (Read-Only)</span>
-                  <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-800 font-extrabold text-rose-600">
-                    ₹{(editingStudent.feeInfo?.pending || 0).toLocaleString()}
-                  </div>
-                </div>
-
-                <p className="col-span-1 sm:col-span-2 text-[11px] text-amber-800 dark:text-amber-400 italic">
-                  * Note: Fee structure and pending dues are managed exclusively by the Finance & Admin Accounts department.
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                  * Note: Hostel and transport fee structures & enrollment are configured by the Principal / Admin accounts desk and are read-only for teachers.
                 </p>
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
                     setShowStudentModal(false);
                     setEditingStudent(null);
                   }}
-                  className="px-4 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl font-bold"
+                  className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs cursor-pointer transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl shadow-lg transition-transform hover:scale-[1.01]"
+                  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black rounded-xl shadow-lg text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
+                  <Save className="w-4 h-4" />
                   Save Student Profile
                 </button>
               </div>

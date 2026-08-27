@@ -5,7 +5,7 @@ import {
   ChevronDown, GraduationCap, ShieldCheck, Minimize2, Maximize2, MessageSquare,
   FileText, Zap
 } from 'lucide-react';
-import { apiUrl } from '../../lib/api';
+import { api, apiUrl } from '../../lib/api';
 
 interface Message {
   id: string;
@@ -17,27 +17,28 @@ interface Message {
 }
 
 const SUBJECTS = [
+  { id: 'all', name: 'All Topics / General', icon: Sparkles, color: 'from-amber-500 to-orange-600' },
   { id: 'math', name: 'Mathematics', icon: Calculator, color: 'from-amber-500 to-orange-600' },
   { id: 'science', name: 'Science', icon: Lightbulb, color: 'from-emerald-500 to-teal-600' },
   { id: 'english', name: 'English', icon: PenTool, color: 'from-blue-500 to-indigo-600' },
-  { id: 'hindi', name: 'Hindi Grammar & Lit', icon: BookOpen, color: 'from-purple-500 to-violet-600' },
+  { id: 'hindi', name: 'Hindi & Sanskrit', icon: BookOpen, color: 'from-purple-500 to-violet-600' },
   { id: 'social', name: 'Social Studies', icon: FileText, color: 'from-rose-500 to-pink-600' },
   { id: 'computer', name: 'Computer & AI', icon: Zap, color: 'from-cyan-500 to-blue-600' },
 ];
 
 const MODES = [
-  { id: 'step-by-step', name: 'Step-by-Step Solution', desc: 'Detailed breakdown with formulas' },
+  { id: 'step-by-step', name: 'Comprehensive / Step-by-Step', desc: 'Detailed breakdown with explanations' },
   { id: 'explain', name: 'Simple Explanation', desc: 'Easy analogies & key points' },
-  { id: 'essay', name: 'Essay & Grammar', desc: 'Letter writing & corrections' },
-  { id: 'quiz', name: 'Practice Questions', desc: 'Quiz yourself for upcoming exams' },
+  { id: 'essay', name: 'Writing & Language', desc: 'Letters, essays, grammar & drafts' },
+  { id: 'quiz', name: 'Practice Questions', desc: 'Quiz yourself & test concepts' },
 ];
 
 const STARTER_PROMPTS = [
+  { text: "Explain how AI and Large Language Models work in simple terms", subject: "Computer & AI" },
   { text: "Solve this quadratic equation: x² - 5x + 6 = 0 step by step", subject: "Mathematics" },
   { text: "Explain Newton's laws of motion with real-life examples", subject: "Science" },
   { text: "Help me write an application to the Principal requesting 3 days sick leave", subject: "English" },
-  { text: "What are the main causes and consequences of the French Revolution?", subject: "Social Studies" },
-  { text: "Explain how Photosynthesis works in plants with a quick summary", subject: "Science" },
+  { text: "What are the key causes and effects of the French Revolution?", subject: "Social Studies" },
   { text: "What is the difference between RAM and ROM in computers?", subject: "Computer & AI" }
 ];
 
@@ -64,23 +65,23 @@ export const AIHomeworkTutor: React.FC<AIHomeworkTutorProps> = ({
     {
       id: 'welcome',
       role: 'model',
-      content: `### 👋 Namaste! I'm **MPS Vidyarthi AI**
+      content: `### 👋 Namaste! I'm your **AI Assistant**
+**Powered by Google Gemini 3.7 Flash**
 
-Your 24/7 personal CBSE Homework & Study Companion for **Model Public School (MPS Sikta)**.
+Feel free to ask me **any question**! I can help you with:
+- 💡 **Any Topic or Question**: Ask anything you want to learn or explore.
+- 📐 **Math & Science**: Clear step-by-step solutions, derivations & formulas.
+- 💻 **Computer & Coding**: Python, JavaScript, HTML, CSS & algorithms.
+- ✍️ **English, Hindi & Writing**: Essay drafting, letter writing & grammar.
+- 📸 **Photo Questions**: Attach a photo or screenshot of your question!
 
-**How I can help you today:**
-- 📐 **Math & Physics**: Step-by-step solutions with NCERT formulas.
-- 🔬 **Science**: Clear concept explanations & lab diagram help.
-- ✍️ **English & Hindi**: Grammar checks, essay drafts & leave applications.
-- 📸 **Homework Photo**: Snap or upload a picture of your homework question!
-
-Select your subject and grade below, or ask me directly!`,
+Type any question below or pick a subject to start!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
 
   const [inputPrompt, setInputPrompt] = useState(initialPrompt || '');
-  const [selectedSubject, setSelectedSubject] = useState(initialSubject || 'Mathematics');
+  const [selectedSubject, setSelectedSubject] = useState(initialSubject || 'All Topics / General');
   const [selectedGrade, setSelectedGrade] = useState(classGrade || (initialClassName ? `Class ${initialClassName}` : 'Class 10'));
   const [selectedMode, setSelectedMode] = useState('step-by-step');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -150,24 +151,15 @@ Select your subject and grade below, or ask me directly!`,
           content: m.content
         }));
 
-      const res = await fetch(apiUrl('/api/ai/homework-tutor'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: promptToSend,
-          subject: selectedSubject,
-          grade: selectedGrade,
-          mode: selectedMode,
-          imageData: userMessage.image,
-          history
-        })
+      const data = await api.askHomeworkTutor({
+        prompt: promptToSend,
+        subject: selectedSubject,
+        grade: selectedGrade,
+        mode: selectedMode,
+        imageData: userMessage.image,
+        history,
+        enableSearch: true
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to get answer');
-      }
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -283,7 +275,7 @@ Select your subject and grade below, or ask me directly!`,
     <div className={`flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300 ${
       isWidgetMode 
         ? 'fixed bottom-4 right-4 z-50 w-[92vw] sm:w-[420px] max-h-[620px] h-[85vh]' 
-        : 'w-full max-w-4xl mx-auto h-[750px]'
+        : 'w-full max-w-4xl mx-auto h-[600px] sm:h-[750px] min-h-[500px]'
     }`}>
       {/* Top Header */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-4 flex items-center justify-between border-b border-blue-800/50">
@@ -293,13 +285,13 @@ Select your subject and grade below, or ask me directly!`,
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-bold text-base font-heading tracking-wide">MPS Vidyarthi AI</h2>
+              <h2 className="font-bold text-base font-heading tracking-wide">MPS AI Assistant</h2>
               <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                 <Sparkles className="w-2.5 h-2.5 text-amber-300" />
                 Gemini 3.7 Flash
               </span>
             </div>
-            <p className="text-xs text-slate-300 font-medium">Your 24/7 CBSE Homework & Study Tutor</p>
+            <p className="text-xs text-slate-300 font-medium">Ask any question, study concepts & get instant answers</p>
           </div>
         </div>
 
@@ -562,7 +554,7 @@ Select your subject and grade below, or ask me directly!`,
                 type="text"
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}
-                placeholder={`Ask ${selectedSubject} question or type your homework problem...`}
+                placeholder="Ask any question, topic, homework problem, or concept..."
                 className="flex-1 bg-stone-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
 

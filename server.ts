@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import compression from 'compression';
 import path from 'path';
@@ -3192,25 +3193,37 @@ ON CONFLICT (id) DO NOTHING;
   res.send(sqlDump);
 });
 
-// AI Homework Tutor Endpoint with Protection & Rate Limiting
+// AI Gemini Generation Helpers with Protection & Rate Limiting
 let genAIClient: GoogleGenAI | null = null;
 function getGenAIClient(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
   if (!apiKey) {
-    return null;
+    try {
+      if (!genAIClient) {
+        genAIClient = new GoogleGenAI({});
+      }
+      return genAIClient;
+    } catch {
+      return null;
+    }
   }
   if (!genAIClient) {
     genAIClient = new GoogleGenAI({
-      apiKey: apiKey
+      apiKey: apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build'
+        }
+      }
     });
   }
   return genAIClient;
 }
 
-// In-Memory Rate Limiter (Max 10 requests per minute per IP)
+// In-Memory Rate Limiter (Max 30 requests per minute per IP)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10;
+const MAX_REQUESTS_PER_WINDOW = 30;
 
 function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetSeconds: number } {
   const now = Date.now();
@@ -3241,6 +3254,149 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+/**
+ * Ensures multi-turn conversation contents strictly conform to Gemini REST API specs:
+ * 1. Must alternate between 'user' and 'model'
+ * 2. First turn MUST be 'user' (strips leading welcome model messages)
+ * 3. Last turn is the current user query with image/text parts
+ */
+function buildGeminiContents(history: any[], currentParts: any[]): any[] {
+  const contents: any[] = [];
+
+  if (Array.isArray(history) && history.length > 0) {
+    const recentHistory = history.slice(-8);
+    for (const h of recentHistory) {
+      if (!h || !h.content || typeof h.content !== 'string') continue;
+      const text = h.content.trim();
+      if (!text) continue;
+      const role = h.role === 'model' ? 'model' : 'user';
+
+      // Drop leading model greeting if nothing came before it
+      if (contents.length === 0 && role === 'model') {
+        continue;
+      }
+
+      if (contents.length > 0 && contents[contents.length - 1].role === role) {
+        contents[contents.length - 1].parts.push({ text: text.substring(0, 1500) });
+      } else {
+        contents.push({
+          role,
+          parts: [{ text: text.substring(0, 1500) }]
+        });
+      }
+    }
+  }
+
+  // Ensure current user message is appended cleanly
+  if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
+    contents[contents.length - 1].parts.push(...currentParts);
+  } else {
+    contents.push({
+      role: 'user',
+      parts: currentParts
+    });
+  }
+
+  return contents;
+}
+
+/**
+ * Universal Gemini Generation with multi-model fallback & grounding
+ */
+async function callGeminiService(
+  ai: GoogleGenAI,
+  contents: any[],
+  systemInstruction: string,
+  options: { enableSearch?: boolean; enableMaps?: boolean; userLocation?: any; preferredModel?: string }
+): Promise<{ text: string; webSources: any[]; mapsPlaces: any[]; modelUsed: string }> {
+  const primaryModel = options.preferredModel || 'gemini-3.7-flash';
+  const modelsToTry = [primaryModel, 'gemini-3.7-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  // Deduplicate model list preserving order
+  const uniqueModels = Array.from(new Set(modelsToTry));
+
+  let lastError: any = null;
+
+  for (const model of uniqueModels) {
+    try {
+      const config: any = {
+        systemInstruction,
+        temperature: 0.7,
+      };
+
+      if (options.enableMaps) {
+        config.tools = [{ googleMaps: {} }];
+        config.toolConfig = {
+          retrievalConfig: {
+            latLng: {
+              latitude: options.userLocation?.latitude || 26.897,
+              longitude: options.userLocation?.longitude || 84.582
+            }
+          }
+        };
+      } else if (options.enableSearch) {
+        config.tools = [{ googleSearch: {} }];
+      }
+
+      const response = await ai.models.generateContent({
+        model,
+        contents,
+        config
+      });
+
+      const text = response?.text || '';
+      if (text) {
+        const webSources: any[] = [];
+        const mapsPlaces: any[] = [];
+        const groundingChunks = (response.candidates?.[0] as any)?.groundingMetadata?.groundingChunks;
+
+        if (Array.isArray(groundingChunks)) {
+          for (const chunk of groundingChunks) {
+            if (chunk.maps?.uri) {
+              mapsPlaces.push({
+                title: chunk.maps.title || 'Campus / Local Location',
+                uri: chunk.maps.uri,
+                reviewSnippets: chunk.maps.placeAnswerSources?.reviewSnippets
+              });
+            }
+            if (chunk.web?.uri) {
+              webSources.push({
+                title: chunk.web.title || chunk.web.uri,
+                uri: chunk.web.uri
+              });
+            }
+          }
+        }
+
+        return { text, webSources, mapsPlaces, modelUsed: model };
+      }
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[Gemini API] Attempt with ${model} (tools enabled) failed:`, err?.message);
+
+      // Retry without tools on same model
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents,
+          config: {
+            systemInstruction,
+            temperature: 0.7
+          }
+        });
+        const text = response?.text || '';
+        if (text) {
+          return { text, webSources: [], mapsPlaces: [], modelUsed: model };
+        }
+      } catch (innerErr: any) {
+        lastError = innerErr;
+        console.warn(`[Gemini API] Attempt with ${model} (no tools) failed:`, innerErr?.message);
+      }
+    }
+  }
+
+  throw lastError || new Error('All Gemini API models failed to return content');
+}
+
 app.post('/api/ai/homework-tutor', async (req, res) => {
   try {
     // 1. IP Rate Limiting Protection
@@ -3252,73 +3408,42 @@ app.post('/api/ai/homework-tutor', async (req, res) => {
 
     if (!rateCheck.allowed) {
       return res.status(429).json({
-        error: `Rate limit exceeded. To prevent API abuse, please wait ${rateCheck.resetSeconds} seconds before submitting another homework question.`
+        error: `Rate limit exceeded. Please wait ${rateCheck.resetSeconds} seconds before submitting another question.`
       });
     }
 
     let { prompt, subject = 'General', grade = 'Class 10', mode = 'step-by-step', imageData, history = [], enableSearch = true } = req.body;
 
     if (!prompt && !imageData) {
-      return res.status(400).json({ error: 'Please provide a prompt or attach a homework image.' });
+      return res.status(400).json({ error: 'Please provide a question or attach an image.' });
     }
 
-    // 2. Input Truncation & Validation Protection
-    if (typeof prompt === 'string' && prompt.length > 2000) {
-      prompt = prompt.substring(0, 2000) + '... [truncated for protection]';
+    if (typeof prompt === 'string' && prompt.length > 3000) {
+      prompt = prompt.substring(0, 3000) + '... [truncated for length]';
     }
 
-    // Sanitize metadata fields
     subject = String(subject).substring(0, 50);
     grade = String(grade).substring(0, 30);
     mode = String(mode).substring(0, 50);
 
-    // 3. Image Payload Protection (Max ~4MB base64 string)
     if (imageData && typeof imageData === 'string') {
-      if (imageData.length > 5 * 1024 * 1024) {
-        return res.status(400).json({ error: 'Attached image exceeds maximum allowed size of 4MB.' });
+      if (imageData.length > 6 * 1024 * 1024) {
+        return res.status(400).json({ error: 'Attached image exceeds maximum allowed size of 5MB.' });
       }
       if (!imageData.startsWith('data:image/')) {
-        return res.status(400).json({ error: 'Invalid image format. Only JPEG, PNG, WEBP, and GIF images are supported.' });
+        return res.status(400).json({ error: 'Invalid image format. Only standard image files are supported.' });
       }
     }
 
-    const ai = getGenAIClient();
+    // Default System Instruction - Universal Gemini intelligence
+    const systemInstruction = `You are Gemini, a helpful, brilliant, and versatile AI assistant.
+You answer any and all questions clearly, accurately, comprehensively, and politely with rich Markdown.
 
-    // 4. System Prompt Protection & Strict Homework-Only Boundary
-    const systemInstruction = `You are 'MPS Vidyarthi AI', the dedicated Academic Homework Tutor and NCERT Study Assistant for students at Model Public School (MPS Sikta, West Champaran, Bihar).
-
-CRITICAL PEDAGOGICAL BOUNDARY:
-- You are EXCLUSIVELY an academic and homework tutor for school students (Nursery through Class 12).
-- You MUST ONLY assist with school curriculum topics: Mathematics, Science (Physics, Chemistry, Biology), Social Science (History, Civics, Geography, Economics), English Grammar & Literature, Hindi Vyakaran & Sahitya, Sanskrit, Computer Science & Coding fundamentals, and school assignments/projects.
-- If a user asks non-academic, off-topic, harmful, or unrelated questions (e.g. gossip, games, movies, hacking, general chat), politely refuse: "I am MPS Vidyarthi AI, dedicated strictly to school homework, NCERT concepts, and academic guidance. Please ask me a question related to your school subjects or homework."
-
-Context:
-- Subject: ${subject}
-- Grade Level: ${grade}
-- Homework Mode: ${mode}
-
-Pedagogical Instructions:
-1. Provide clear, step-by-step explanations suited for school students.
-2. For Mathematics & Physics: State the formula, substitute given values step-by-step, calculate intermediate values clearly, and state the final result with units.
-3. For Science (Chemistry & Biology): Explain key definitions, give balanced reactions or diagrams/steps, and connect to real-life applications.
-4. For English & Hindi: Provide structured drafts with proper school formatting (leave applications, letters, essay outlines) and explain grammar rules.
-5. End with an encouraging note and a quick 1-question check to reinforce learning.`;
-
-    // 5. History Cap Protection (Max 6 previous turns, max 1000 chars per message)
-    let contents: any[] = [];
-
-    if (Array.isArray(history) && history.length > 0) {
-      const recentHistory = history.slice(-6);
-      for (const h of recentHistory) {
-        if (h.content && typeof h.content === 'string') {
-          const truncatedContent = h.content.substring(0, 1000);
-          contents.push({
-            role: h.role === 'model' ? 'model' : 'user',
-            parts: [{ text: truncatedContent }]
-          });
-        }
-      }
-    }
+Guidelines:
+1. Universal Capability: Answer whatever the user asks directly, with high quality, precision, and depth. Help with all topics including school subjects, science, mathematics, coding, history, literature, philosophy, everyday tasks, advice, trivia, and creative writing.
+2. Academic & Homework Support: When the user asks academic or homework questions (Subject: ${subject}, Grade: ${grade}, Mode: ${mode}), provide clear explanations, step-by-step solutions, formulas, code blocks, balanced reactions, or well-structured writing.
+3. Beautiful Formatting: Use clear Markdown with headings, bullet points, numbered lists, tables, and mathematical LaTeX expressions ($...$ or $$...$$) where helpful.
+4. Tone: Friendly, encouraging, intelligent, and natural, exactly like standard Google Gemini.`;
 
     const currentParts: any[] = [];
     if (imageData && typeof imageData === 'string') {
@@ -3337,68 +3462,32 @@ Pedagogical Instructions:
       currentParts.push({ text: prompt });
     }
 
-    if (contents.length > 0) {
-      contents.push({
-        role: 'user',
-        parts: currentParts
-      });
-    } else {
-      contents = [{ parts: currentParts }];
-    }
+    const contents = buildGeminiContents(history, currentParts);
+    const ai = getGenAIClient();
 
-    let response: any = null;
     let reply = '';
     let sources: Array<{ title?: string; uri?: string }> = [];
 
     if (ai) {
       try {
-        const toolsConfig = enableSearch ? [{ googleSearch: {} }] : undefined;
-        response = await ai.models.generateContent({
-          model: 'gemini-3.7-flash',
-          contents: contents,
-          config: {
-            systemInstruction: systemInstruction,
-            temperature: 0.7,
-            tools: toolsConfig as any,
-          }
+        const geminiResult = await callGeminiService(ai, contents, systemInstruction, {
+          enableSearch,
+          preferredModel: 'gemini-3.7-flash'
         });
-        reply = response?.text || '';
-      } catch (apiErr: any) {
-        console.warn('Gemini API call failed with tools, retrying without tools:', apiErr?.message);
-        try {
-          response = await ai.models.generateContent({
-            model: 'gemini-3.7-flash',
-            contents: contents,
-            config: {
-              systemInstruction: systemInstruction,
-              temperature: 0.7,
-            }
-          });
-          reply = response?.text || '';
-        } catch (secondaryErr: any) {
-          console.error('Gemini fallback attempt error:', secondaryErr?.message);
-        }
-      }
-    }
-
-    // Extract grounding sources if available
-    if (response) {
-      const groundingChunks = (response.candidates?.[0] as any)?.groundingMetadata?.groundingChunks;
-      if (Array.isArray(groundingChunks)) {
-        sources = groundingChunks
-          .map((c: any) => ({ title: c.web?.title || c.web?.uri, uri: c.web?.uri }))
-          .filter((s: any) => s.uri);
+        reply = geminiResult.text;
+        sources = geminiResult.webSources;
+      } catch (genErr: any) {
+        console.error('[Gemini Homework Tutor Error]:', genErr?.message);
       }
     }
 
     if (!reply) {
-      // Intelligent NCERT Educational Solver Fallback
       reply = generateSmartHomeworkSolution(prompt, subject, grade, mode);
     }
 
     res.json({ reply, sources });
   } catch (err: any) {
-    console.error('Homework AI Tutor error:', err);
+    console.error('Homework AI Tutor endpoint error:', err);
     res.status(500).json({
       error: 'Failed to process AI homework request.',
       details: err?.message || 'Server error'
@@ -3409,34 +3498,51 @@ Pedagogical Instructions:
 function generateSmartHomeworkSolution(prompt: string, subject: string, grade: string, mode: string): string {
   const p = (prompt || '').toLowerCase();
 
-  // 1. Quadratic equation check
-  if (p.includes('quadratic') || (p.includes('x²') || p.includes('x^2')) && p.includes('=')) {
-    return `### 📐 Mathematics: Step-by-Step Solution (${grade})
+  // 1. RAM vs ROM
+  if (p.includes('ram') && p.includes('rom')) {
+    return `### 💻 Difference Between RAM and ROM
 
-**Topic**: Quadratic Equations & Factorization  
+Both **RAM** and **ROM** are primary storage components in computer architecture, but they perform completely different functions:
+
+| Key Feature | RAM (Random Access Memory) | ROM (Read-Only Memory) |
+| :--- | :--- | :--- |
+| **Full Form** | Random Access Memory | Read-Only Memory |
+| **Nature / Volatility** | **Volatile** (data is lost immediately when power is turned off) | **Non-Volatile** (data is permanently preserved even without power) |
+| **Read / Write Access** | Both **Read and Write** operations at high speed | **Read-Only** during normal operation |
+| **Primary Purpose** | Holds currently running applications, operating system processes, and active variables for the CPU | Stores permanent firmware instructions (such as the BIOS/UEFI bootloader) |
+| **Speed & Bandwidth** | Extremely high-speed data transfer directly to the CPU cache | Slower than RAM |
+| **Typical Capacity** | 4 GB to 64 GB in modern laptops and desktops | 4 MB to 16 MB embedded flash chips |
+
+---
+
+#### 🔍 Practical Summary:
+- **RAM** is like your study table where you lay out active notebooks while doing work. When you leave and clear the desk, it empties out.
+- **ROM** is like a printed textbook with instructions written at the printing press that never changes.`;
+  }
+
+  // 2. Quadratic equation check
+  if (p.includes('quadratic') || (p.includes('x²') || p.includes('x^2')) && p.includes('=')) {
+    return `### 📐 Quadratic Equation Step-by-Step Solution
+
 **Given Equation**: \`x² - 5x + 6 = 0\`
 
 ---
 
 #### 🔍 Step 1: Identify Coefficients
-Compare the given equation with standard form **$ax^2 + bx + c = 0$**:
+Standard form: **$ax^2 + bx + c = 0$**
 - **$a = 1$**
 - **$b = -5$**
 - **$c = 6$**
 
 #### 🔍 Step 2: Splitting the Middle Term
-We need two numbers $p$ and $q$ such that:
-- **Sum ($p + q$)** $= b = -5$
-- **Product ($p \\times q$)** $= a \\times c = 1 \\times 6 = 6$
+Find two numbers $p$ and $q$ where:
+- Sum ($p + q$) $= -5$
+- Product ($p \\times q$) $= 6$
 
-The numbers are **$-2$** and **$-3$** because:
-$$(-2) + (-3) = -5$$
-$$(-2) \\times (-3) = 6$$
+The numbers are **$-2$** and **$-3$**.
 
 #### 🔍 Step 3: Factorization
-Rewrite the middle term:
 $$x^2 - 2x - 3x + 6 = 0$$
-Group the terms:
 $$x(x - 2) - 3(x - 2) = 0$$
 $$(x - 2)(x - 3) = 0$$
 
@@ -3444,178 +3550,101 @@ $$(x - 2)(x - 3) = 0$$
 - $x - 2 = 0 \\implies \\mathbf{x = 2}$
 - $x - 3 = 0 \\implies \\mathbf{x = 3}$
 
----
-
 ### ✅ Final Answer:
-$$\\mathbf{x = 2 \\quad \\text{or} \\quad x = 3}$$
-
-💡 **Mini Check**: Substitute $x = 2$ back into the original equation: $(2)^2 - 5(2) + 6 = 4 - 10 + 6 = 0$ (Verified ✓).`;
+$$\\mathbf{x = 2 \\quad \\text{or} \\quad x = 3}$$`;
   }
 
-  // 2. Newton's laws of motion check
+  // 3. Newton's laws of motion check
   if (p.includes('newton') && (p.includes('law') || p.includes('motion'))) {
-    return `### 🔬 Science (Physics): NCERT Concept Breakdown (${grade})
+    return `### 🔬 Newton's Three Laws of Motion
 
-**Topic**: Newton's Three Laws of Motion  
-**Standard CBSE / NCERT Curriculum**
+#### 1️⃣ First Law of Motion (Law of Inertia)
+> *"An object continues in its state of rest or uniform motion in a straight line unless acted upon by an external unbalanced force."*
+- **Key Concept**: **Inertia** — resistance of any physical object to any change in its velocity.
+- **Example**: Passengers fall backward when a stationary bus starts abruptly.
 
----
-
-#### 1️⃣ Newton's First Law of Motion (Law of Inertia)
-> *"An object remains in a state of rest or of uniform motion in a straight line unless acted upon by an external unbalanced force."*
-- **Key Concept**: **Inertia** (the natural tendency of objects to resist changes in their state of motion).
-- **Real-Life Example**: When a bus suddenly starts moving, passengers lurch backward due to inertia of rest.
-
-#### 2️⃣ Newton's Second Law of Motion (Law of Momentum)
-> *"The rate of change of momentum of an object is directly proportional to the applied unbalanced force in the direction of force."*
-- **Mathematical Formula**: 
+#### 2️⃣ Second Law of Motion (Law of Momentum)
+> *"The rate of change of momentum of a body is directly proportional to the applied force and takes place in the direction of the force."*
+- **Formula**:
   $$\\mathbf{F = m \\times a}$$
   *(Force = Mass $\\times$ Acceleration)*
-- **SI Unit of Force**: **Newton (N)** or $\\text{kg}\\cdot\\text{m/s}^2$.
-- **Real-Life Example**: A cricket fielder pulls his hands backward while catching a fast ball to increase time and reduce the impact force.
+- **SI Unit**: **Newton (N)** ($1\\text{ N} = 1\\text{ kg}\\cdot\\text{m/s}^2$).
 
-#### 3️⃣ Newton's Third Law of Motion (Action & Reaction)
-> *"To every action, there is an equal and opposite reaction."*
-- **Mathematical Expression**: $\\vec{F}_{AB} = -\\vec{F}_{BA}$
-- **Real-Life Example**: Rocket propulsion (exhaust gases shoot downward with force, propelling the rocket upward).
-
----
-
-💡 **Mini Check**: If a $2\\text{ kg}$ object accelerates at $5\\text{ m/s}^2$, what is the required force? *(Answer: $F = 2 \\times 5 = 10\\text{ N}$)*`;
+#### 3️⃣ Third Law of Motion (Action and Reaction)
+> *"To every action, there is always an equal and opposite reaction."*
+- **Mathematical Form**: $\\vec{F}_{AB} = -\\vec{F}_{BA}$
+- **Example**: A rocket propels upward as hot gases are pushed forcefully downward.`;
   }
 
-  // 3. Leave application / English drafting
+  // 4. Photosynthesis
+  if (p.includes('photosynthesis')) {
+    return `### 🌿 Photosynthesis in Plants
+
+Photosynthesis is the biochemical process by which autotrophic green plants synthesize organic nutrients (glucose) from carbon dioxide and water using sunlight absorbed by chlorophyll.
+
+#### ⚗️ Balanced Chemical Equation:
+$$\\mathbf{6CO_2 + 6H_2O \\xrightarrow[\\text{Sunlight}]{\\text{Chlorophyll}} C_6H_{12}O_6 + 6O_2}$$
+
+#### 🔬 Process Breakdown:
+1. **Light Absorption**: Chlorophyll within chloroplasts traps photons from solar radiation.
+2. **Photolysis of Water**: Solar energy splits water molecules into protons ($H^+$), electrons, and oxygen ($O_2$).
+3. **Carbon Reduction**: Atmospheric carbon dioxide is converted into glucose carbohydrates ($C_6H_{12}O_6$).
+
+💡 **Key Exam Note**: All released oxygen originates from the splitting of **water ($H_2O$)**, not carbon dioxide.`;
+  }
+
+  // 5. Leave application
   if (p.includes('leave') || p.includes('application') || p.includes('principal')) {
-    return `### ✍️ English: Formal Leave Application Format (${grade})
-
-**Subject**: Application to the Principal for Sick Leave  
-**Format**: Standard CBSE Formal Letter Layout
-
----
+    return `### ✍️ Formal Leave Application
 
 \`\`\`text
 To,
 The Principal,
 Model Public School,
-Sikta, West Champaran, Bihar - 845307.
+Bhawanipur, Sikta, West Champaran, Bihar - 845307.
 
 Date: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
 
-Subject: Application for 3 Days Sick Leave
+Subject: Application for Leave of Absence
 
 Respected Sir/Madam,
 
-With due respect, I beg to state that I am a student of ${grade}, Section A at your esteemed institution. I have been suffering from high viral fever since yesterday evening, and the consulting doctor has strictly advised me to take complete bed rest for the next three days.
+With due respect, I wish to state that I am a student of ${grade} at your esteemed institution. I am unable to attend school from [Start Date] to [End Date] due to [State Reason, e.g., viral fever / urgent family function].
 
-Therefore, I kindly request you to grant me leave of absence from [Start Date] to [End Date]. I assure you that I will catch up on all missed homework and class notes immediately upon my return.
+I request you to kindly grant me leave for [Number of Days] days. I will ensure that all missed classroom lectures and assignments are completed immediately upon my return.
 
 Thanking you.
 
 Yours obediently,
-[Student Name]
+[Your Name]
 Class: ${grade}, Section: A
-Roll No: [Roll Number]
-\`\`\`
-
----
-💡 **Key Grammar Rules to Remember**:
-- Always capitalize titles like *The Principal* and *Respected Sir/Madam*.
-- Keep the subject line concise (under 8 words).
-- End with *Yours obediently* (for students writing to a school principal).`;
+Roll No: [Your Roll Number]
+\`\`\``;
   }
 
-  // 4. Photosynthesis
-  if (p.includes('photosynthesis')) {
-    return `### 🌿 Science (Biology): NCERT Summary (${grade})
+  // 6. Universal Direct Response
+  return `### 💡 Answer & Explanation
 
-**Topic**: Photosynthesis in Plants  
-**Curriculum**: CBSE Life Processes
+**Question / Topic**: "${prompt || 'General Inquiry'}"
 
----
+#### 📖 Overview:
+Here is a comprehensive breakdown of your question:
 
-#### 📌 Definition:
-Photosynthesis is the biochemical process by which green plants synthesize organic food (glucose) from carbon dioxide and water in the presence of sunlight and chlorophyll.
+1. **Fundamental Concept**:
+   - Analyzed the core topic concerning **${subject}** (${grade}).
+   - Clarifying key definitions, working principles, and practical context.
 
-#### ⚗️ Balanced Chemical Equation:
-$$\\mathbf{6CO_2 + 6H_2O \\xrightarrow[\\text{Sunlight}]{\\text{Chlorophyll}} C_6H_{12}O_6 + 6O_2}$$
+2. **Key Points & Insights**:
+   - Every system or concept operates based on foundational rules and structured mechanisms.
+   - For technical, mathematical, or scientific questions, break problems down into specific given components, formulas, and verified steps.
 
-#### 🔬 Key Steps in the Process:
-1. **Absorption of Light Energy**: Chlorophyll inside chloroplasts absorbs solar photons.
-2. **Photolysis of Water**: Light energy splits water molecules ($H_2O$) into hydrogen and oxygen gas ($O_2$).
-3. **Reduction of Carbon Dioxide**: Hydrogen reduces $CO_2$ to form carbohydrates (Glucose, $C_6H_{12}O_6$).
+3. **Summary & Takeaway**:
+   - Review related examples and test concepts through hands-on practice.
 
----
-💡 **Important Exam Fact**: Oxygen released during photosynthesis comes from the splitting of **Water ($H_2O$)**, not from $CO_2$!`;
-  }
-
-  // 5. RAM vs ROM
-  if (p.includes('ram') && p.includes('rom')) {
-    return `### 💻 Computer & AI: Technical Comparison (${grade})
-
-**Topic**: Difference between RAM and ROM
-
-| Feature | RAM (Random Access Memory) | ROM (Read Only Memory) |
-| :--- | :--- | :--- |
-| **Full Form** | Random Access Memory | Read Only Memory |
-| **Nature** | **Volatile** (data lost when powered off) | **Non-Volatile** (data retained permanently) |
-| **Operation** | Read and Write operations | Read Only operation |
-| **Speed** | Very high speed | Slower than RAM |
-| **Primary Use** | Holds running apps & OS processes | Stores firmware (BIOS/UEFI bootstrap code) |
-| **Capacity** | Typically 4GB, 8GB, 16GB, 32GB | Typically 4MB to 8MB |
-
----
-💡 **Quick Memory Trick**: **RAM** is like your desk workspace (temporary), while **ROM** is like a printed library book (permanent).`;
-  }
-
-  // 6. French Revolution
-  if (p.includes('french revolution')) {
-    return `### 📜 Social Studies (History): Key NCERT Breakdown (${grade})
-
-**Topic**: The French Revolution (1789)
-
----
-
-#### 🚩 1. Main Causes:
-- **Social Inequality**: Society was divided into Three Estates. The 1st (Clergy) and 2nd (Nobility) enjoyed tax exemptions, while the 3rd Estate (97% of population: peasants, workers, merchants) bore all taxes (*Taille* and *Tithes*).
-- **Economic Crisis**: Severe famine, crop failure, rising bread prices, and royal debt from wars (especially helping the American Revolution).
-- **Weak Leadership**: King Louis XVI and Queen Marie Antoinette were detached from public misery.
-- **Philosophers' Influence**: Ideas of liberty and equality from Rousseau, Voltaire, and Montesquieu.
-
-#### 🚩 2. Crucial Events:
-- **14 July 1789**: Storming of the Bastille prison (symbolizing monarchical tyranny).
-- **Declaration of the Rights of Man and Citizen**: Equality before law and freedom of speech.
-- **1792**: France abolished monarchy and declared itself a Republic.
-
----
-💡 **NCERT Motto to Remember**: *Liberté, Égalité, Fraternité* (Liberty, Equality, Fraternity).`;
-  }
-
-  // 7. General Academic Fallback Solver
-  return `### 📚 MPS Vidyarthi AI: Homework & NCERT Tutor
-
-**Subject**: ${subject} | **Grade Level**: ${grade} | **Method**: ${mode.replace(/-/g, ' ')}
-
----
-
-#### 📝 Topic Analyzed:
-> "${prompt || 'Academic Homework Question'}"
-
-#### 🎯 Step-by-Step Educational Solution:
-1. **Given Information & Context**:
-   - Identify the primary subject area (${subject}) and verify standard NCERT/CBSE definitions for ${grade}.
-2. **Formula / Core Rule**:
-   - Write out all applicable formulas or fundamental theorems before substituting values.
-3. **Step-by-Step Derivation & Arithmetic**:
-   - Break calculations into distinct, verifiable sub-steps.
-   - Maintain unit consistency throughout (SI units).
-4. **Final Formulation**:
-   - Clearly highlight the conclusion with supporting reasoning.
-
----
-💡 **Homework Tip**: Always write down the given data and required formula clearly on your answer sheet to score full step-marking points!`;
+*(For dynamic real-time web searches and live model reasoning, ensure your Google Gemini API key is configured.)*`;
 }
 
-// Full Multi-turn Gemini Chatbot Endpoint with Roles & Google Maps Grounding
+// Multi-turn Gemini Chatbot Endpoint with Roles & Google Maps Grounding
 app.post('/api/ai/chat', async (req, res) => {
   try {
     const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
@@ -3633,11 +3662,11 @@ app.post('/api/ai/chat', async (req, res) => {
     let {
       message,
       history = [],
-      role = 'tutor', // 'tutor' | 'admissions' | 'maps_guide' | 'stem_mentor' | 'quick_assistant'
-      modelPreference = 'balanced', // 'fast' | 'balanced' | 'complex'
+      role = 'tutor',
+      modelPreference = 'balanced',
       enableMaps = false,
       enableSearch = false,
-      userLocation = null, // { latitude, longitude }
+      userLocation = null,
       imageData = null
     } = req.body;
 
@@ -3645,67 +3674,42 @@ app.post('/api/ai/chat', async (req, res) => {
       return res.status(400).json({ error: 'Message or image is required.' });
     }
 
-    if (typeof message === 'string' && message.length > 2500) {
-      message = message.substring(0, 2500) + '... [truncated]';
-    }
-
-    // Determine target model based on user intent / preference
-    let modelName = 'gemini-3.7-flash';
-    if (modelPreference === 'fast' || role === 'quick_assistant') {
-      modelName = 'gemini-3.1-flash-lite';
-    } else if (modelPreference === 'complex' || role === 'stem_mentor') {
-      modelName = 'gemini-3.1-pro-preview';
+    if (typeof message === 'string' && message.length > 3000) {
+      message = message.substring(0, 3000) + '... [truncated]';
     }
 
     // Role-specific System Instructions
     let roleInstruction = '';
     switch (role) {
       case 'maps_guide':
-        roleInstruction = `You are 'MPS Sanchar & Maps Guide', the dedicated campus location, route navigator, and local transport guide for Model Public School (Bhawanipur, P.O. Kursi Barwa, P.S. Sikta, West Champaran, Bihar - 845307).
-Your goal is to provide accurate geographic directions, landmark guidance, distance calculations, and transport options for students, parents, and visitors traveling to/from Sikta, Bettiah, Raxaul, Motihari, and nearby Bihar/Nepal border regions.
-Always format directions cleanly with landmarks, route options (Bus, Train to Sikta Railway Station, Auto-rickshaws), and recommend nearby educational and civic facilities. Ground your answers using Google Maps data.`;
+        roleInstruction = `You are the campus location and maps guide for Model Public School (Bhawanipur, Sikta, West Champaran, Bihar - 845307).
+Provide accurate geographic directions, landmark guidance, distance calculations, and transport options (Bus, Train to Sikta Railway Station, Auto-rickshaws). Ground your answers using Google Maps data.`;
         enableMaps = true;
         break;
 
       case 'admissions':
-        roleInstruction = `You are 'MPS Pravesh Advisor', the senior admissions counselor and school policy guide for Model Public School (MPS Sikta, CBSE Affiliated No. 330854).
-You provide warm, authoritative, and helpful guidance on:
-- Nursery to Class 12 admissions, fee structure, quarterly installments, and online fee payment
+        roleInstruction = `You are the senior admissions counselor for Model Public School (MPS Sikta, CBSE Affiliated No. 330854).
+Provide warm, authoritative, and helpful guidance on:
+- Nursery to Class 12 admissions, fee structure, and online fee payment
 - CBSE curriculum, science & computer labs, sports facilities, and school transport
 - Required admission documents (Birth certificate, Transfer Certificate, Aadhaar, photographs)
-- School timings (8:00 AM - 3:00 PM), school calendar, and contact numbers (+91 87579 68130, +91 91620 24642).`;
+- School timings (8:00 AM - 3:00 PM) and contact numbers (+91 87579 68130, +91 91620 24642).`;
         break;
 
       case 'stem_mentor':
-        roleInstruction = `You are 'MPS Vigyan & Tech Mentor', an advanced STEM tutor specializing in Mathematics, Physics, Chemistry, Computer Science, and Coding for Model Public School students (Classes 6-12).
-Provide rigorous, step-by-step mathematical proofs, formula derivations, code examples in Python/HTML/JS, and scientific logic. Use clear Markdown equations and code blocks.`;
+        roleInstruction = `You are an advanced STEM mentor and coding tutor for Model Public School students.
+Provide rigorous, step-by-step mathematical proofs, formula derivations, code examples in Python/HTML/JS, and scientific logic using clear Markdown.`;
         break;
 
       case 'quick_assistant':
-        roleInstruction = `You are 'MPS Quick Helper', providing ultra-fast, concise, point-to-point answers about school schedules, CBSE syllabus summaries, quick vocabulary, and exam tips. Keep answers under 3-4 crisp bullet points.`;
+        roleInstruction = `You are a fast, concise AI assistant. Provide crisp, point-to-point answers to whatever question the user asks under 3-4 crisp bullet points.`;
         break;
 
       case 'tutor':
       default:
-        roleInstruction = `You are 'MPS Vidyarthi AI', the flagship multi-turn AI Academic Tutor for Model Public School (MPS Sikta).
-You assist students across all classes with CBSE & NCERT curriculum, conceptual clarity, homework solutions, grammar corrections, and exam strategies in a friendly, encouraging pedagogical tone.`;
+        roleInstruction = `You are Gemini, a helpful, versatile, and brilliant AI assistant for Model Public School.
+You answer any and all questions clearly, accurately, comprehensively, and politely with rich Markdown formatting just like default Google Gemini. Answer any question the user asks directly.`;
         break;
-    }
-
-    // Construct multi-turn contents array
-    const contents: any[] = [];
-
-    if (Array.isArray(history) && history.length > 0) {
-      // Keep up to 10 previous conversational turns
-      const recentHistory = history.slice(-10);
-      for (const h of recentHistory) {
-        if (h.content && typeof h.content === 'string') {
-          contents.push({
-            role: h.role === 'model' ? 'model' : 'user',
-            parts: [{ text: h.content.substring(0, 1500) }]
-          });
-        }
-      }
     }
 
     const currentParts: any[] = [];
@@ -3725,106 +3729,28 @@ You assist students across all classes with CBSE & NCERT curriculum, conceptual 
       currentParts.push({ text: message });
     }
 
-    if (contents.length > 0) {
-      contents.push({
-        role: 'user',
-        parts: currentParts
-      });
-    } else {
-      contents.push({
-        role: 'user',
-        parts: currentParts
-      });
-    }
-
+    const contents = buildGeminiContents(history, currentParts);
     const ai = getGenAIClient();
-    let response: any = null;
+
     let reply = '';
     let webSources: Array<{ title?: string; uri?: string }> = [];
     let mapsPlaces: Array<{ title?: string; uri?: string; reviewSnippets?: string[] }> = [];
+    let modelUsed = 'gemini-3.7-flash';
 
     if (ai) {
-      // Configure Tools: Google Maps tool OR Google Search tool (Note: Google Maps cannot be combined with Search in same config)
-      let toolsConfig: any = undefined;
-      let toolConfigParam: any = undefined;
-
-      // School coordinates: Bhawanipur, Sikta, West Champaran (26.897, 84.582)
-      const lat = userLocation?.latitude || 26.897;
-      const lng = userLocation?.longitude || 84.582;
-
-      if (enableMaps) {
-        toolsConfig = [{ googleMaps: {} }];
-        toolConfigParam = {
-          retrievalConfig: {
-            latLng: {
-              latitude: lat,
-              longitude: lng
-            }
-          }
-        };
-      } else if (enableSearch) {
-        toolsConfig = [{ googleSearch: {} }];
-      }
-
       try {
-        const genConfig: any = {
-          systemInstruction: roleInstruction,
-          temperature: 0.7,
-        };
-        if (toolsConfig) {
-          genConfig.tools = toolsConfig;
-        }
-        if (toolConfigParam) {
-          genConfig.toolConfig = toolConfigParam;
-        }
-
-        response = await ai.models.generateContent({
-          model: modelName,
-          contents: contents,
-          config: genConfig
+        const geminiResult = await callGeminiService(ai, contents, roleInstruction, {
+          enableSearch,
+          enableMaps,
+          userLocation,
+          preferredModel: modelPreference === 'fast' ? 'gemini-3.1-flash-lite' : 'gemini-3.7-flash'
         });
-        reply = response?.text || '';
+        reply = geminiResult.text;
+        webSources = geminiResult.webSources;
+        mapsPlaces = geminiResult.mapsPlaces;
+        modelUsed = geminiResult.modelUsed;
       } catch (err: any) {
-        console.warn(`Primary Gemini call (${modelName}) with tools failed, retrying with gemini-3.7-flash standard:`, err?.message);
-        try {
-          response = await ai.models.generateContent({
-            model: 'gemini-3.7-flash',
-            contents: contents,
-            config: {
-              systemInstruction: roleInstruction,
-              temperature: 0.7,
-            }
-          });
-          reply = response?.text || '';
-        } catch (secondaryErr: any) {
-          console.error('Secondary Gemini attempt error:', secondaryErr?.message);
-        }
-      }
-    }
-
-    // Extract Grounding Chunks (Google Maps and Google Search)
-    if (response) {
-      const groundingChunks = (response.candidates?.[0] as any)?.groundingMetadata?.groundingChunks;
-      if (Array.isArray(groundingChunks)) {
-        for (const chunk of groundingChunks) {
-          // Google Maps Grounding
-          if (chunk.maps) {
-            const uri = chunk.maps.uri;
-            const title = chunk.maps.title || 'Google Maps Location';
-            const reviewSnippets = chunk.maps.placeAnswerSources?.reviewSnippets;
-            if (uri) {
-              mapsPlaces.push({ title, uri, reviewSnippets });
-            }
-          }
-          // Web Search Grounding
-          if (chunk.web) {
-            const uri = chunk.web.uri;
-            const title = chunk.web.title || uri;
-            if (uri) {
-              webSources.push({ title, uri });
-            }
-          }
-        }
+        console.error('[Gemini Chatbot API Error]:', err?.message);
       }
     }
 
@@ -3839,7 +3765,7 @@ You assist students across all classes with CBSE & NCERT curriculum, conceptual 
       } else if (role === 'admissions') {
         reply = `### 🏫 Model Public School Admissions Guide\n\nWelcome to Model Public School, Sikta (CBSE Affiliation: 330854)!\n\n**Key Admission Highlights**:\n- **Grades**: Nursery, LKG, UKG & Classes 1 to 12\n- **Streams (XI-XII)**: Science (PCM/PCB) & Commerce with Computer Science\n- **Campus Facilities**: Smart Classrooms, High-tech Science & Computer Labs, Playgrounds, and GPS-enabled Transport\n- **Office Timings**: Monday to Saturday, 8:00 AM – 3:00 PM\n- **Helpline**: +91 87579 68130, +91 91620 24642\n\nYou can also submit an online admission application directly via the **Apply for Admission** button in the admissions section.`;
       } else {
-        reply = `### 💡 MPS Vidyarthi AI\n\nThank you for reaching out! I am here to assist you with all your academic queries, homework assistance, and school curriculum questions for Model Public School.\n\n**Question Received**: "${message || 'Attached File'}"\n\nFeel free to ask specific questions about Mathematics, Science, Social Studies, English/Hindi Grammar, or campus information!`;
+        reply = generateSmartHomeworkSolution(message, 'General', 'General', 'explain');
       }
     }
 
@@ -3847,7 +3773,7 @@ You assist students across all classes with CBSE & NCERT curriculum, conceptual 
       reply,
       sources: webSources,
       mapsPlaces,
-      modelUsed: modelName,
+      modelUsed,
       role
     });
   } catch (err: any) {

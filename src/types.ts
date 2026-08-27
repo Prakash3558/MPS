@@ -70,6 +70,12 @@ export interface Student {
   admissionDate?: string;
   feeInfo: FeeStructure;
   notice?: string;
+  hostelEnrolled?: boolean;
+  transportEnrolled?: boolean;
+  hostelFee?: number;
+  transportFee?: number;
+  transportRoute?: string;
+  feeMonthly?: number;
   addons?: {
     hostel?: { enabled: boolean; amount: number };
     transportation?: { enabled: boolean; amount: number };
