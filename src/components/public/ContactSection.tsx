@@ -2,42 +2,32 @@ import React, { useState } from 'react';
 import { useCMS } from '../../context/CMSContext';
 import { EditableText } from '../common/EditableText';
 import { Card3DTilt } from '../common/Card3DTilt';
-import { MapPin, Phone, Mail, Clock, School, ExternalLink, Navigation, Sparkles, Send, Compass, RotateCcw } from 'lucide-react';
-import { api } from '../../lib/api';
-import ReactMarkdown from 'react-markdown';
+import { MapPin, Phone, Mail, Clock, School, ExternalLink, Navigation, Compass } from 'lucide-react';
 
 export const ContactSection: React.FC = React.memo(() => {
   const { settings } = useCMS();
+  const [selectedRoute, setSelectedRoute] = useState<'bettiah' | 'raxaul' | 'sikta' | 'motihari'>('bettiah');
 
-  // Quick route question state for Google Maps Grounding
-  const [routeQuery, setRouteQuery] = useState('');
-  const [routeAnswer, setRouteAnswer] = useState<string | null>(null);
-  const [mapsPlaces, setMapsPlaces] = useState<Array<{ title?: string; uri?: string; reviewSnippets?: string[] }>>([]);
-  const [isQuerying, setIsQuerying] = useState(false);
-
-  const handleAskMapsAI = async (customQuery?: string) => {
-    const query = (customQuery || routeQuery).trim();
-    if (!query) return;
-
-    setIsQuerying(true);
-    setRouteAnswer(null);
-    setMapsPlaces([]);
-
-    try {
-      const res = await api.sendAIChat({
-        message: query,
-        role: 'maps_guide',
-        enableMaps: true,
-        userLocation: { latitude: 26.897, longitude: 84.582 }
-      });
-      setRouteAnswer(res.reply);
-      if (res.mapsPlaces && res.mapsPlaces.length > 0) {
-        setMapsPlaces(res.mapsPlaces);
-      }
-    } catch (e: any) {
-      setRouteAnswer(`To reach Model Public School Sikta, travel to Bhawanipur via Sikta main road (2.5 km from Sikta Railway Station, 28 km from Bettiah).`);
-    } finally {
-      setIsQuerying(false);
+  const routeGuides = {
+    bettiah: {
+      title: 'From Bettiah (District HQ - ~28 km)',
+      desc: 'Take the State Highway towards Mainatand / Sikta. Frequent buses and shared autos connect Bettiah directly to Sikta Market / Bhawanipur.',
+      time: 'Approx. 45-50 mins'
+    },
+    raxaul: {
+      title: 'From Raxaul / Nepal Border (~22 km)',
+      desc: 'Take the Sikta-Raxaul link road via Mainatand. Shared autos and direct buses are frequently available throughout the day.',
+      time: 'Approx. 35-40 mins'
+    },
+    sikta: {
+      title: 'From Sikta Railway Station (SKTA - ~2.5 km)',
+      desc: 'The school campus at Bhawanipur is just 5 minutes by auto-rickshaw or e-rickshaw from Sikta Railway Station.',
+      time: 'Approx. 5-7 mins'
+    },
+    motihari: {
+      title: 'From Motihari (East Champaran - ~65 km)',
+      desc: 'Travel via Bettiah or Sugauli-Raxaul highway route. Direct express buses connect Motihari to Bettiah and Sikta.',
+      time: 'Approx. 1.5-2 hours'
     }
   };
 
@@ -179,7 +169,7 @@ export const ContactSection: React.FC = React.memo(() => {
           </div>
         </div>
 
-        {/* AI Route & Directions Assistant */}
+        {/* Travel & Route Guide */}
         <div className="bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-800 shadow-xl text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
             <div className="flex items-center gap-3">
@@ -188,123 +178,48 @@ export const ContactSection: React.FC = React.memo(() => {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">
-                  Route & Directions Assistant
+                  Campus Travel & Route Guide
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Quick travel routes and directions from nearby towns and railway stations.
+                  Select your starting point to view directions to our school campus.
                 </p>
               </div>
             </div>
 
             {/* Quick Route Preset Chips */}
             <div className="flex flex-wrap gap-2">
-              {[
-                'From Bettiah',
-                'From Raxaul',
-                'From Sikta Station',
-                'From Motihari'
-              ].map((preset, idx) => (
+              {(['bettiah', 'raxaul', 'sikta', 'motihari'] as const).map((key) => (
                 <button
-                  key={idx}
-                  onClick={() => {
-                    setRouteQuery(`How to reach Model Public School Sikta ${preset}?`);
-                    handleAskMapsAI(`How to reach Model Public School Sikta ${preset}?`);
-                  }}
-                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1 rounded-full border border-slate-700 transition-colors cursor-pointer"
+                  key={key}
+                  onClick={() => setSelectedRoute(key)}
+                  className={`text-xs px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-medium ${
+                    selectedRoute === key
+                      ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                  }`}
                 >
-                  {preset}
+                  {key === 'bettiah' && 'From Bettiah'}
+                  {key === 'raxaul' && 'From Raxaul'}
+                  {key === 'sikta' && 'From Sikta Station'}
+                  {key === 'motihari' && 'From Motihari'}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Search Input Bar */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleAskMapsAI();
-            }}
-            className="flex flex-col sm:flex-row gap-2 mb-4"
-          >
-            <div className="relative flex-1">
-              <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
-              <input
-                type="text"
-                value={routeQuery}
-                onChange={(e) => setRouteQuery(e.target.value)}
-                placeholder="Ask route... e.g. How to reach MPS Sikta from Bettiah or nearby railway station?"
-                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-              />
+          <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-5 space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-emerald-400">
+                {routeGuides[selectedRoute].title}
+              </h4>
+              <span className="text-xs font-semibold text-amber-400 bg-amber-950/40 border border-amber-800/50 px-2.5 py-0.5 rounded-full">
+                {routeGuides[selectedRoute].time}
+              </span>
             </div>
-            <button
-              type="submit"
-              disabled={isQuerying || !routeQuery.trim()}
-              className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 flex-shrink-0"
-            >
-              {isQuerying ? (
-                <>
-                  <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                  <span>Grounding Maps...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>Get Directions</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Grounded Result Display */}
-          {routeAnswer && (
-            <div className="mt-4 bg-slate-950/90 border border-emerald-500/30 rounded-xl p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
-                  <Navigation className="w-4 h-4" />
-                  <span>Route Guidance & Place Details</span>
-                </div>
-                <button
-                  onClick={() => {
-                    setRouteAnswer(null);
-                    setMapsPlaces([]);
-                  }}
-                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Clear</span>
-                </button>
-              </div>
-
-              <div className="text-xs sm:text-sm text-slate-200 leading-relaxed prose prose-invert prose-p:my-1.5 prose-strong:text-amber-300">
-                <ReactMarkdown>{routeAnswer}</ReactMarkdown>
-              </div>
-
-              {/* Grounded Google Maps Links & Review Cards */}
-              {mapsPlaces.length > 0 && (
-                <div className="pt-3 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                  {mapsPlaces.map((place, idx) => (
-                    <a
-                      key={idx}
-                      href={place.uri}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-3 bg-slate-900/90 hover:bg-slate-900 border border-emerald-500/40 rounded-xl flex items-start justify-between gap-2 group transition-all"
-                    >
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-white group-hover:text-emerald-300 truncate">
-                          {place.title || 'View on Google Maps'}
-                        </h4>
-                        <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">
-                          {place.reviewSnippets?.[0] || 'Open direct location & navigation in Maps'}
-                        </p>
-                      </div>
-                      <ExternalLink className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5 group-hover:translate-x-0.5 transition-transform" />
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              {routeGuides[selectedRoute].desc}
+            </p>
+          </div>
         </div>
       </div>
     </section>

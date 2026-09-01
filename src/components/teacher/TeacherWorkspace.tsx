@@ -31,6 +31,7 @@ export const TeacherWorkspace: React.FC = () => {
 
   // Teacher Login State
   const [loginForm, setLoginForm] = useState({ username: '', phone: '', password: '' });
+  const [rememberMeDevice, setRememberMeDevice] = useState(true);
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [captchaRequired, setCaptchaRequired] = useState(false);
@@ -410,7 +411,11 @@ export const TeacherWorkspace: React.FC = () => {
         captchaToken: captchaToken || undefined
       });
       if (res.success && res.teacher) {
-        loginUser({ user: res.user, teacher: res.teacher });
+        loginUser({
+          user: res.user,
+          teacher: res.teacher,
+          rememberMe: rememberMeDevice
+        });
       } else {
         setLoginError(res.message || 'Invalid teacher username or password.');
       }
@@ -1056,6 +1061,19 @@ export const TeacherWorkspace: React.FC = () => {
                   isVerified={!!captchaToken}
                 />
               )}
+
+              <div className="flex items-center justify-between text-xs py-0.5">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMeDevice}
+                    onChange={e => setRememberMeDevice(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-500 bg-slate-800 border-slate-700 focus:ring-emerald-500 accent-amber-500 cursor-pointer"
+                  />
+                  <span className="font-semibold text-slate-200">Keep me logged in on this computer</span>
+                </label>
+                <span className="text-[11px] text-emerald-400 font-bold hidden sm:inline">Saved session ✓</span>
+              </div>
 
               <button
                 type="submit"

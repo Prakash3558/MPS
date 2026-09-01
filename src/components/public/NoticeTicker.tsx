@@ -74,16 +74,53 @@ export const NoticeTicker: React.FC = React.memo(() => {
   const badgeColorClass = {
     blue: 'bg-blue-600 text-white',
     rose: 'bg-rose-600 text-white',
-    amber: 'bg-amber-500 text-slate-950 font-black',
+    amber: 'bg-amber-400 text-slate-950 font-bold',
     emerald: 'bg-emerald-600 text-white',
     purple: 'bg-purple-600 text-white'
   }[bannerConfig.badgeColor || 'blue'] || 'bg-blue-600 text-white';
 
-  const speedClass = {
-    slow: 'duration-[45s]',
-    normal: 'duration-[25s]',
-    fast: 'duration-[12s]'
-  }[bannerConfig.speed || 'normal'] || 'duration-[25s]';
+  const durationSeconds = {
+    slow: '48s',
+    normal: '28s',
+    fast: '16s'
+  }[bannerConfig.speed || 'normal'] || '28s';
+
+  const itemsToDisplay = useMemo(() => {
+    if (useUrgent && notices.length > 0) {
+      return notices.map((n, i) => ({
+        id: n.id || `urgent-${i}`,
+        title: n.title || 'Notice',
+        content: n.content || ''
+      }));
+    }
+    return [
+      {
+        id: 'default-custom-1',
+        title: 'Admissions Open 2026-27',
+        content: bannerConfig.customText || 'Admissions Open for Session 2026-27 (Nursery to Class 10). Online Registration & Entrance Forms Available!'
+      }
+    ];
+  }, [useUrgent, notices, bannerConfig.customText]);
+
+  const renderItemsTrack = (trackKey: string) => (
+    <div key={trackKey} className="flex shrink-0 items-center gap-8 pr-8">
+      {(itemsToDisplay.length < 3 ? [0, 1, 2] : [0]).flatMap((multiplier) =>
+        itemsToDisplay.map((item, idx) => (
+          <span
+            key={`${trackKey}-${multiplier}-${item.id}-${idx}`}
+            className="inline-flex items-center gap-2 whitespace-nowrap text-xs"
+          >
+            <span className="font-bold text-amber-300 tracking-wide flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+              {item.title}:
+            </span>
+            <span className="text-slate-200 font-normal">{item.content}</span>
+            <span className="text-slate-500 font-bold ml-4 select-none">•</span>
+          </span>
+        ))
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -92,7 +129,7 @@ export const NoticeTicker: React.FC = React.memo(() => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex items-center gap-2 flex-shrink-0 z-10 bg-slate-900 pr-3">
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase flex items-center gap-1 bg-amber-400 text-slate-950">
+        <span className={`px-2.5 py-0.5 rounded-full text-[10px] tracking-wide uppercase flex items-center gap-1 shadow-sm ${badgeColorClass}`}>
           <Bell className="w-2.5 h-2.5" />
           <span>{bannerConfig.badgeText || (useUrgent ? 'Urgent' : 'Notice')}</span>
         </span>
@@ -100,38 +137,34 @@ export const NoticeTicker: React.FC = React.memo(() => {
 
       {/* Marquee Content Container */}
       <div className="flex-1 overflow-hidden relative mx-2">
-        <div
-          className={`whitespace-nowrap flex items-center gap-8 ${
-            bannerConfig.isMarquee !== false
-              ? `animate-marquee ${speedClass} ${isHovered ? '[animation-play-state:paused]' : ''}`
-              : ''
-          }`}
-        >
-          {useUrgent ? (
-            notices.map((notice, idx) => (
-              <span key={`notice-${notice.id}-${idx}`} className="inline-flex items-center gap-2">
-                <span className="font-semibold text-amber-300">{notice.title}:</span>
-                <span className="text-slate-300">{notice.content}</span>
-                {idx < notices.length - 1 && (
-                  <span className="text-slate-500 font-bold mx-2">•</span>
-                )}
+        {bannerConfig.isMarquee !== false ? (
+          <div
+            className="flex w-max shrink-0 items-center animate-marquee"
+            style={{
+              animationDuration: durationSeconds,
+              animationPlayState: isHovered ? 'paused' : 'running'
+            }}
+          >
+            {renderItemsTrack('track-1')}
+            {renderItemsTrack('track-2')}
+          </div>
+        ) : (
+          <div className="flex items-center gap-4 overflow-x-auto py-0.5 scrollbar-none">
+            {itemsToDisplay.map((item, idx) => (
+              <span key={`static-${item.id}-${idx}`} className="inline-flex items-center gap-2 whitespace-nowrap text-xs">
+                <span className="font-bold text-amber-300">{item.title}:</span>
+                <span className="text-slate-200">{item.content}</span>
               </span>
-            ))
-          ) : (
-            <span className="inline-flex items-center gap-2">
-              <span className="font-normal text-slate-300">
-                {bannerConfig.customText || 'Admissions Open for Session 2026-27 (Nursery to Class 10). Online Registration & Entrance Forms Available!'}
-              </span>
-            </span>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Action Link Button if provided */}
       {bannerConfig.linkText && bannerConfig.linkUrl && (
         <a
           href={bannerConfig.linkUrl}
-          className="hidden sm:inline-flex items-center gap-1 ml-3 px-3 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-medium text-[10px] tracking-wide transition-all border border-white/15 flex-shrink-0"
+          className="hidden sm:inline-flex items-center gap-1 ml-3 px-3 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-medium text-[10px] tracking-wide transition-all border border-white/15 flex-shrink-0 z-10 bg-slate-900"
         >
           <span>{bannerConfig.linkText}</span>
           <ExternalLink className="w-2.5 h-2.5" />

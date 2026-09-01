@@ -1,15 +1,15 @@
 {
   "settings": {
-    "school_name": "Model Public School (MPS Sikta)",
+    "school_name": "Model Public School",
     "tagline": "Empowering Young Minds for a Brighter Future",
     "cbse_affiliation": "330854",
     "address": "AT- Bhawanipur, P.O.- Kursi Barwa, P.S.- Sikta, West Champaran, Bihar - 845307",
     "phones": "+91 87579 68130, +91 91620 24642",
     "email": "modelpublicschool@gmail.com",
-    "principal_name": "Dr. R.K. Sharma",
+    "principal_name": "Mr. Waseem Aalam",
     "principal_message": "Welcome to Model Public School, Sikta. We are committed to fostering academic excellence, moral integrity, and holistic development in every child. Our modern infrastructure paired with experienced educators creates an inspiring learning atmosphere.",
-    "principal_photo": "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=600",
-    "logo_url": "/logo.svg",
+    "principal_photo": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787745526198_WhatsApp-Image-2026-.png",
+    "logo_url": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1786887714007_Screenshot_2026-08-0.png",
     "theme_colors": {
       "primary": "#1e3a8a",
       "secondary": "#d97706",
@@ -24,24 +24,24 @@
       {
         "id": "slide-1",
         "badge": "CBSE Affiliated No. 330854",
-        "title": "Welcome to Model Public School, Sikta",
+        "image": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1786887737537_BUILDING__1__png.png",
+        "title": "Welcome to Model Public School",
         "subtitle": "Nurturing curiosity, character, and scholastic distinction in West Champaran, Bihar.",
-        "image": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=1600",
-        "primaryBtnText": "Explore Admissions",
         "primaryBtnUrl": "#admissions",
-        "secondaryBtnText": "Student Portal Login",
-        "secondaryBtnUrl": "/portal"
+        "primaryBtnText": "Explore Admissions",
+        "secondaryBtnUrl": "/portal",
+        "secondaryBtnText": "Student Portal Login"
       },
       {
         "id": "slide-2",
         "badge": "State-of-the-Art Campus",
+        "image": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787016759635_BUILDING-2__1__png.png",
         "title": "Holistic Education & Modern Smart Classrooms",
         "subtitle": "Digital learning tools, advanced science laboratories, sports facilities, and individual attention.",
-        "image": "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1600",
-        "primaryBtnText": "View Facilities",
         "primaryBtnUrl": "#facilities",
-        "secondaryBtnText": "View Gallery",
-        "secondaryBtnUrl": "#gallery"
+        "primaryBtnText": "View Facilities",
+        "secondaryBtnUrl": "#gallery",
+        "secondaryBtnText": "View Gallery"
       }
     ],
     "content_blocks": {
@@ -52,141 +52,175 @@
       "fee.headline": "Transparent & Affordable Fee Structure",
       "fee.subtext": "Quality education made accessible with no hidden charges. Monthly installments and merit scholarships available.",
       "contact.heading": "Get in Touch with Our Campus",
-      "contact.subtext": "Visit our administration block or call us for admissions, campus tours, and general inquiries."
+      "contact.subtext": "Visit our administration block or call us for admissions, campus tours, and general inquiries.",
+      "header.schoolName": "Model Public School",
+      "footer.schoolName": "Model Public School",
+      "about.principalName": "Mr. Waseem Aalam",
+      "about.principalMessage": "Welcome to Model Public School, Sikta. We are committed to fostering academic excellence, moral integrity, and holistic development in every child. Our modern infrastructure paired with experienced educators creates an inspiring learning atmosphere."
     },
     "gallery": [
       {
         "id": "g1",
-        "title": "Smart Classroom Session",
-        "category": "Academics",
-        "url": "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=800",
-        "caption": "Interactive learning with modern digital boards"
+        "url": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787017200903_PARK_webp.png",
+        "title": "Children Park",
+        "caption": "A separate Park for small childrens.",
+        "category": "Sports"
       },
       {
         "id": "g2",
+        "url": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787745816139_Screenshot_2026-08-2.png",
         "title": "Annual Science & Robotics Exhibition",
-        "category": "Events",
-        "url": "https://images.unsplash.com/photo-1564069114553-74154c0e58f6?auto=format&fit=crop&q=80&w=800",
-        "caption": "Students showcasing innovative science models"
+        "caption": "Students showcasing innovative science models",
+        "category": "Events"
       },
       {
         "id": "g3",
+        "url": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787017116521_Screenshot_2026-07-2.png",
         "title": "Sports Day Athletics",
-        "category": "Sports",
-        "url": "https://images.unsplash.com/photo-1576267423445-b2e0074d68a4?auto=format&fit=crop&q=80&w=800",
-        "caption": "Annual sports meet and track events"
+        "caption": "Annual sports meet and track events",
+        "category": "Sports"
       },
       {
         "id": "g4",
-        "title": "Modern Library & Resource Center",
-        "category": "Campus",
-        "url": "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=800",
-        "caption": "Over 10,000+ reference books and periodicals"
+        "url": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787017245383_Screenshot_2026-07-2.png",
+        "title": "Science laboratory",
+        "caption": "Over 1,000+ reference books, periodicals and various advance equipment.",
+        "category": "Campus"
       },
       {
         "id": "g5",
-        "title": "Cultural Dance Performance",
-        "category": "Events",
-        "url": "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=800",
-        "caption": "Celebrating Bihar cultural heritage day"
+        "url": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787745597627_WhatsApp-Image-2026-.png",
+        "title": "Prizes and achievements ",
+        "caption": "Students achieved various certificates and prizes.",
+        "category": "Academics"
       },
       {
         "id": "g6",
+        "url": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787017141730_c_webp.png",
         "title": "Advanced Computer & IT Laboratory",
-        "category": "Campus",
-        "url": "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=800",
-        "caption": "High-speed internet and coding sessions"
+        "caption": "High-speed internet and coding sessions",
+        "category": "Campus"
       }
     ],
     "facilities": [
       {
         "id": "f1",
-        "title": "Smart Digital Classrooms",
-        "iconName": "Monitor",
-        "description": "Interactive touch panels, audio-visual lessons, and digital curriculum integration.",
-        "image": "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=600"
+        "image": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787017080098_6_webp.png",
+        "title": "Extra Curriculum Activities ",
+        "iconName": "Music",
+        "description": "We organize different activities that promote teamwork, cultural learning, etc."
       },
       {
         "id": "f2",
+        "image": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787016815629_lab-rotated_jpeg.png",
         "title": "Science & Bio Laboratories",
         "iconName": "FlaskConical",
-        "description": "Fully furnished Physics, Chemistry, and Biology practical labs adhering to CBSE safety norms.",
-        "image": "https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=600"
+        "description": "Fully furnished Physics, Chemistry, and Biology practical labs adhering to CBSE safety norms."
       },
       {
         "id": "f3",
-        "title": "Computer & AI Center",
+        "image": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787016837568_Screenshot_2026-07-2.png",
+        "title": "Computer Laboratory ",
         "iconName": "Cpu",
-        "description": "Modern computer lab with high-speed internet, programming workshops, and robotics modules.",
-        "image": "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=600"
+        "description": "Modern computer lab with high-speed internet, programming workshops, and robotics modules."
       },
       {
         "id": "f4",
+        "image": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787016922255_BUILDING__1__png.png",
         "title": "School Bus Transport",
         "iconName": "Bus",
-        "description": "GPS-tracked school fleet covering Sikta, Bhawanipur, Kursi Barwa, and surrounding areas.",
-        "image": "https://images.unsplash.com/photo-1557223562-6c77ef16210f?auto=format&fit=crop&q=80&w=600"
-      },
-      {
-        "id": "f5",
-        "title": "Library & Reading Lounge",
-        "iconName": "BookOpen",
-        "description": "Vast collection of academic books, national journals, competitive guides, and literature.",
-        "image": "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=600"
+        "description": "GPS-tracked school fleet covering Sikta, Bhawanipur, Kursi Barwa, and surrounding areas."
       },
       {
         "id": "f6",
+        "image": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787016945393_Screenshot_2026-07-2.png",
         "title": "Sports Grounds & Fitness",
         "iconName": "Trophy",
-        "description": "Cricket pitch, football turf, badminton courts, table tennis, and yoga sessions.",
-        "image": "https://images.unsplash.com/photo-1576267423445-b2e0074d68a4?auto=format&fit=crop&q=80&w=600"
+        "description": "Cricket pitch, football turf, badminton courts, table tennis, and yoga sessions."
+      }
+    ],
+    "faculty": [
+      {
+        "id": "fac-2",
+        "bio": "Specialist in Olympiad mathematics and conceptual problem-solving techniques.",
+        "name": "Anjali Verma",
+        "email": "anjali.math@modelpublicschool.com",
+        "photo": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=600",
+        "subject": "Advanced Mathematics",
+        "experience": "14+ Years Experience",
+        "designation": "Head of Mathematics Dept",
+        "qualification": "M.Sc. Mathematics, B.Ed. (Gold Medalist)"
+      },
+      {
+        "id": "fac-3",
+        "bio": "Passionate about hands-on experimental chemistry and CBSE board exam coaching.",
+        "name": "Rajesh Kumar Singh",
+        "email": "rajesh.chem@modelpublicschool.com",
+        "photo": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600",
+        "subject": "Chemistry & Lab Incharge",
+        "experience": "10+ Years Experience",
+        "designation": "Senior PGT Chemistry",
+        "qualification": "M.Sc. Organic Chemistry, B.Ed."
       }
     ],
     "grade_fees": [
       {
         "id": "fee-1",
+        "examFee": 500,
         "className": "Nursery to U.K.G.",
-        "admissionFee": 3500,
-        "monthlyTuition": 850,
+        "admissionFee": 0,
         "annualCharges": 2000,
-        "examFee": 500
+        "monthlyTuition": 850
       },
       {
         "id": "fee-2",
+        "examFee": 500,
         "className": "Class 1 to Class 5",
-        "admissionFee": 4500,
-        "monthlyTuition": 1100,
-        "annualCharges": 2500,
-        "examFee": 600
+        "admissionFee": 0,
+        "annualCharges": 2000,
+        "monthlyTuition": 950
       },
       {
         "id": "fee-3",
+        "examFee": 500,
         "className": "Class 6 to Class 8",
-        "admissionFee": 5500,
-        "monthlyTuition": 1400,
-        "annualCharges": 3000,
-        "examFee": 800
+        "admissionFee": 0,
+        "annualCharges": 2000,
+        "monthlyTuition": 1100
       },
       {
         "id": "fee-4",
+        "examFee": 500,
         "className": "Class 9 & Class 10",
-        "admissionFee": 6500,
-        "monthlyTuition": 1800,
-        "annualCharges": 3500,
-        "examFee": 1000
+        "admissionFee": 0,
+        "annualCharges": 2000,
+        "monthlyTuition": 1200
       }
     ],
     "section_order": [
       "hero",
       "notice",
       "about",
-      "principal",
+      "faculty",
       "facilities",
       "gallery",
       "fees",
       "admissions",
       "contact"
-    ]
+    ],
+    "seo_meta": {
+      "meta_title": "Model Public School  Empowering Young Minds for a Brighter Future",
+      "meta_description": "Model Public School at AT- Bhawanipur, Kursi Barwa, P.S.- Sikta, West Champaran, Bihar - 845307. CBSE Affiliated school providing quality education and facilities."
+    },
+    "notice_banner": {
+      "speed": "normal",
+      "enabled": true,
+      "badgeText": "Notice",
+      "isMarquee": false,
+      "badgeColor": "rose",
+      "customText": "",
+      "useLiveNotices": true
+    }
   },
   "users": [
     {
@@ -688,6 +722,261 @@
   ],
   "adminAuth": {
     "username": "admin",
-    "passwordHash": "admin123"
-  }
+    "passwordHash": "$2b$10$JItl2n6gyPrEsJLOrAFUS.X9qlcCmEtYfFaW1drRDgw5X6NWZoMhq"
+  },
+  "onlineClasses": [
+    {
+      "id": "oc-1",
+      "title": "Mathematics Interactive Session",
+      "subject": "Mathematics",
+      "class": "10",
+      "section": "A",
+      "teacherName": "Sharma Sir",
+      "zoomUrl": "https://zoom.us/j/84530791620",
+      "meetingId": "845 307 91620",
+      "passcode": "MPS10A",
+      "startTime": "10:00 AM",
+      "endTime": "11:00 AM",
+      "date": "2026-08-30",
+      "status": "Live"
+    },
+    {
+      "id": "oc-2",
+      "title": "Science Lab - Ray Diagrams & Physics",
+      "subject": "Science",
+      "class": "10",
+      "section": "A",
+      "teacherName": "Sharma Sir",
+      "zoomUrl": "https://zoom.us/j/87579681300",
+      "meetingId": "875 796 81300",
+      "passcode": "SCIENCE10",
+      "startTime": "02:00 PM",
+      "endTime": "03:00 PM",
+      "date": "2026-08-30",
+      "status": "Scheduled"
+    }
+  ],
+  "onlineExams": [
+    {
+      "id": "oe-1",
+      "title": "Mathematics Monthly Online Quiz",
+      "subject": "Mathematics",
+      "class": "10",
+      "section": "A",
+      "zoomUrl": "https://zoom.us/j/91620246420",
+      "examUrl": "https://zoom.us/j/91620246420",
+      "durationMinutes": 45,
+      "totalMarks": 50,
+      "date": "2026-08-30",
+      "startTime": "11:30 AM",
+      "endTime": "12:15 PM",
+      "instructions": "1. Keep camera ON throughout the exam.\n2. Attempt all 25 objective and short answer questions.\n3. Submission locks automatically after 45 minutes.",
+      "status": "Live"
+    }
+  ],
+  "timeTable": [
+    {
+      "id": "tt-1",
+      "class": "10",
+      "section": "A",
+      "day": "Monday",
+      "time": "08:00 AM - 08:45 AM",
+      "subject": "Mathematics",
+      "teacherName": "Sharma Sir",
+      "roomNo": "Room 201"
+    },
+    {
+      "id": "tt-2",
+      "class": "10",
+      "section": "A",
+      "day": "Monday",
+      "time": "08:45 AM - 09:30 AM",
+      "subject": "Science",
+      "teacherName": "Rajesh Kumar",
+      "roomNo": "Lab 1"
+    },
+    {
+      "id": "tt-3",
+      "class": "10",
+      "section": "A",
+      "day": "Monday",
+      "time": "09:30 AM - 10:15 AM",
+      "subject": "English",
+      "teacherName": "Sunita Devi",
+      "roomNo": "Room 201"
+    },
+    {
+      "id": "tt-4",
+      "class": "10",
+      "section": "A",
+      "day": "Monday",
+      "time": "10:30 AM - 11:15 AM",
+      "subject": "Social Studies",
+      "teacherName": "A.K. Singh",
+      "roomNo": "Room 201"
+    },
+    {
+      "id": "tt-5",
+      "class": "10",
+      "section": "A",
+      "day": "Tuesday",
+      "time": "08:00 AM - 08:45 AM",
+      "subject": "Science",
+      "teacherName": "Rajesh Kumar",
+      "roomNo": "Lab 1"
+    },
+    {
+      "id": "tt-6",
+      "class": "10",
+      "section": "A",
+      "day": "Tuesday",
+      "time": "08:45 AM - 09:30 AM",
+      "subject": "Mathematics",
+      "teacherName": "Sharma Sir",
+      "roomNo": "Room 201"
+    }
+  ],
+  "studyMaterial": [
+    {
+      "id": "sm-1",
+      "class": "10",
+      "subject": "Mathematics",
+      "title": "NCERT Chapter 4 - Quadratic Equations Formula Sheet",
+      "description": "Comprehensive formula sheet, discriminant analysis, and solved previous year board questions.",
+      "fileUrl": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800",
+      "category": "Notes",
+      "uploadedBy": "Sharma Sir",
+      "date": "2026-08-02"
+    },
+    {
+      "id": "sm-2",
+      "class": "10",
+      "subject": "Science",
+      "title": "Light - Reflection & Refraction Practice Paper",
+      "description": "20 high-frequency CBSE Board practice numericals with answer key.",
+      "fileUrl": "https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=800",
+      "category": "Sample Paper",
+      "uploadedBy": "Rajesh Kumar",
+      "date": "2026-08-01"
+    }
+  ],
+  "schoolDiary": [
+    {
+      "id": "sd-1",
+      "class": "10",
+      "section": "A",
+      "date": "2026-08-30",
+      "subject": "Mathematics",
+      "note": "Solve Exercises 4.2 Questions 1 to 8 in fair notebook. Bring geometry box tomorrow.",
+      "teacherName": "Sharma Sir"
+    },
+    {
+      "id": "sd-2",
+      "class": "10",
+      "section": "A",
+      "date": "2026-08-30",
+      "subject": "Science",
+      "note": "Revise Snell Law of Refraction. Group activity scheduled for Friday.",
+      "teacherName": "Rajesh Kumar"
+    }
+  ],
+  "syllabus": [
+    {
+      "id": "syl-1",
+      "class": "10",
+      "subject": "Mathematics",
+      "term": "Term 1",
+      "chapters": "Ch 1: Real Numbers, Ch 2: Polynomials, Ch 3: Pair of Linear Equations, Ch 4: Quadratic Equations"
+    },
+    {
+      "id": "syl-2",
+      "class": "10",
+      "subject": "Science",
+      "term": "Term 1",
+      "chapters": "Ch 1: Chemical Reactions, Ch 2: Acids Bases Salts, Ch 6: Life Processes, Ch 10: Light Reflection"
+    },
+    {
+      "id": "syl-3",
+      "class": "10",
+      "subject": "English",
+      "term": "Term 1",
+      "chapters": "First Flight Ch 1-4, Footprints Ch 1-3, Reading Comprehension, Formal Letter Writing"
+    }
+  ],
+  "transport": [
+    {
+      "id": "tr-1",
+      "routeName": "Route A - Sikta Main Market to School",
+      "busNumber": "BR-22-P-8757",
+      "driverName": "Vikram Singh",
+      "driverPhone": "+91 91620 24642",
+      "stops": [
+        "Sikta Railway Station",
+        "Main Chowk",
+        "Bhawanipur Mod",
+        "School Gate"
+      ],
+      "feeMonthly": 600
+    },
+    {
+      "id": "tr-2",
+      "routeName": "Route B - Kursi Barwa & Surrounding Villages",
+      "busNumber": "BR-22-P-9162",
+      "driverName": "Ramesh Yadav",
+      "driverPhone": "+91 87579 68130",
+      "stops": [
+        "Kursi Barwa Mod",
+        "Parsa High School",
+        "Bhawanipur Tola",
+        "School Gate"
+      ],
+      "feeMonthly": 700
+    }
+  ],
+  "admitCards": [
+    {
+      "id": "ac-1",
+      "studentId": "s-1001",
+      "examName": "Mid-Term Board Preparation Exam 2026",
+      "rollNo": "1001",
+      "centerName": "Model Public School Examination Hall - Block A",
+      "instructions": "1. Carry this printed Admit Card and School ID Card.\n2. Arrive 15 minutes prior to exam timing.\n3. Electronic devices are strictly prohibited.",
+      "issueDate": "2026-08-01"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "dec-1",
+      "title": "Model Public School Code of Conduct & Academic Integrity Policy",
+      "content": "Students and parents agree to maintain 75%+ attendance, adhere to the prescribed school uniform, respect campus property, and uphold ethical academic conduct.",
+      "date": "2026-04-01"
+    },
+    {
+      "id": "dec-2",
+      "title": "Anti-Ragging & Campus Safety Declaration",
+      "content": "Model Public School strictly enforces zero-tolerance policy against bullying, harassment, and ragging in accordance with CBSE safety guidelines.",
+      "date": "2026-04-01"
+    }
+  ],
+  "schoolMessages": [
+    {
+      "id": "sm-101",
+      "studentId": "s-1001",
+      "studentName": "Rahul Kumar",
+      "class": "10-A",
+      "subject": "Inquiry regarding Bus Timing",
+      "message": "Respected Sir, please confirm if the Route A bus will pick up from Sikta Station at 7:20 AM tomorrow.",
+      "status": "Replied",
+      "reply": "Yes Rahul, Bus Route A will arrive at Sikta Station punctually at 7:20 AM.",
+      "date": "2026-08-03"
+    }
+  ],
+  "recordUpdates": [],
+  "parentComplaints": [],
+  "feeReceipts": [],
+  "transactions": [],
+  "teacherSalaries": {},
+  "feeParticulars": [],
+  "feeDiscounts": [],
+  "advanceRecords": []
 }

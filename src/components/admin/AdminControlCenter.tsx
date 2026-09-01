@@ -30,6 +30,7 @@ export const AdminControlCenter: React.FC = () => {
   // Admin Login State
   const { mfaEnabled, toggleMFA } = useAuth();
   const [loginForm, setLoginForm] = useState({ username: '', phone: '', password: '' });
+  const [rememberMeDevice, setRememberMeDevice] = useState(true);
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [captchaRequired, setCaptchaRequired] = useState(false);
@@ -217,7 +218,10 @@ export const AdminControlCenter: React.FC = () => {
         captchaToken: captchaToken || undefined
       });
       if (res.success && res.user) {
-        loginUser({ user: res.user });
+        loginUser({
+          user: res.user,
+          rememberMe: rememberMeDevice
+        });
       } else {
         setLoginError(res.message || 'Invalid administrator username or password.');
       }
@@ -647,6 +651,19 @@ export const AdminControlCenter: React.FC = () => {
                     isVerified={!!captchaToken}
                   />
                 )}
+
+                <div className="flex items-center justify-between text-xs py-0.5">
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberMeDevice}
+                      onChange={e => setRememberMeDevice(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-500 bg-slate-800 border-slate-700 focus:ring-amber-500 accent-amber-500 cursor-pointer"
+                    />
+                    <span className="font-semibold text-slate-200">Remember this administrator session</span>
+                  </label>
+                  <span className="text-[11px] text-emerald-400 font-bold hidden sm:inline">Saved session ✓</span>
+                </div>
 
                 <button
                   type="submit"

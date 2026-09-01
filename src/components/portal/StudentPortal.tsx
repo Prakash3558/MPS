@@ -10,7 +10,6 @@ import {
   SyllabusItem, TransportRoute, AdmitCard, StudentDeclaration, SchoolMessage, RecordUpdateReq, ParentComplaint
 } from '../../types';
 import { StudentIDCard } from '../common/StudentIDCard';
-import { AIHomeworkTutor } from '../common/AIHomeworkTutor';
 import { CaptchaWidget } from '../common/CaptchaWidget';
 import { AcademicProgressAnalytics } from './AcademicProgressAnalytics';
 import { downloadElementAsPDF } from '../../lib/pdf';
@@ -18,9 +17,9 @@ import { OfficialFeeReceipt } from '../common/OfficialFeeReceipt';
 import { sortFeeMonths, getNormalizedStudentFeeMonths } from '../../lib/feeUtils';
 import {
   GraduationCap, LogOut, Calendar, BookOpen, FileText, IndianRupee, Bell, AlertTriangle, AlertCircle,
-  CheckCircle2, XCircle, Clock, Award, ShieldCheck, Download, UserCheck, Key, User, Bot, Sparkles, TrendingUp, Printer, Check,
+  CheckCircle2, XCircle, Clock, Award, ShieldCheck, Download, UserCheck, Key, User, TrendingUp, Printer, Check,
   Video, FileQuestion, BookMarked, Notebook, FileCode, Bus, CreditCard, FileCheck, MessageSquare, Edit3, ExternalLink, Home, Send,
-  ShieldAlert, LifeBuoy, PhoneCall, HelpCircle
+  ShieldAlert, LifeBuoy, PhoneCall, HelpCircle, Compass, MapPin, Navigation, Sparkles
 } from 'lucide-react';
 
 export const StudentPortal: React.FC = () => {
@@ -73,12 +72,11 @@ export const StudentPortal: React.FC = () => {
     | 'reportcard'
     | 'trends'
     | 'homework'
-    | 'fees'
-    | 'ai-tutor';
+    | 'fees';
 
   const [activeTab, setActiveTab] = useState<TabType>('homework');
   const [selectedFeeMonth, setSelectedFeeMonth] = useState<string>('January, 2026');
-  const [selectedHomeworkForAI, setSelectedHomeworkForAI] = useState<Homework | null>(null);
+  const [selectedTravelOrigin, setSelectedTravelOrigin] = useState<'bettiah' | 'raxaul' | 'sikta' | 'motihari'>('bettiah');
 
   const activeContentRef = useRef<HTMLDivElement>(null);
 
@@ -218,11 +216,13 @@ export const StudentPortal: React.FC = () => {
     Boolean(student)
   );
 
+  const [rememberMeDevice, setRememberMeDevice] = useState(true);
+
   useEffect(() => {
-    if (student) {
+    if (student?.id) {
       loadStudentDashboardData(student);
     }
-  }, [student, refreshCount]);
+  }, [student?.id, refreshCount]);
 
   const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,7 +256,11 @@ export const StudentPortal: React.FC = () => {
       });
 
       if (res.success && res.student) {
-        loginUser({ user: res.user, student: res.student });
+        loginUser({
+          user: res.user,
+          student: res.student,
+          rememberMe: rememberMeDevice
+        });
       } else {
         setLoginError(res.message || 'Invalid student credentials. Please verify your details.');
       }
@@ -657,6 +661,19 @@ export const StudentPortal: React.FC = () => {
                 />
               )}
 
+              <div className="flex items-center justify-between text-xs py-0.5">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMeDevice}
+                    onChange={e => setRememberMeDevice(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-500 bg-slate-800 border-slate-700 focus:ring-amber-500 accent-amber-500 cursor-pointer"
+                  />
+                  <span className="font-semibold text-slate-200">Keep me signed in on this device</span>
+                </label>
+                <span className="text-[11px] text-emerald-400 font-bold hidden sm:inline">Saved session ✓</span>
+              </div>
+
               <button
                 type="submit"
                 disabled={loginLoading}
@@ -832,21 +849,21 @@ export const StudentPortal: React.FC = () => {
               )}
             </button>
 
-            {/* 4. AI Homework Tutor */}
+            {/* 4. Campus Travel & Route Guide */}
             <button
-              onClick={() => handleSwitchTab('ai-tutor')}
+              onClick={() => handleSwitchTab('transport')}
               className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'ai-tutor'
+                activeTab === 'transport'
                   ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
                   : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
               }`}
             >
-              <Bot className={`w-5 h-5 ${activeTab === 'ai-tutor' ? 'text-slate-950' : 'text-amber-500 animate-pulse'}`} />
-              <span className="font-extrabold leading-tight">AI Homework Tutor</span>
+              <Bus className={`w-5 h-5 ${activeTab === 'transport' ? 'text-slate-950' : 'text-amber-500'}`} />
+              <span className="font-extrabold leading-tight">Campus Travel</span>
               <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                activeTab === 'ai-tutor' ? 'bg-slate-900/20 text-slate-950' : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300'
+                activeTab === 'transport' ? 'bg-slate-900/20 text-slate-950' : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300'
               }`}>
-                Instant Help
+                Route Guide
               </span>
             </button>
 
@@ -1396,41 +1413,176 @@ export const StudentPortal: React.FC = () => {
           </div>
         )}
 
-        {/* --- TAB 7: TRANSPORT --- */}
+        {/* --- TAB 7: TRANSPORT & CAMPUS ROUTE GUIDE --- */}
         {activeTab === 'transport' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
-                <Bus className="w-5 h-5 text-amber-500" /> School Bus Transport Routes
+              <span className="text-[10px] font-medium uppercase tracking-widest text-amber-600 bg-amber-100 dark:bg-amber-950/60 px-3 py-1 rounded-full">
+                Connectivity & Commute
+              </span>
+              <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+                <Bus className="w-5 h-5 text-amber-500" /> Campus Travel & Route Guide
               </h3>
-              <p className="text-xs text-slate-500">Official bus stops, vehicle numbers, driver phone contacts, and monthly transport fees.</p>
+              <p className="text-xs text-slate-500">
+                Directions, landmark guides, route presets from nearby hubs, and official school bus fleet routes.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {transportRoutes.map(tr => (
-                <div key={tr.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white font-heading">{tr.routeName}</h4>
-                    <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
-                      ₹{tr.feeMonthly}/mo
+            {/* Campus Travel & Directions Guide Box */}
+            <div className="bg-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-xl text-white space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Compass className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-white">How to Reach Model Public School</h4>
+                    <p className="text-xs text-slate-400">Select your starting hub for detailed travel directions & estimated time.</p>
+                  </div>
+                </div>
+
+                {/* Preset Hub Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'bettiah', label: 'From Bettiah (HQ)' },
+                    { id: 'raxaul', label: 'From Raxaul' },
+                    { id: 'sikta', label: 'From Sikta Station' },
+                    { id: 'motihari', label: 'From Motihari' }
+                  ].map((hub) => (
+                    <button
+                      key={hub.id}
+                      onClick={() => setSelectedTravelOrigin(hub.id as any)}
+                      className={`text-xs px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-bold ${
+                        selectedTravelOrigin === hub.id
+                          ? 'bg-amber-500 border-amber-400 text-slate-950 shadow-md scale-[1.02]'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                      }`}
+                    >
+                      {hub.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Selected Route Details */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-4 bg-slate-950/70 border border-slate-800/80 rounded-2xl p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h5 className="text-sm font-bold text-amber-400 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-rose-400" />
+                      {selectedTravelOrigin === 'bettiah' && 'Route from Bettiah (District HQ)'}
+                      {selectedTravelOrigin === 'raxaul' && 'Route from Raxaul (Indo-Nepal Border)'}
+                      {selectedTravelOrigin === 'sikta' && 'Route from Sikta Railway Station'}
+                      {selectedTravelOrigin === 'motihari' && 'Route from Motihari (East Champaran)'}
+                    </h5>
+                    <span className="text-xs font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 px-3 py-0.5 rounded-full">
+                      ⏱ {selectedTravelOrigin === 'bettiah' && '25 – 35 Mins (22 KM)'}
+                      {selectedTravelOrigin === 'raxaul' && '30 – 40 Mins (28 KM)'}
+                      {selectedTravelOrigin === 'sikta' && '3 – 5 Mins (1.2 KM)'}
+                      {selectedTravelOrigin === 'motihari' && '55 – 70 Mins (54 KM)'}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-                    <div>Bus Number: <strong>{tr.busNumber}</strong></div>
-                    <div>Driver Name: <strong>{tr.driverName}</strong> ({tr.driverPhone})</div>
-                  </div>
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
-                    <strong className="block text-slate-700 dark:text-slate-300 mb-1">Stops:</strong>
-                    <div className="flex flex-wrap gap-1">
-                      {tr.stops.map((st, idx) => (
-                        <span key={idx} className="bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[10px]">
-                          📍 {st}
-                        </span>
+
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-body">
+                    {selectedTravelOrigin === 'bettiah' && 'Take SH-54 toward Sikta via Majhaulia / Puraina road. School campus is located near Sikta Chowk main junction with clear signboards. Frequent local buses and MPS school buses operate regularly.'}
+                    {selectedTravelOrigin === 'raxaul' && 'Travel via Indo-Nepal border connecting highway toward Sikta. Regular autos, private cabs, and dedicated school buses operate on this route throughout the morning and evening.'}
+                    {selectedTravelOrigin === 'sikta' && 'Head south from Sikta Railway Station toward Main Market. School campus is easily reachable within 3-5 minutes by e-rickshaw, auto, or walking.'}
+                    {selectedTravelOrigin === 'motihari' && 'Travel via Bettiah or Sugauli-Raxaul highway route. Direct express buses connect Motihari to Bettiah and Sikta throughout the day.'}
+                  </p>
+
+                  {/* Route Waypoints */}
+                  <div className="pt-3 border-t border-slate-800">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                      Key Waypoints & Route Stops:
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {(selectedTravelOrigin === 'bettiah'
+                        ? ['Bettiah Bus Stand', 'Majhaulia Chowk', 'Puraina Mor', 'Sikta Main Road', 'Model Public School']
+                        : selectedTravelOrigin === 'raxaul'
+                        ? ['Raxaul Custom Chowk', 'Narkatiaganj-Raxaul Link', 'Bhelwa Gate', 'Sikta Road', 'Model Public School']
+                        : selectedTravelOrigin === 'sikta'
+                        ? ['Sikta Railway Station', 'Sikta Main Chowk', 'Hospital Road', 'Model Public School Gate']
+                        : ['Motihari Zero Mile', 'Sugauli Chowk', 'Bettiah Bypass', 'Sikta Junction', 'Model Public School']
+                      ).map((step, idx, arr) => (
+                        <React.Fragment key={idx}>
+                          <span className={`text-[11px] px-2.5 py-1 rounded-lg font-medium ${idx === arr.length - 1 ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-200'}`}>
+                            {step}
+                          </span>
+                          {idx < arr.length - 1 && <span className="text-slate-500 text-xs">→</span>}
+                        </React.Fragment>
                       ))}
                     </div>
                   </div>
+
+                  <div className="pt-2 flex flex-wrap items-center gap-3">
+                    <a
+                      href="https://maps.google.com/?q=Model+Public+School+Sikta+West+Champaran+Bihar"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all hover:scale-[1.02]"
+                    >
+                      <Navigation className="w-3.5 h-3.5" />
+                      <span>Open in Google Maps</span>
+                    </a>
+                  </div>
                 </div>
-              ))}
+
+                {/* Campus Location Map View */}
+                <div className="h-56 lg:h-auto rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 relative">
+                  <iframe
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14197.886367352355!2d84.5828456!3d27.0168341!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399365e1b12b5555%3A0x8c62c2f7b8893d56!2sSikta%2C%20Bihar!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen={false}
+                    loading="lazy"
+                    title="Model Public School Campus Location"
+                    className="w-full h-full filter contrast-[1.02]"
+                  ></iframe>
+                </div>
+              </div>
+            </div>
+
+            {/* School Bus Fleet Routes */}
+            <div>
+              <h4 className="text-base font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2 mb-3">
+                <Bus className="w-4 h-4 text-amber-500" /> Active School Bus Fleet & Driver Contacts
+              </h4>
+
+              {transportRoutes.length === 0 ? (
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
+                  <Bus className="w-8 h-8 text-slate-400 mx-auto" />
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No custom bus routes listed yet</p>
+                  <p className="text-xs text-slate-500">Contact school transport desk at +91 94318 12345 for bus seat bookings.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {transportRoutes.map(tr => (
+                    <div key={tr.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                      <div className="flex justify-between items-start">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white font-heading">{tr.routeName}</h4>
+                        <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                          ₹{tr.feeMonthly}/mo
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                        <div>Bus Number: <strong>{tr.busNumber}</strong></div>
+                        <div>Driver Name: <strong>{tr.driverName}</strong> ({tr.driverPhone})</div>
+                      </div>
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
+                        <strong className="block text-slate-700 dark:text-slate-300 mb-1">Stops:</strong>
+                        <div className="flex flex-wrap gap-1">
+                          {tr.stops.map((st, idx) => (
+                            <span key={idx} className="bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[10px]">
+                              📍 {st}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2222,29 +2374,9 @@ export const StudentPortal: React.FC = () => {
                     <span>Teacher: {hw.teacherName}</span>
                     <span className="font-bold text-amber-600">Due Date: {hw.dueDate}</span>
                   </div>
-
-                  <button
-                    onClick={() => {
-                      setSelectedHomeworkForAI(hw);
-                      handleSwitchTab('ai-tutor');
-                    }}
-                    className="w-full py-2 bg-blue-50 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-blue-900 dark:text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 border border-blue-200 dark:border-slate-700 mt-2 cursor-pointer"
-                  >
-                    <Bot className="w-4 h-4 text-amber-500" /> Get Step-by-Step AI Help with this Homework
-                  </button>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {activeTab === 'ai-tutor' && (
-          <div className="space-y-4">
-            <AIHomeworkTutor
-              classGrade={`Class ${student?.class || '10'}`}
-              subject={selectedHomeworkForAI?.subject || 'Mathematics'}
-              initialPrompt={selectedHomeworkForAI ? `Help me solve and understand this homework assignment:\n\n**Subject**: ${selectedHomeworkForAI.subject}\n**Title**: ${selectedHomeworkForAI.title}\n**Assignment Details**: ${selectedHomeworkForAI.description}\n**Due Date**: ${selectedHomeworkForAI.dueDate}\n\nPlease provide a clear, step-by-step NCERT explanation with relevant formulas and solution.` : undefined}
-            />
           </div>
         )}
 
