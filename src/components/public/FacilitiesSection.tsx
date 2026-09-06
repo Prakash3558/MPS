@@ -309,3 +309,6 @@ export const FacilitiesSection: React.FC = React.memo(() => {
     </section>
   );
 });
+
+export default FacilitiesSection;
+

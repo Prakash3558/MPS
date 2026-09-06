@@ -2722,3 +2722,6 @@ export const ThreeDSolarSystem: React.FC = React.memo(() => {
     </section>
   );
 });
+
+export default ThreeDSolarSystem;
+

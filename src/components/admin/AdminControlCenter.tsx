@@ -8,13 +8,14 @@ import { CaptchaWidget } from '../common/CaptchaWidget';
 import { Teacher, Student, Notice, AdmissionApplication, OnlineClass, OnlineExam } from '../../types';
 import { WebsiteCMSManager } from './WebsiteCMSManager';
 import { SchoolFinanceSystem } from './SchoolFinanceSystem';
+import { StaffManagementSystem } from './StaffManagementSystem';
 import { AdminGlobalSearch, AdminTabType } from './AdminGlobalSearch';
 import { generateDefault12MonthFeeList } from '../../lib/feeUtils';
 import {
   Palette, Users, GraduationCap, Megaphone, ClipboardList, Image, Settings, Home, LogOut,
   X, Menu, Plus, Trash2, Search, Check, AlertTriangle, Edit3, Download, Key, ShieldAlert,
   Upload, Phone, Mail, UserPlus, CheckCircle, XCircle, Clock, Sparkles, School, Eye, EyeOff,
-  Video, FileQuestion, DollarSign, Camera, Bus, User, ShieldCheck, RefreshCw, Layers, Calendar
+  Video, FileQuestion, DollarSign, Camera, Bus, User, ShieldCheck, RefreshCw, Layers, Calendar, Navigation
 } from 'lucide-react';
 
 export const AdminControlCenter: React.FC = () => {
@@ -23,7 +24,7 @@ export const AdminControlCenter: React.FC = () => {
 
   // Navigation state
   const [activeTab, setActiveTab] = useState<
-    'site_content' | 'teachers' | 'students' | 'fees' | 'online_classes' | 'online_exams' | 'notices' | 'admissions' | 'gallery' | 'account'
+    'site_content' | 'teachers' | 'staff' | 'students' | 'fees' | 'online_classes' | 'online_exams' | 'notices' | 'admissions' | 'gallery' | 'account'
   >('site_content');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -843,6 +844,24 @@ export const AdminControlCenter: React.FC = () => {
             </div>
           </button>
 
+          {/* Staff & Transport */}
+          <button
+            onClick={() => { setActiveTab('staff'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
+              activeTab === 'staff'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/20'
+                : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+            }`}
+          >
+            <Bus className="w-5 h-5 flex-shrink-0 text-amber-400" />
+            <div className="flex-1 text-left flex items-center justify-between">
+              <span>Staff & Transport</span>
+              <span className="text-[10px] bg-slate-800 text-amber-400 px-2 py-0.5 rounded-full font-extrabold">
+                Drivers & Fleet
+              </span>
+            </div>
+          </button>
+
           {/* Students */}
           <button
             onClick={() => { setActiveTab('students'); setIsSidebarOpen(false); }}
@@ -987,6 +1006,25 @@ export const AdminControlCenter: React.FC = () => {
 
           <hr className="border-slate-800 my-4" />
 
+          {/* Admin Profile Identity Card inside Sidebar */}
+          <div className="bg-slate-900/90 rounded-2xl p-3 border border-slate-800 flex items-center gap-3 mb-2 shadow-inner">
+            <div className="relative flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-black text-sm shadow-md border border-amber-400">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
+              </div>
+              <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-900 rounded-full" title="Online Admin"></span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.2 rounded uppercase">
+                  Super Admin
+                </span>
+              </div>
+              <p className="text-xs font-bold text-white truncate mt-0.5">{user?.name || 'Administrator'}</p>
+              <p className="text-[10px] text-slate-400 truncate">All Classes (K-12)</p>
+            </div>
+          </div>
+
           {/* Public Site */}
           <a
             href="/"
@@ -1024,6 +1062,7 @@ export const AdminControlCenter: React.FC = () => {
               <h1 className="text-lg font-black text-white font-heading capitalize flex items-center gap-2">
                 {activeTab === 'site_content' && '🎨 Site Content'}
                 {activeTab === 'teachers' && '👥 Teachers'}
+                {activeTab === 'staff' && '🚌 Staff & Transport'}
                 {activeTab === 'students' && '🎓 Students'}
                 {activeTab === 'notices' && '📢 Notices'}
                 {activeTab === 'admissions' && '📋 Admissions'}
@@ -1063,6 +1102,17 @@ export const AdminControlCenter: React.FC = () => {
             >
               <Download className="w-4 h-4" /> SQL Dump
             </a>
+
+            {/* Admin Profile Pill */}
+            <div className="hidden lg:flex items-center gap-2 bg-slate-900 border border-slate-700/80 px-2.5 py-1.5 rounded-xl">
+              <div className="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 font-black flex items-center justify-center text-xs shadow">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
+              </div>
+              <div className="text-left text-xs leading-none">
+                <span className="font-bold text-white block">{user?.name || 'Administrator'}</span>
+                <span className="text-[10px] text-amber-400 font-semibold">Admin (All Classes)</span>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -1070,6 +1120,9 @@ export const AdminControlCenter: React.FC = () => {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden">
           {/* TAB 1: SITE CONTENT */}
           {activeTab === 'site_content' && <WebsiteCMSManager />}
+
+          {/* TAB: STAFF & TRANSPORT */}
+          {activeTab === 'staff' && <StaffManagementSystem />}
 
           {/* TAB 2: TEACHERS */}
           {activeTab === 'teachers' && (
@@ -3010,3 +3063,5 @@ export const AdminControlCenter: React.FC = () => {
     </div>
   );
 };
+
+export default AdminControlCenter;

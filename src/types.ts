@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'teacher' | 'student';
+export type UserRole = 'admin' | 'teacher' | 'student' | 'staff';
 
 export interface User {
   id: string;
@@ -22,6 +22,8 @@ export interface Teacher {
   photo?: string;
   salary?: number;
   qualification?: string;
+  experience?: string;
+  joiningDate?: string;
 }
 
 export interface MonthFee {
@@ -75,7 +77,13 @@ export interface Student {
   hostelFee?: number;
   transportFee?: number;
   transportRoute?: string;
+  transportStop?: string;
+  transportStopId?: string;
+  pickupTime?: string;
+  dropTime?: string;
   feeMonthly?: number;
+  teacherName?: string;
+  classTeacher?: string;
   addons?: {
     hostel?: { enabled: boolean; amount: number };
     transportation?: { enabled: boolean; amount: number };
@@ -85,6 +93,7 @@ export interface Student {
 export interface AttendanceRecord {
   id: string;
   studentId: string;
+  studentName?: string;
   class: string;
   section: string;
   date: string; // YYYY-MM-DD
@@ -367,16 +376,171 @@ export interface SyllabusItem {
   pdfUrl?: string;
 }
 
+export type StaffRole = 'Driver' | 'Bus Conductor' | 'Cleaner' | 'Security Guard' | 'Peon' | 'Accountant' | 'Office Assistant' | 'Custom';
+
+export interface TransportStop {
+  id: string;
+  routeId: string;
+  stopName: string;
+  stopNumber: number;
+  pickupTime: string; // e.g., '07:15 AM'
+  dropTime: string; // e.g., '02:45 PM'
+  landmark?: string;
+  latitude: number;
+  longitude: number;
+  assignedStudentIds?: string[];
+  studentCount?: number;
+  feeMonthly?: number;
+}
+
 export interface TransportRoute {
   id: string;
   routeName: string;
-  busNumber?: string;
-  vehicleNo?: string;
+  routeCode?: string;
+  vehicleType?: 'School Bus' | 'Van' | 'Mini Bus' | 'Magic/Auto' | 'Other';
+  busNumber?: string; // e.g., 'Bus #01'
+  vehicleNumber?: string; // Alias for busNumber
+  vehicleNo?: string; // e.g., 'BR-22-PA-1234'
+  numberPlate?: string; // e.g., 'BR-22-PA-1234'
+  driverId?: string;
   driverName?: string;
   driverPhone?: string;
-  stops?: string[];
+  conductorName?: string;
+  conductorPhone?: string;
+  capacity?: number;
+  morningDepartureTime?: string;
+  afternoonDepartureTime?: string;
+  stops?: string[]; // Stop names or legacy array
+  stopsList?: TransportStop[];
   feeMonthly?: number;
   fareMonthly?: number;
+  status?: 'Active' | 'Under Maintenance' | 'Inactive';
+  startLocation?: string;
+  endLocation?: string;
+}
+
+export interface StaffPaymentRecord {
+  id: string;
+  month: string; // e.g. '2026-08'
+  paymentDate: string;
+  amount: number;
+  baseSalary: number;
+  bonus?: number;
+  deductions?: number;
+  paymentMethod: 'Cash' | 'Bank Transfer' | 'UPI' | 'Cheque';
+  receiptNo: string;
+  status: 'Paid' | 'Pending';
+  remarks?: string;
+  processedBy?: string;
+}
+
+export interface StaffMember {
+  id: string;
+  userId?: string;
+  name: string;
+  role: StaffRole | string;
+  customRoleTitle?: string;
+  username: string;
+  password?: string;
+  phone: string;
+  email?: string;
+  photo?: string;
+  gender?: 'Male' | 'Female' | 'Other' | string;
+  address?: string;
+  joiningDate?: string;
+  status: 'Active' | 'On Leave' | 'Inactive';
+  
+  // Transport & Vehicle fields (for drivers / conductors)
+  vehicleType?: 'School Bus' | 'Van' | 'Mini Bus' | 'Magic/Auto' | 'Other';
+  vehicleNumber?: string; // e.g., "Bus #02"
+  numberPlate?: string; // e.g., "BR-22-PA-5678"
+  drivingLicenseNo?: string;
+  licenseExpiry?: string;
+  experienceYears?: string | number;
+  assignedRouteId?: string;
+  assignedRouteName?: string;
+  assignedStudentsCount?: number;
+
+  // Compensation & Payment
+  salary?: number;
+  salaryType?: 'Monthly' | 'Daily' | 'Hourly' | 'Contract';
+  paymentFrequency?: string;
+  paymentStatus?: 'Paid' | 'Pending';
+  lastPaymentDate?: string;
+  paymentHistory?: StaffPaymentRecord[];
+
+  // Bank & Emergency
+  bankDetails?: {
+    accountNo?: string;
+    ifsc?: string;
+    bankName?: string;
+    holderName?: string;
+  };
+  emergencyContact?: string;
+  notes?: string;
+}
+
+export interface VehicleLiveLocation {
+  staffId: string;
+  driverName: string;
+  driverPhone?: string;
+  routeId: string;
+  routeName: string;
+  vehicleType: string;
+  vehicleNumber: string;
+  numberPlate: string;
+  latitude: number;
+  longitude: number;
+  speed: number; // km/h
+  heading?: number; // degrees 0-360
+  accuracy?: number; // meters
+  isActive: boolean; // true while trip is on, false when "Everything Done"
+  tripType: 'Morning Pickup' | 'Afternoon Drop' | 'Special Trip' | 'None';
+  tripStartTime?: string;
+  tripEndTime?: string;
+  lastUpdated: string;
+  nextStopName?: string;
+  studentsBoardedCount?: number;
+  totalAssignedStudents?: number;
+  sosAlert?: boolean;
+  sosReason?: string;
+}
+
+export interface DriverTripLog {
+  id: string;
+  staffId: string;
+  driverName: string;
+  routeId: string;
+  routeName: string;
+  vehicleNumber: string;
+  numberPlate: string;
+  tripType: 'Morning Pickup' | 'Afternoon Drop' | 'Special Trip';
+  date: string;
+  startTime: string;
+  endTime?: string;
+  totalBoarded: number;
+  totalStudents: number;
+  status: 'In Progress' | 'Completed' | 'Cancelled';
+  notes?: string;
+}
+
+export interface TransportStudentRosterItem {
+  id: string;
+  studentId: string;
+  studentName: string;
+  class: string;
+  section: string;
+  rollNo: string;
+  phone: string;
+  parentName: string;
+  routeId: string;
+  routeName: string;
+  stopId: string;
+  stopName: string;
+  pickupTime: string;
+  dropTime: string;
+  boardingStatus?: 'Not Boarded' | 'Boarded' | 'Dropped' | 'Absent';
+  feeMonthly?: number;
 }
 
 export interface AdmitCard {

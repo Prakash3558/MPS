@@ -413,3 +413,5 @@ export const FallingStarsCanvas: React.FC = React.memo(() => {
     />
   );
 });
+
+export default FallingStarsCanvas;

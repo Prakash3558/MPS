@@ -90,7 +90,7 @@
       {
         "id": "g5",
         "url": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787745597627_WhatsApp-Image-2026-.png",
-        "title": "Prizes and achievements ",
+        "title": "Prizes and achievements",
         "caption": "Students achieved various certificates and prizes.",
         "category": "Academics"
       },
@@ -106,7 +106,7 @@
       {
         "id": "f1",
         "image": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787017080098_6_webp.png",
-        "title": "Extra Curriculum Activities ",
+        "title": "Extra Curriculum Activities",
         "iconName": "Music",
         "description": "We organize different activities that promote teamwork, cultural learning, etc."
       },
@@ -120,7 +120,7 @@
       {
         "id": "f3",
         "image": "https://neakvyuddcftatlpabmf.supabase.co/storage/v1/object/public/school-uploads/uploads/general/1787016837568_Screenshot_2026-07-2.png",
-        "title": "Computer Laboratory ",
+        "title": "Computer Laboratory",
         "iconName": "Cpu",
         "description": "Modern computer lab with high-speed internet, programming workshops, and robotics modules."
       },
@@ -255,7 +255,8 @@
       "assignedClass": "10",
       "assignedSection": "A",
       "phone": "+91 91620 24642",
-      "photo": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400"
+      "photo": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400",
+      "password": "$2b$10$7Dwu99Z1n2UESzuBk6/qDOe7P1ffbhrFF0SZpvGiHr6dKi0O8diy."
     }
   ],
   "students": [
@@ -266,10 +267,10 @@
       "rollNo": "1001",
       "class": "10",
       "section": "A",
-      "password": "Rahul123",
+      "password": "$2b$10$T9759jSMwoLrMWnSnfDpbe8m/4ChAxJAW.x5Lqp/zg9g.9IWaPIGq",
       "photo": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400",
       "parentName": "Ramesh Kumar",
-      "phone": "+91 9876543210",
+      "phone": "+91 1111111111",
       "address": "AT- Bhawanipur, P.S.- Sikta, West Champaran, Bihar",
       "admissionDate": "2023-04-10",
       "notice": "Please submit your science project report before August 10th.",
@@ -316,7 +317,9 @@
             "dueDate": "2026-09-10"
           }
         ]
-      }
+      },
+      "teacherName": "Ramesh Sharma",
+      "classTeacher": "Ramesh Sharma"
     },
     {
       "id": "s-1002",
@@ -367,7 +370,384 @@
             "amount": 1800
           }
         ]
+      },
+      "teacherName": "Ramesh Sharma",
+      "classTeacher": "Ramesh Sharma"
+    },
+    {
+      "id": "s-1003",
+      "userId": "u-student3",
+      "name": "Amit Patel",
+      "rollNo": "1003",
+      "class": "9",
+      "section": "B",
+      "password": "123",
+      "photo": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=400",
+      "parentName": "Vikram Patel",
+      "phone": "+91 9876543212",
+      "address": "Purani Bazar, Sikta, Bihar - 845307",
+      "admissionDate": "2024-04-15",
+      "teacherName": "Priya Singh",
+      "classTeacher": "Priya Singh",
+      "feeInfo": {
+        "totalAnnual": 22800,
+        "paid": 15000,
+        "pending": 7800,
+        "notes": "Term 1 fee clear."
       }
+    }
+  ],
+  "staff": [
+    {
+      "id": "st-1",
+      "name": "Vikram Singh",
+      "role": "Driver",
+      "username": "driver1",
+      "password": "$2b$10$oMyKlPN/hQcBv2Sq0Ix/x.csbjcywD5SXgNpH47CFF.FlrIOfhZrC",
+      "phone": "9162024642",
+      "email": "vikram.driver@modelpublicschool.com",
+      "photo": "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=400",
+      "gender": "Male",
+      "address": "Bhawanipur Road, Sikta, West Champaran",
+      "joiningDate": "2021-03-15",
+      "status": "Active",
+      "vehicleType": "School Bus",
+      "vehicleNumber": "Bus #01",
+      "numberPlate": "BR-22-PA-8757",
+      "drivingLicenseNo": "DL-BR22-201800451",
+      "licenseExpiry": "2029-08-15",
+      "experienceYears": "8 Years",
+      "assignedRouteId": "tr-1",
+      "assignedRouteName": "Route A - Sikta Main Market to School",
+      "assignedStudentsCount": 1,
+      "salary": 16500,
+      "salaryType": "Monthly",
+      "paymentStatus": "Paid",
+      "lastPaymentDate": "2026-08-01",
+      "emergencyContact": "+91 94312 88990",
+      "bankDetails": {
+        "accountNo": "309827162534",
+        "ifsc": "SBIN0002981",
+        "bankName": "State Bank of India, Sikta",
+        "holderName": "Vikram Singh"
+      }
+    },
+    {
+      "id": "st-2",
+      "name": "Ramesh Yadav",
+      "role": "Driver",
+      "username": "driver2",
+      "password": "$2b$10$pTUH39f4fw/ltsx1USz3Oe6kpnD9WLDRyarybGVWTDa3yLUmCjhfa",
+      "phone": "8757968130",
+      "email": "ramesh.driver@modelpublicschool.com",
+      "photo": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400",
+      "gender": "Male",
+      "address": "Kursi Barwa Village, West Champaran",
+      "joiningDate": "2022-06-10",
+      "status": "Active",
+      "vehicleType": "Van",
+      "vehicleNumber": "Van #02",
+      "numberPlate": "BR-22-PA-9162",
+      "drivingLicenseNo": "DL-BR22-202000889",
+      "licenseExpiry": "2030-05-20",
+      "experienceYears": "6 Years",
+      "assignedRouteId": "tr-2",
+      "assignedRouteName": "Route B - Kursi Barwa & Surrounding Villages",
+      "assignedStudentsCount": 1,
+      "salary": 14000,
+      "salaryType": "Monthly",
+      "paymentStatus": "Paid",
+      "lastPaymentDate": "2026-08-01",
+      "emergencyContact": "+91 88776 55443",
+      "bankDetails": {
+        "accountNo": "50200019283746",
+        "ifsc": "PUNB0182900",
+        "bankName": "Punjab National Bank, Sikta",
+        "holderName": "Ramesh Yadav"
+      }
+    },
+    {
+      "id": "st-3",
+      "name": "Sunil Kumar Paswan",
+      "role": "Bus Conductor",
+      "username": "conductor1",
+      "password": "$2b$10$8MTwKwG33Eya68VLBrdZmOqinczs/qe9KJnIAV5dlQTjPF8wX8s7q",
+      "phone": "9835012345",
+      "email": "sunil.conductor@modelpublicschool.com",
+      "photo": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400",
+      "gender": "Male",
+      "address": "Purani Bazar, Sikta",
+      "joiningDate": "2023-01-05",
+      "status": "Active",
+      "vehicleType": "School Bus",
+      "vehicleNumber": "Bus #01",
+      "numberPlate": "BR-22-PA-8757",
+      "assignedRouteId": "tr-1",
+      "assignedRouteName": "Route A - Sikta Main Market to School",
+      "salary": 11000,
+      "salaryType": "Monthly",
+      "paymentStatus": "Paid",
+      "lastPaymentDate": "2026-08-01"
+    },
+    {
+      "id": "st-4",
+      "name": "Shanti Devi",
+      "role": "Cleaner",
+      "username": "cleaner1",
+      "password": "$2b$10$xZv5qQkxEZq1sNT0ZeS5.efv40CFWMASuIXkUmgo8a8SOKvXTGzQ.",
+      "phone": "9771234567",
+      "gender": "Female",
+      "address": "Near Sikta Hospital Chowk",
+      "joiningDate": "2022-09-01",
+      "status": "Active",
+      "salary": 9500,
+      "salaryType": "Monthly",
+      "paymentStatus": "Paid",
+      "lastPaymentDate": "2026-08-01"
+    },
+    {
+      "id": "st-5",
+      "name": "Mahesh Thakur",
+      "role": "Security Guard",
+      "username": "guard1",
+      "password": "$2b$10$Rpy7Ee.TNMxtGx/FkxljSezX9C/TMvD7jO1T2TWpBN/90RpYwRSRm",
+      "phone": "9431098765",
+      "gender": "Male",
+      "address": "Main Gate Quarters, MPS Campus",
+      "joiningDate": "2021-11-15",
+      "status": "Active",
+      "salary": 11500,
+      "salaryType": "Monthly",
+      "paymentStatus": "Paid",
+      "lastPaymentDate": "2026-08-01"
+    },
+    {
+      "id": "st-6",
+      "name": "Dharmendra Ram",
+      "role": "Peon",
+      "username": "peon1",
+      "password": "$2b$10$NM5cZ2cFz/ttSDGe9uColeU53hnNuyR0X3QSfsg2HpV/LyYVIaJO.",
+      "phone": "9934155667",
+      "gender": "Male",
+      "address": "Sikta Ward 4",
+      "joiningDate": "2023-04-01",
+      "status": "Active",
+      "salary": 10000,
+      "salaryType": "Monthly",
+      "paymentStatus": "Paid",
+      "lastPaymentDate": "2026-08-01"
+    }
+  ],
+  "transportStops": [
+    {
+      "id": "stp-1",
+      "routeId": "tr-1",
+      "stopName": "Sikta Railway Station (सिकटा स्टेशन)",
+      "stopNumber": 1,
+      "pickupTime": "07:15 AM",
+      "dropTime": "02:40 PM",
+      "landmark": "Opposite Platform 1 Exit Gate",
+      "latitude": 27.0249,
+      "longitude": 84.6812,
+      "assignedStudentIds": [
+        "s-1001"
+      ],
+      "studentCount": 1,
+      "feeMonthly": 600
+    },
+    {
+      "id": "stp-2",
+      "routeId": "tr-1",
+      "stopName": "Sikta Main Market Chowk (सिकटा बाज़ार)",
+      "stopNumber": 2,
+      "pickupTime": "07:25 AM",
+      "dropTime": "02:50 PM",
+      "landmark": "Near Gandhi Murti Chowk",
+      "latitude": 27.0268,
+      "longitude": 84.6818,
+      "assignedStudentIds": [],
+      "studentCount": 0,
+      "feeMonthly": 600
+    },
+    {
+      "id": "stp-3",
+      "routeId": "tr-1",
+      "stopName": "Sikta Hospital Mod (अस्पताल मोड़)",
+      "stopNumber": 3,
+      "pickupTime": "07:38 AM",
+      "dropTime": "03:02 PM",
+      "landmark": "Near Government Hospital & Canal Road",
+      "latitude": 27.0235,
+      "longitude": 84.6782,
+      "assignedStudentIds": [],
+      "studentCount": 0,
+      "feeMonthly": 650
+    },
+    {
+      "id": "stp-4",
+      "routeId": "tr-1",
+      "stopName": "Bhawanipur Tola Chowk (भवानीपुर चौक)",
+      "stopNumber": 4,
+      "pickupTime": "07:50 AM",
+      "dropTime": "03:15 PM",
+      "landmark": "Bhawanipur Paved Road Corner",
+      "latitude": 27.0195,
+      "longitude": 84.6738,
+      "assignedStudentIds": [],
+      "studentCount": 0,
+      "feeMonthly": 600
+    },
+    {
+      "id": "stp-5",
+      "routeId": "tr-1",
+      "stopName": "Model Public School Main Gate (मॉडल पब्लिक स्कूल)",
+      "stopNumber": 5,
+      "pickupTime": "08:05 AM",
+      "dropTime": "03:30 PM",
+      "landmark": "MPS Bhawanipur Campus Bay A",
+      "latitude": 27.018,
+      "longitude": 84.6725,
+      "assignedStudentIds": [],
+      "studentCount": 0,
+      "feeMonthly": 0
+    },
+    {
+      "id": "stp-6",
+      "routeId": "tr-2",
+      "stopName": "Kursi Barwa Mod (कुर्सी बरवा मोड़)",
+      "stopNumber": 1,
+      "pickupTime": "07:10 AM",
+      "dropTime": "02:35 PM",
+      "landmark": "Kursi Barwa Village Chowk",
+      "latitude": 27.0125,
+      "longitude": 84.6645,
+      "assignedStudentIds": [
+        "s-1002"
+      ],
+      "studentCount": 1,
+      "feeMonthly": 700
+    },
+    {
+      "id": "stp-7",
+      "routeId": "tr-2",
+      "stopName": "Puraina Paved Junction (पुरैना पक्की सड़क)",
+      "stopNumber": 2,
+      "pickupTime": "07:28 AM",
+      "dropTime": "02:55 PM",
+      "landmark": "Near Puraina Link Mod",
+      "latitude": 27.0155,
+      "longitude": 84.669,
+      "assignedStudentIds": [],
+      "studentCount": 0,
+      "feeMonthly": 700
+    },
+    {
+      "id": "stp-8",
+      "routeId": "tr-2",
+      "stopName": "Model Public School Main Gate (मॉडल पब्लिक स्कूल)",
+      "stopNumber": 3,
+      "pickupTime": "08:00 AM",
+      "dropTime": "03:30 PM",
+      "landmark": "MPS Bhawanipur Campus Bay B",
+      "latitude": 27.018,
+      "longitude": 84.6725,
+      "assignedStudentIds": [],
+      "studentCount": 0,
+      "feeMonthly": 0
+    }
+  ],
+  "liveLocations": {
+    "tr-1": {
+      "staffId": "st-1",
+      "driverName": "Vikram Singh",
+      "driverPhone": "+91 91620 24642",
+      "routeId": "tr-1",
+      "routeName": "Route A - Sikta Main Market to School",
+      "vehicleType": "School Bus",
+      "vehicleNumber": "Bus #01",
+      "numberPlate": "BR-22-PA-8757",
+      "latitude": 27.0249,
+      "longitude": 84.6812,
+      "speed": 0,
+      "heading": 90,
+      "accuracy": 5,
+      "isActive": true,
+      "tripType": "Morning Pickup",
+      "tripStartTime": "07:15 AM",
+      "lastUpdated": "2026-09-05T14:00:50.026Z",
+      "nextStopName": "Sikta Main Market Chowk (सिकटा बाज़ार)",
+      "studentsBoardedCount": 1,
+      "totalAssignedStudents": 1
+    },
+    "tr-2": {
+      "staffId": "st-2",
+      "driverName": "Ramesh Yadav",
+      "driverPhone": "+91 87579 68130",
+      "routeId": "tr-2",
+      "routeName": "Route B - Kursi Barwa & Surrounding Villages",
+      "vehicleType": "Van",
+      "vehicleNumber": "Van #02",
+      "numberPlate": "BR-22-PA-9162",
+      "latitude": 27.0125,
+      "longitude": 84.6645,
+      "speed": 0,
+      "heading": 0,
+      "accuracy": 5,
+      "isActive": false,
+      "tripType": "None",
+      "lastUpdated": "2026-09-05T14:00:50.026Z",
+      "nextStopName": "Kursi Barwa Mod (कुर्सी बरवा)",
+      "studentsBoardedCount": 0,
+      "totalAssignedStudents": 1
+    }
+  },
+  "staffPayments": [
+    {
+      "id": "spay-1",
+      "month": "2026-08",
+      "paymentDate": "2026-08-01",
+      "amount": 16500,
+      "baseSalary": 16500,
+      "bonus": 0,
+      "deductions": 0,
+      "paymentMethod": "Bank Transfer",
+      "receiptNo": "MPS-PAY-2026-08-01",
+      "status": "Paid",
+      "remarks": "August 2026 Salary Disbursed",
+      "processedBy": "System Administrator"
+    },
+    {
+      "id": "spay-2",
+      "month": "2026-08",
+      "paymentDate": "2026-08-01",
+      "amount": 14000,
+      "baseSalary": 14000,
+      "bonus": 0,
+      "deductions": 0,
+      "paymentMethod": "UPI",
+      "receiptNo": "MPS-PAY-2026-08-02",
+      "status": "Paid",
+      "remarks": "August 2026 Salary Disbursed",
+      "processedBy": "System Administrator"
+    }
+  ],
+  "tripLogs": [
+    {
+      "id": "trip-1",
+      "staffId": "st-1",
+      "driverName": "Vikram Singh",
+      "routeId": "tr-1",
+      "routeName": "Route A - Sikta Main Market to School",
+      "vehicleNumber": "Bus #01",
+      "numberPlate": "BR-22-PA-8757",
+      "tripType": "Morning Pickup",
+      "date": "2026-09-01",
+      "startTime": "07:15 AM",
+      "endTime": "08:12 AM",
+      "totalBoarded": 1,
+      "totalStudents": 1,
+      "status": "Completed",
+      "notes": "Punctual arrival at school gate."
     }
   ],
   "attendance": [
@@ -978,5 +1358,8 @@
   "teacherSalaries": {},
   "feeParticulars": [],
   "feeDiscounts": [],
-  "advanceRecords": []
+  "advanceRecords": [],
+  "sosAlerts": [],
+  "vehicleInspections": [],
+  "fuelLogs": []
 }

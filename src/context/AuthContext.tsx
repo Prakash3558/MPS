@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { User, Teacher, Student } from '../types';
+import { User, Teacher, Student, StaffMember } from '../types';
 import { supabase } from '../lib/supabase';
 import { getApiBaseUrl, api } from '../lib/api';
 
@@ -7,21 +7,23 @@ interface AuthContextType {
   user: User | null;
   teacher: Teacher | null;
   student: Student | null;
+  staff: StaffMember | null;
   firebaseUser: any;
   isEditMode: boolean;
   mfaEnabled: boolean;
   rememberMe: boolean;
   appUrl: string;
   isAuthenticated: boolean;
-  activeRole: 'admin' | 'teacher' | 'student' | null;
+  activeRole: 'admin' | 'teacher' | 'student' | 'staff' | null;
   activeName: string;
   toggleMFA: (enabled: boolean) => Promise<void>;
   toggleEditMode: () => void;
   setRememberMePreference: (remember: boolean) => void;
-  loginUser: (data: { user: User; teacher?: Teacher; student?: Student; mfaEnabled?: boolean; rememberMe?: boolean }) => void;
+  loginUser: (data: { user: User; teacher?: Teacher; student?: Student; staff?: StaffMember; mfaEnabled?: boolean; rememberMe?: boolean }) => void;
   logout: () => void;
   updateStudentState: (updated: Student) => void;
   updateTeacherState: (updated: Teacher) => void;
+  updateStaffState: (updated: StaffMember) => void;
   getIdToken: () => Promise<string | null>;
 }
 
@@ -59,6 +61,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [student, setStudent] = useState<Student | null>(() => {
     try {
       const saved = localStorage.getItem('mps_student');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const [staff, setStaff] = useState<StaffMember | null>(() => {
+    try {
+      const saved = localStorage.getItem('mps_staff');
       return saved ? JSON.parse(saved) : null;
     } catch (e) {
       return null;
@@ -203,6 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user: User;
     teacher?: Teacher;
     student?: Student;
+    staff?: StaffMember;
     mfaEnabled?: boolean;
     rememberMe?: boolean;
   }) => {
@@ -216,6 +228,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data.student) {
       setStudent(data.student);
       localStorage.setItem('mps_student', JSON.stringify(data.student));
+    }
+    if (data.staff) {
+      setStaff(data.staff);
+      localStorage.setItem('mps_staff', JSON.stringify(data.staff));
     }
     if (data.mfaEnabled !== undefined) {
       setMfaEnabled(data.mfaEnabled);
@@ -242,10 +258,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setTeacher(null);
     setStudent(null);
+    setStaff(null);
     setIsEditMode(false);
     localStorage.removeItem('mps_user');
     localStorage.removeItem('mps_teacher');
     localStorage.removeItem('mps_student');
+    localStorage.removeItem('mps_staff');
     localStorage.removeItem('mps_edit_mode');
     localStorage.removeItem('mps_mfa_enabled');
     localStorage.removeItem('mps_session_authenticated');
@@ -271,6 +289,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {}
   }, []);
 
+  const updateStaffState = useCallback((updated: StaffMember) => {
+    setStaff(updated);
+    try {
+      localStorage.setItem('mps_staff', JSON.stringify(updated));
+    } catch (e) {}
+  }, []);
+
   const getIdToken = useCallback(async (): Promise<string | null> => {
     try {
       const { data } = await supabase.auth.getSession();
@@ -282,27 +307,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const isAuthenticated = useMemo(() => {
-    return Boolean(user || teacher || student);
-  }, [user, teacher, student]);
+    return Boolean(user || teacher || student || staff);
+  }, [user, teacher, student, staff]);
 
-  const activeRole = useMemo<'admin' | 'teacher' | 'student' | null>(() => {
+  const activeRole = useMemo<'admin' | 'teacher' | 'student' | 'staff' | null>(() => {
     if (user?.role === 'admin') return 'admin';
     if (teacher || user?.role === 'teacher') return 'teacher';
     if (student || user?.role === 'student') return 'student';
+    if (staff || user?.role === 'staff') return 'staff';
     return null;
-  }, [user, teacher, student]);
+  }, [user, teacher, student, staff]);
 
   const activeName = useMemo<string>(() => {
     if (student?.name) return student.name;
     if (teacher?.name) return teacher.name;
+    if (staff?.name) return staff.name;
     if (user?.name) return user.name;
     return '';
-  }, [student, teacher, user]);
+  }, [student, teacher, staff, user]);
 
   const contextValue = useMemo(() => ({
     user,
     teacher,
     student,
+    staff,
     firebaseUser,
     isEditMode,
     mfaEnabled,
@@ -318,11 +346,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     updateStudentState,
     updateTeacherState,
+    updateStaffState,
     getIdToken
   }), [
     user,
     teacher,
     student,
+    staff,
     firebaseUser,
     isEditMode,
     mfaEnabled,
@@ -338,6 +368,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     updateStudentState,
     updateTeacherState,
+    updateStaffState,
     getIdToken
   ]);
 

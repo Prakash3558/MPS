@@ -19,7 +19,7 @@ import {
   GraduationCap, LogOut, Calendar, BookOpen, FileText, IndianRupee, Bell, AlertTriangle, AlertCircle,
   CheckCircle2, XCircle, Clock, Award, ShieldCheck, Download, UserCheck, Key, User, TrendingUp, Printer, Check,
   Video, FileQuestion, BookMarked, Notebook, FileCode, Bus, CreditCard, FileCheck, MessageSquare, Edit3, ExternalLink, Home, Send,
-  ShieldAlert, LifeBuoy, PhoneCall, HelpCircle, Compass, MapPin, Navigation, Sparkles
+  ShieldAlert, LifeBuoy, PhoneCall, HelpCircle, Compass, MapPin, Navigation, Sparkles, Zap
 } from 'lucide-react';
 
 export const StudentPortal: React.FC = () => {
@@ -51,11 +51,13 @@ export const StudentPortal: React.FC = () => {
     phone: '',
     password: ''
   });
+  const [studentLoginMode, setStudentLoginMode] = useState<'quick' | 'full'>('quick');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
 
   // Student Dashboard active tab
   type TabType =
+    | 'profile'
     | 'online-classes'
     | 'online-exams'
     | 'timetable'
@@ -74,7 +76,18 @@ export const StudentPortal: React.FC = () => {
     | 'homework'
     | 'fees';
 
-  const [activeTab, setActiveTab] = useState<TabType>('homework');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab') as TabType;
+      if (tabParam && ['profile', 'online-classes', 'online-exams', 'timetable', 'study-material', 'school-diary', 'syllabus', 'transport', 'admit-card', 'declarations', 'messages', 'record-updates', 'idcard', 'attendance', 'reportcard', 'trends', 'homework', 'fees'].includes(tabParam)) {
+        return tabParam;
+      }
+      const p = window.location.pathname.toLowerCase();
+      if (p.includes('profile') || p.includes('student')) return 'profile';
+    } catch (e) {}
+    return 'profile';
+  });
   const [selectedFeeMonth, setSelectedFeeMonth] = useState<string>('January, 2026');
   const [selectedTravelOrigin, setSelectedTravelOrigin] = useState<'bettiah' | 'raxaul' | 'sikta' | 'motihari'>('bettiah');
 
@@ -228,28 +241,38 @@ export const StudentPortal: React.FC = () => {
     e.preventDefault();
     setLoginError('');
 
-    const cleanName = loginForm.studentName.trim();
-    const cleanClass = loginForm.className.trim();
-    const cleanSection = loginForm.section.trim();
     const cleanRoll = loginForm.rollNo.trim();
-    const cleanDigits = loginForm.phone.replace(/\D/g, '');
     const cleanPassword = loginForm.password.trim();
 
-    if (!cleanName || !cleanClass || !cleanSection || !cleanRoll || !cleanDigits || !cleanPassword) {
-      setLoginError('All student details (Student Name, Class, Section, Roll Number, Phone Number, and Password) are strictly required to sign in.');
-      return;
+    if (studentLoginMode === 'quick') {
+      if (!cleanRoll || !cleanPassword) {
+        setLoginError('Both Roll Number (or Admission No) and Password are required to sign in.');
+        return;
+      }
+    } else {
+      const cleanName = loginForm.studentName.trim();
+      const cleanClass = loginForm.className.trim();
+      const cleanSection = loginForm.section.trim();
+      const cleanDigits = loginForm.phone.replace(/\D/g, '');
+
+      if (!cleanName || !cleanClass || !cleanSection || !cleanRoll || !cleanDigits || !cleanPassword) {
+        setLoginError('All student details (Student Name, Class, Section, Roll Number, Phone Number, and Password) are strictly required for full verification.');
+        return;
+      }
     }
 
     setLoginLoading(true);
     try {
-      const fullPhone = `${selectedCountryCode}${cleanDigits}`;
+      const cleanDigits = loginForm.phone.replace(/\D/g, '');
+      const fullPhone = cleanDigits ? `${selectedCountryCode}${cleanDigits}` : undefined;
 
       const res = await api.login({
         role: 'student',
-        studentName: cleanName,
-        className: cleanClass,
-        section: cleanSection,
+        username: cleanRoll,
         rollNo: cleanRoll,
+        studentName: studentLoginMode === 'full' ? loginForm.studentName.trim() : undefined,
+        className: studentLoginMode === 'full' ? loginForm.className.trim() : undefined,
+        section: studentLoginMode === 'full' ? loginForm.section.trim() : undefined,
         phone: fullPhone,
         password: cleanPassword,
         captchaToken: captchaToken || undefined
@@ -374,7 +397,8 @@ export const StudentPortal: React.FC = () => {
   };
 
   // Student Attendance Month & Filter States
-  const [attendanceMonth, setAttendanceMonth] = useState<string>('2026-08');
+  const currentMonthStr = new Date().toISOString().substring(0, 7);
+  const [attendanceMonth, setAttendanceMonth] = useState<string>(currentMonthStr);
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState<string>('all');
 
   // Month Display mapping
@@ -394,10 +418,10 @@ export const StudentPortal: React.FC = () => {
     'all': 'Full Academic Session (2026)'
   };
 
-  // Generate complete attendance timeline with "Not Mentioned" status for unrecorded days
+  // Generate complete attendance timeline with accurate status for unrecorded days
   const processedAttendanceTimeline = useMemo(() => {
     if (!student) return [];
-    const todayStr = '2026-08-21';
+    const todayStr = new Date().toISOString().split('T')[0];
     const dates: string[] = [];
 
     if (attendanceMonth === 'all') {
@@ -484,7 +508,7 @@ export const StudentPortal: React.FC = () => {
 
   // Active elapsed days for accurate metric computations
   const activeElapsedRecords = useMemo(() => {
-    const todayStr = '2026-08-21';
+    const todayStr = new Date().toISOString().split('T')[0];
     return processedAttendanceTimeline.filter(a => a.date <= todayStr);
   }, [processedAttendanceTimeline]);
 
@@ -548,7 +572,35 @@ export const StudentPortal: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-slate-900 p-8 rounded-3xl shadow-2xl border border-slate-800 space-y-4">
+          <div className="bg-slate-900 p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-800 space-y-4">
+            {/* Mode Switcher */}
+            <div className="grid grid-cols-2 p-1 bg-slate-800 rounded-2xl gap-1">
+              <button
+                type="button"
+                onClick={() => { setStudentLoginMode('quick'); setLoginError(''); }}
+                className={`py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  studentLoginMode === 'quick'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Quick Sign-In</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStudentLoginMode('full'); setLoginError(''); }}
+                className={`py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  studentLoginMode === 'full'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Full Verification</span>
+              </button>
+            </div>
+
             {loginError && (
               <div className="p-3 bg-rose-950/80 text-rose-300 text-xs rounded-xl border border-rose-800 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-400" />
@@ -556,103 +608,143 @@ export const StudentPortal: React.FC = () => {
               </div>
             )}
 
-            <form onSubmit={handleStudentLogin} className="space-y-4 text-xs font-medium">
-              <div>
-                <label className="block text-slate-300 font-bold mb-1">
-                  1. Student Full Name
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    required
-                    value={loginForm.studentName}
-                    onChange={e => setLoginForm({ ...loginForm, studentName: e.target.value })}
-                    placeholder="Enter student full name"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                  />
-                </div>
-              </div>
+            <form onSubmit={handleStudentLogin} className="space-y-3.5 text-xs font-medium">
+              {studentLoginMode === 'quick' ? (
+                <>
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      Roll Number or Admission ID
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        required
+                        value={loginForm.rollNo}
+                        onChange={e => setLoginForm({ ...loginForm, rollNo: e.target.value })}
+                        placeholder="e.g. 1001, 1002, 1003"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">
-                    2. Class
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={loginForm.className}
-                    onChange={e => setLoginForm({ ...loginForm, className: e.target.value })}
-                    placeholder="e.g. 10"
-                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      Student Password
+                    </label>
+                    <div className="relative">
+                      <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="password"
+                        required
+                        value={loginForm.password}
+                        onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
+                        placeholder="Enter password (default: 123)"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      1. Student Full Name
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        required
+                        value={loginForm.studentName}
+                        onChange={e => setLoginForm({ ...loginForm, studentName: e.target.value })}
+                        placeholder="Enter student full name"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">
-                    3. Section
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={loginForm.section}
-                    onChange={e => setLoginForm({ ...loginForm, section: e.target.value })}
-                    placeholder="e.g. A"
-                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">
+                        2. Class
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={loginForm.className}
+                        onChange={e => setLoginForm({ ...loginForm, className: e.target.value })}
+                        placeholder="e.g. 10"
+                        className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                      />
+                    </div>
 
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">
-                    4. Roll Number
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={loginForm.rollNo}
-                    onChange={e => setLoginForm({ ...loginForm, rollNo: e.target.value })}
-                    placeholder="e.g. 1001"
-                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                  />
-                </div>
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">
+                        3. Section
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={loginForm.section}
+                        onChange={e => setLoginForm({ ...loginForm, section: e.target.value })}
+                        placeholder="e.g. A"
+                        className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">
-                    5. Mobile Number (Country Code + Number)
-                  </label>
-                  <CountryPhoneInput
-                    value={loginForm.phone}
-                    selectedCountryCode={selectedCountryCode}
-                    onCountryCodeChange={setSelectedCountryCode}
-                    onChange={(val, code) => {
-                      setLoginForm({ ...loginForm, phone: val });
-                      setSelectedCountryCode(code);
-                    }}
-                    required
-                    placeholder="Enter mobile number"
-                  />
-                </div>
-              </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">
+                        4. Roll Number
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={loginForm.rollNo}
+                        onChange={e => setLoginForm({ ...loginForm, rollNo: e.target.value })}
+                        placeholder="e.g. 1001"
+                        className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                      />
+                    </div>
 
-              <div>
-                <label className="block text-slate-300 font-bold mb-1">
-                  Unique Password
-                </label>
-                <div className="relative">
-                  <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="password"
-                    required
-                    value={loginForm.password}
-                    onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
-                    placeholder="Enter password"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                  />
-                </div>
-              </div>
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">
+                        5. Mobile Number (Country Code + Number)
+                      </label>
+                      <CountryPhoneInput
+                        value={loginForm.phone}
+                        selectedCountryCode={selectedCountryCode}
+                        onCountryCodeChange={setSelectedCountryCode}
+                        onChange={(val, code) => {
+                          setLoginForm({ ...loginForm, phone: val });
+                          setSelectedCountryCode(code);
+                        }}
+                        required
+                        placeholder="Enter mobile number"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      Unique Password
+                    </label>
+                    <div className="relative">
+                      <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="password"
+                        required
+                        value={loginForm.password}
+                        onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
+                        placeholder="Enter password"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {captchaRequired && (
                 <CaptchaWidget
@@ -677,7 +769,7 @@ export const StudentPortal: React.FC = () => {
               <button
                 type="submit"
                 disabled={loginLoading}
-                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-lg transition-transform hover:scale-[1.01] cursor-pointer"
+                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl shadow-lg transition-transform hover:scale-[1.01] cursor-pointer"
               >
                 {loginLoading ? 'Authenticating Credentials...' : 'Sign In To Student Portal'}
               </button>
@@ -787,10 +879,28 @@ export const StudentPortal: React.FC = () => {
             <h2 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-amber-500" /> Student & Parent Portal Workspace Tools
             </h2>
-            <span className="text-[11px] text-slate-500 font-bold">18 Full Features</span>
+            <span className="text-[11px] text-slate-500 font-bold">19 Full Features</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 text-xs font-bold">
+            {/* 0. Student Profile */}
+            <button
+              onClick={() => handleSwitchTab('profile')}
+              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
+                activeTab === 'profile'
+                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
+                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
+              }`}
+            >
+              <User className={`w-5 h-5 ${activeTab === 'profile' ? 'text-slate-950' : 'text-purple-500'}`} />
+              <span className="font-extrabold leading-tight">Student Profile</span>
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                activeTab === 'profile' ? 'bg-slate-900/20 text-slate-950' : 'bg-purple-100 text-purple-800 dark:bg-purple-900/80 dark:text-purple-200'
+              }`}>
+                Dossier & Bio
+              </span>
+            </button>
+
             {/* 1. Homework */}
             <button
               onClick={() => handleSwitchTab('homework')}
@@ -1099,6 +1209,295 @@ export const StudentPortal: React.FC = () => {
 
         {/* Tab Content Section Container with scroll target ref */}
         <div ref={activeContentRef} id="student-tab-content-section" className="scroll-mt-6 space-y-6">
+
+        {/* --- TAB 0: STUDENT PROFILE --- */}
+        {activeTab === 'profile' && (
+          <div className="space-y-6 animate-in fade-in-50 duration-200">
+            {/* Top Dossier Action Header */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    Active Enrolled Student ✓
+                  </span>
+                  <span className="text-xs text-slate-400 font-semibold">Session 2026-27</span>
+                </div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white font-heading mt-1 flex items-center gap-2">
+                  <User className="w-6 h-6 text-amber-500" /> Student Profile & Academic Dossier
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Official student identity, family records, transport route and academic status under Model Public School.
+                </p>
+              </div>
+
+              <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => window.print()}
+                  className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="Print Official Student Profile"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Profile</span>
+                </button>
+                <button
+                  onClick={() => handleSwitchTab('idcard')}
+                  className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Digital ID Card</span>
+                </button>
+                <button
+                  onClick={() => handleSwitchTab('record-updates')}
+                  className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Request Correction</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Profile Bento Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* 1. Identity & Student Details (Col 1) */}
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <img
+                      src={student.photo || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400'}
+                      alt={student.name}
+                      className="w-20 h-20 rounded-2xl object-cover border-2 border-amber-400 shadow-md ring-4 ring-amber-400/20"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (!target.src.includes('unsplash.com/photo-1539571696357-5a69c17a67c6')) {
+                          target.src = 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400';
+                        }
+                      }}
+                    />
+                    <span className="absolute -bottom-1.5 -right-1.5 bg-emerald-500 text-white p-0.5 rounded-full border-2 border-white dark:border-slate-900" title="Verified Record">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white font-heading leading-tight">
+                      {student.name}
+                    </h4>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-bold mt-0.5">
+                      Class {student.class} • Section {student.section}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <span className="text-[11px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md">
+                        Roll #{student.rollNo}
+                      </span>
+                      <span className="text-[10px] text-slate-400">CBSE Affiliated</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
+                  <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                    <span className="text-slate-400">Admission / Student ID</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{student.id || `MPS-STU-${student.rollNo}`}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                    <span className="text-slate-400">Admission Date</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{student.admissionDate || '10 April 2023'}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                    <span className="text-slate-400">Date of Birth</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{student.dob || '15 May 2008'}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                    <span className="text-slate-400">Blood Group</span>
+                    <span className="font-bold text-rose-600 dark:text-rose-400">B+ (Verified)</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                    <span className="text-slate-400">House</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-400">Tagore House (Yellow)</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-slate-400">Email ID</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[170px]">{student.email || `s${student.rollNo}@modelpublicschool.com`}</span>
+                  </div>
+                </div>
+
+                {/* Personal School Notice Banner */}
+                {student.notice && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800/60 text-xs">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300 mb-1">
+                      <Bell className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Notice from Administration</span>
+                    </div>
+                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11.5px]">
+                      {student.notice}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Parent & Guardian Information (Col 2) */}
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-blue-500" /> Parent & Guardian Records
+                  </h4>
+                  <span className="text-[10px] text-slate-400 font-bold">Contact Card</span>
+                </div>
+
+                <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/40 space-y-1">
+                  <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    Primary Guardian
+                  </div>
+                  <div className="text-base font-extrabold text-slate-900 dark:text-white">
+                    {student.parentName || 'Ramesh Kumar'}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Relationship: Father • Occupation: Business / Agriculture
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="text-slate-400 text-[10px] font-bold uppercase">Registered Phone Number</div>
+                      <div className="font-mono font-bold text-slate-900 dark:text-white text-sm mt-0.5">
+                        {student.phone || '+91 98765 43210'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <a
+                        href={`tel:${student.phone || '9876543210'}`}
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition-colors"
+                      >
+                        <PhoneCall className="w-3 h-3" /> Call
+                      </a>
+                      <a
+                        href={`https://wa.me/91${(student.phone || '9876543210').replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 transition-colors"
+                      >
+                        WhatsApp
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                    <div className="text-slate-400 text-[10px] font-bold uppercase flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-amber-500" /> Permanent Residential Address
+                    </div>
+                    <div className="font-medium text-slate-800 dark:text-slate-200 mt-1 leading-relaxed">
+                      {student.address || 'AT- Bhawanipur, P.S.- Sikta, West Champaran, Bihar - 845307'}
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      Police Station: Sikta • District: West Champaran • State: Bihar
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                    <div className="text-slate-400 text-[10px] font-bold uppercase">Emergency Alternate Contact</div>
+                    <div className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
+                      +91 91620 24642 (School Office Helplines)
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Transport, Academic & Fee Summary (Col 3) */}
+              <div className="space-y-6">
+                {/* School Transport Bus Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <Bus className="w-4 h-4 text-amber-500" /> Transport & Bus Route
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300">
+                      Route #3
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 dark:text-slate-400">Assigned Vehicle:</span>
+                      <strong className="text-slate-900 dark:text-white font-mono">Bus #3 (BR-22-P-4012)</strong>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 dark:text-slate-400">Designated Stop:</span>
+                      <strong className="text-slate-900 dark:text-white">Bhawanipur Chowk</strong>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 dark:text-slate-400">Pickup / Drop:</span>
+                      <strong className="text-emerald-600 dark:text-emerald-400">07:15 AM / 02:40 PM</strong>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 dark:text-slate-400">Assigned Driver:</span>
+                      <strong className="text-slate-900 dark:text-white">Ram Iqbal Mahto</strong>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleSwitchTab('transport')}
+                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Track School Bus Live GPS</span>
+                  </button>
+                </div>
+
+                {/* Academic & Fee Health Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <Award className="w-4 h-4 text-emerald-500" /> Academic & Fee Health
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-bold">Summary</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-center">
+                      <div className="text-[10px] text-slate-400 font-bold uppercase">Attendance</div>
+                      <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                        {attendancePercentage}%
+                      </div>
+                      <button
+                        onClick={() => handleSwitchTab('attendance')}
+                        className="text-[10px] text-blue-600 dark:text-blue-400 font-bold hover:underline mt-1 inline-block"
+                      >
+                        View Log →
+                      </button>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-center">
+                      <div className="text-[10px] text-slate-400 font-bold uppercase">Fee Balance</div>
+                      <div className={`text-xl font-black mt-0.5 ${
+                        student.feeInfo.pending > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                      }`}>
+                        {student.feeInfo.pending > 0 ? `₹${student.feeInfo.pending}` : 'All Clear'}
+                      </div>
+                      <button
+                        onClick={() => handleSwitchTab('fees')}
+                        className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline mt-1 inline-block"
+                      >
+                        Pay Online →
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-bold">Latest Exam Result</div>
+                      <div className="font-bold text-slate-900 dark:text-white mt-0.5">Mid-Term CBSE Exam</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300">
+                        Grade A1 (92%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* --- TAB 1: ONLINE CLASSES --- */}
         {activeTab === 'online-classes' && (
@@ -1530,7 +1929,7 @@ export const StudentPortal: React.FC = () => {
                 {/* Campus Location Map View */}
                 <div className="h-56 lg:h-auto rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 relative">
                   <iframe
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14197.886367352355!2d84.5828456!3d27.0168341!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399365e1b12b5555%3A0x8c62c2f7b8893d56!2sSikta%2C%20Bihar!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+                    src="https://maps.google.com/maps?q=27.0278,84.6828+(Model+Public+School+Sikta+West+Champaran)&t=&z=16&ie=UTF8&iwloc=B&output=embed"
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}
@@ -2534,3 +2933,5 @@ export const StudentPortal: React.FC = () => {
     </div>
   );
 };
+
+export default StudentPortal;

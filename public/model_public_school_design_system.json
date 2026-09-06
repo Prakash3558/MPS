@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json.schemastore.org/figma-tokens.json",
+  "project": {
+    "name": "Model Public School Web Platform",
+    "institution": "Model Public School, Sikta, West Champaran, Bihar",
+    "version": "1.0.0",
+    "type": "Educational Institution ERP & Public Portal"
+  },
+  "tokens": {
+    "colors": {
+      "primary": {
+        "slate-950": { "value": "#020617", "type": "color", "description": "Primary Dark Background / Navbars" },
+        "slate-900": { "value": "#0f172a", "type": "color", "description": "Secondary Dark Surfaces & Headers" },
+        "slate-800": { "value": "#1e293b", "type": "color", "description": "Dark Card Surfaces & Dividers" },
+        "slate-700": { "value": "#334155", "type": "color", "description": "Subtle Borders" }
+      },
+      "brand": {
+        "gold-500": { "value": "#f59e0b", "type": "color", "description": "Academic Gold / Primary Action Accent" },
+        "gold-400": { "value": "#fbbf24", "type": "color", "description": "Hover Gold" },
+        "gold-600": { "value": "#d97706", "type": "color", "description": "Active / Pressed Gold" },
+        "navy-900": { "value": "#1e1b4b", "type": "color", "description": "Deep Royal Navy" }
+      },
+      "feedback": {
+        "emerald-500": { "value": "#10b981", "type": "color", "description": "Success / Present Status" },
+        "rose-500": { "value": "#f43f5e", "type": "color", "description": "Urgent Alert / Absent Status" },
+        "sky-500": { "value": "#0ea5e9", "type": "color", "description": "Information / Live Class" },
+        "amber-500": { "value": "#f59e0b", "type": "color", "description": "Pending / Warning Status" }
+      },
+      "neutral": {
+        "canvas-light": { "value": "#f8fafc", "type": "color", "description": "Main Light Page Canvas" },
+        "card-light": { "value": "#ffffff", "type": "color", "description": "Light Card Background" },
+        "border-light": { "value": "#e2e8f0", "type": "color", "description": "Light Border Stroke" },
+        "text-headline": { "value": "#0f172a", "type": "color", "description": "High Contrast Dark Text" },
+        "text-muted": { "value": "#64748b", "type": "color", "description": "Secondary Caption Text" }
+      }
+    },
+    "typography": {
+      "fontFamilies": {
+        "display": { "value": "Plus Jakarta Sans, sans-serif" },
+        "body": { "value": "Inter, sans-serif" },
+        "mono": { "value": "ui-monospace, monospace" }
+      },
+      "fontSizes": {
+        "hero": { "value": "48px" },
+        "h1": "36px",
+        "h2": "28px",
+        "h3": "20px",
+        "body-lg": "16px",
+        "body-base": "14px",
+        "caption": "12px",
+        "micro": "10px"
+      },
+      "lineHeights": {
+        "tight": "1.2",
+        "normal": "1.5",
+        "relaxed": "1.75"
+      }
+    },
+    "borderRadius": {
+      "sm": "8px",
+      "md": "12px",
+      "lg": "16px",
+      "xl": "24px",
+      "full": "9999px"
+    }
+  },
+  "uiPagesAndComponentTree": {
+    "page_1_public_portal": {
+      "title": "Public Website & Institutional Showcase",
+      "route": "/",
+      "sections": [
+        {
+          "component": "NoticeTickerMarquee",
+          "properties": {
+            "isInfiniteMarquee": true,
+            "badgeText": "Notice / Urgent",
+            "badgeColor": "amber | rose | emerald | blue",
+            "tickerSpeed": "slow | normal | fast",
+            "elements": ["Category Badge", "Dual Track Marquee Ribbon", "Action Link Button"]
+          }
+        },
+        {
+          "component": "HeaderNavbar",
+          "properties": {
+            "branding": "Model Public School Crest + CBSE Affiliation Tag",
+            "navItems": ["Home", "About Us", "Academics", "Admissions", "Facilities", "Faculty", "Gallery", "Fee Structure", "Contact & Routes"],
+            "actionButtons": [
+              { "label": "Student / Parent Portal", "variant": "amber-solid" },
+              { "label": "Teacher Login", "variant": "ghost" },
+              { "label": "Admin Login", "variant": "icon-secure" },
+              { "label": "Theme Toggle", "variant": "icon-sun-moon" }
+            ]
+          }
+        },
+        {
+          "component": "HeroSection",
+          "properties": {
+            "badge": "Admissions Open 2026-27",
+            "heading": "Nurturing Tomorrow's Leaders with Holistic Education",
+            "subheading": "CBSE Curriculum with World-Class Infrastructure, Digital Labs & Dedicated Mentorship in Sikta, Bihar",
+            "buttons": ["Apply for Admission 2026-27", "Explore Campus Facilities", "Download Prospectus (PDF)"],
+            "statsBento": [
+              { "value": "1200+", "label": "Enrolled Students" },
+              { "value": "100%", "label": "CBSE Pass Rate" },
+              { "value": "45+", "label": "Qualified Faculty" },
+              { "value": "15+", "label": "Smart Labs & Facilities" }
+            ]
+          }
+        },
+        {
+          "component": "AboutAndPrincipalDesk",
+          "properties": {
+            "cards": ["Mission & Vision", "Legacy of Excellence", "Principal Note with Signature"]
+          }
+        },
+        {
+          "component": "AcademicsSection",
+          "properties": {
+            "wingTabs": ["Primary Wing (Nursery-5)", "Middle Wing (6-8)", "Secondary Wing (9-10)"],
+            "subjectGrids": ["Core CBSE Subjects", "Co-Curricular & Sports", "Assessment Framework"]
+          }
+        },
+        {
+          "component": "AdmissionsCenter",
+          "properties": {
+            "flowSteps": ["1. Registration", "2. Entrance Test", "3. Document Verification", "4. Enrollment"],
+            "formFields": ["Student Full Name", "Date of Birth", "Gender", "Grade/Class Seeking", "Parent Name", "Mobile Number", "Address", "Document Upload"],
+            "submitButton": "Submit Online Admission Application"
+          }
+        },
+        {
+          "component": "CampusFacilitiesBento",
+          "properties": {
+            "items": [
+              "Advanced Science Labs (Physics, Chemistry, Biology)",
+              "Robotics & Computer Lab",
+              "Digital Library & E-Learning Center",
+              "Multi-Sport Athletic Complex",
+              "Smart Interactive Audio-Visual Classrooms",
+              "GPS-Tracked Safe Transport Fleet"
+            ]
+          }
+        },
+        {
+          "component": "FacultyShowcase",
+          "properties": {
+            "teacherCardFields": ["Photo", "Teacher Name", "Designation", "Qualification (e.g. M.Sc, B.Ed)", "Subject Taught", "Experience"]
+          }
+        },
+        {
+          "component": "FeeStructureTable",
+          "properties": {
+            "filters": "Class Dropdown (Nursery to Class 10)",
+            "columns": ["Class", "Monthly Tuition", "Admission Fee", "Exam Charges", "Transport Tier Range"]
+          }
+        },
+        {
+          "component": "EventGalleryGrid",
+          "properties": {
+            "filterTabs": ["All", "Annual Function", "Sports Meet", "Science Exhibition", "Independence Day"],
+            "interactiveModal": "Full-Screen Lightbox with Prev, Next, Close buttons"
+          }
+        },
+        {
+          "component": "CampusTravelAndRouteGuide",
+          "properties": {
+            "presetHubs": [
+              { "hub": "Bettiah HQ", "duration": "25-35 Mins (22 KM)", "route": "Via SH-54 Majhaulia/Puraina" },
+              { "hub": "Raxaul Border", "duration": "30-40 Mins (28 KM)", "route": "Via Connecting Highway" },
+              { "hub": "Sikta Railway Station", "duration": "3-5 Mins (1.2 KM)", "route": "South towards Main Chowk" },
+              { "hub": "Motihari", "duration": "55-70 Mins (54 KM)", "route": "Via Sugauli/Bettiah Express" }
+            ],
+            "actions": ["Open in Google Maps", "Bus Route Waypoint Steps", "Driver Contact Tables"]
+          }
+        },
+        {
+          "component": "GlobalFooter",
+          "properties": {
+            "columns": ["Institution Bio & Accreditation", "Quick Navigation", "Campus Working Hours", "Contact Directory"],
+            "directChat": "WhatsApp Quick Chat floating link"
+          }
+        }
+      ]
+    },
+    "page_2_student_portal": {
+      "title": "Student & Parent 8-in-1 Workspace",
+      "route": "/portal/student",
+      "header": {
+        "studentCard": ["Avatar", "Student Name", "Roll No", "Class & Section", "Father Name", "Attendance % Badge"],
+        "tabNavigation": [
+          "1. Daily Homework & Assignments",
+          "2. Attendance Calendar & Monthly Sheet",
+          "3. Online Fee Payment & Invoices",
+          "4. Report Card & Academic Analytics",
+          "5. Live Classes & Weekly Timetable",
+          "6. Digital Student ID Card",
+          "7. Campus Travel & Bus Routes",
+          "8. Notices, Corrections & Parent Complaints"
+        ]
+      },
+      "tabs": {
+        "tab_1_homework": {
+          "filters": ["All", "Pending", "Completed"],
+          "cardElements": ["Subject Tag", "Assignment Title", "Teacher Name", "Due Date Timer", "Worksheet PDF Download", "Submit Solution File"]
+        },
+        "tab_2_attendance": {
+          "elements": ["Monthly Interactive Calendar", "Day Status Indicators (Present, Absent, Holiday)", "Attendance Summary Stats (Days Present, Absent, Total, %)"]
+        },
+        "tab_3_fees": {
+          "elements": [
+            "Current Outstanding Due Balance Indicator",
+            "Month-wise Fee Selector Dropdown",
+            "Online Payment Trigger (UPI / Card / NetBanking)",
+            "Official Printable Fee Receipt Generator (PDF download with watermark & signature)",
+            "Payment History / Invoices Table"
+          ]
+        },
+        "tab_4_report_card": {
+          "elements": [
+            "Term Selector (UT 1, Half Yearly, UT 2, Annual)",
+            "Marks Grid (Subject, Max Marks, Marks Obtained, Grade, Highest Class Score)",
+            "Overall GPA, Rank, Division",
+            "CBSE Format Printable Report Card Download",
+            "Exam Hall Ticket / Admit Card Download"
+          ]
+        },
+        "tab_5_live_classes": {
+          "elements": [
+            "6-Day Timetable Grid (Mon-Sat, Periods 1-8)",
+            "Active Class Banner with 1-Click Zoom / Google Meet launcher",
+            "Study Material & Chapter PDF Library"
+          ]
+        },
+        "tab_6_student_id_card": {
+          "elements": [
+            "Front and Back Plastic ID Card Layout",
+            "Crest, Photo, Roll No, Blood Group, Emergency Contact, Barcode/QR",
+            "Print / Download Plastic Card Layout Button"
+          ]
+        },
+        "tab_7_campus_travel": {
+          "elements": [
+            "Assigned Bus Fleet Details (Bus No, Driver Name, Driver Phone Contact, Pickup Time)",
+            "Direct Call Bus Driver Link",
+            "Route Waypoint Stop Sequence",
+            "Interactive Travel Origin Directions"
+          ]
+        },
+        "tab_8_notices_and_complaints": {
+          "elements": [
+            "Official Circulars & Exam Notices Feed",
+            "Student Record Correction Modal (Request change in Name, DOB, Father Name, Phone with ID Proof attachment)",
+            "Parent Grievance & Complaint Redressal Desk (Category selector, issue textarea, submit to Principal)",
+            "Submitted Grievance Tracker with Status Badge (Under Review, Resolved, Action Taken)"
+          ]
+        }
+      }
+    },
+    "page_3_teacher_workspace": {
+      "title": "Teacher Workspace & Faculty Portal",
+      "route": "/portal/teacher",
+      "modules": [
+        "Class & Section Selector (Class 1-10, Sections A-C)",
+        "One-Click Bulk Daily Attendance Marker (Mark All Present/Absent)",
+        "Homework & Assignment Publisher (Subject, Due Date, PDF worksheet attachment)",
+        "Term Marks & Exam Scores Entry Sheet with automated grade calculations",
+        "Live Online Class Scheduler (Subject, Topic, Meeting Link, Date & Time)",
+        "Digital School Diary Publisher",
+        "Student Leave Application Review Desk (Approve / Reject)"
+      ]
+    },
+    "page_4_admin_control_center": {
+      "title": "Admin Control Center & CMS Engine",
+      "route": "/portal/admin",
+      "modules": [
+        "Executive Analytics Bento (Total Students, Staff, Monthly Fee Revenue, Pending Admissions, Transport)",
+        "Student Directory Manager (Search, Add, Edit, Delete, Reset Password)",
+        "Teacher Directory Manager (Add Faculty, Assign Classes/Subjects, Edit, Delete)",
+        "School Finance & Billing Engine (Class monthly fee master, offline cash payment logger, receipt generator)",
+        "Admissions Desk (Application reviewer, document preview modal, approve with Roll No, reject)",
+        "Website CMS Manager (Notice marquee ticker settings, speed, badge color, announcement broadcaster, gallery manager)",
+        "Transport Fleet Manager (Bus routes, vehicle numbers, driver details, stop waypoints, fares)",
+        "Parent Grievance & Correction Desk (Process student record changes, reply to complaints)",
+        "System Backup & One-Click SQL Database Dump"
+      ]
+    }
+  }
+}

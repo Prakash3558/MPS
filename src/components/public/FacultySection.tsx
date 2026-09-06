@@ -409,3 +409,6 @@ export const FacultySection: React.FC = React.memo(() => {
     </section>
   );
 });
+
+export default FacultySection;
+

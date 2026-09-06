@@ -102,3 +102,6 @@ export const FeesSection: React.FC = React.memo(() => {
     </section>
   );
 });
+
+export default FeesSection;
+

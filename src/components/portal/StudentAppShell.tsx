@@ -72,26 +72,47 @@ export const StudentAppShell: React.FC = () => {
       {/* Native App Top Header Bar */}
       <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
-          {/* Brand & App Title */}
+          {/* Brand & App Title with Student Identity */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md border border-white/20 flex-shrink-0">
-              <img
-                src={settings?.logo_url || '/logo.svg'}
-                alt="MPS Logo"
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/logo.svg';
-                }}
-              />
-            </div>
+            {student?.photo ? (
+              <div className="relative flex-shrink-0">
+                <img
+                  src={student.photo}
+                  alt={student.name}
+                  className="w-10 h-10 rounded-xl object-cover border-2 border-amber-400 shadow-md bg-slate-800"
+                />
+                <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md border border-white/20 flex-shrink-0">
+                <img
+                  src={settings?.logo_url || '/logo.svg'}
+                  alt="MPS Logo"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/logo.svg';
+                  }}
+                />
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm sm:text-base font-black text-white leading-tight font-heading flex items-center gap-1.5">
-                  <span>{settings?.school_name || 'Model Public School'}</span>
+                  {student ? (
+                    <span className="truncate max-w-[150px] sm:max-w-none">{student.name}</span>
+                  ) : (
+                    <span>{settings?.school_name || 'Model Public School'}</span>
+                  )}
                 </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-bold border border-blue-500/30">
-                  <Smartphone className="w-3 h-3" /> Student App
-                </span>
+                {student ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black shadow">
+                    Class {student.class}-{student.section}
+                  </span>
+                ) : (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-bold border border-blue-500/30">
+                    <Smartphone className="w-3 h-3" /> Student App
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-400 font-medium flex items-center gap-2">
                 <span className="flex items-center gap-1 text-emerald-400">
@@ -108,7 +129,7 @@ export const StudentAppShell: React.FC = () => {
                   )}
                 </span>
                 {student && (
-                  <span className="text-slate-500">· Class {student.class}-{student.section} (Roll {student.rollNo})</span>
+                  <span className="text-amber-300 font-semibold">· Roll No: {student.rollNo}</span>
                 )}
               </p>
             </div>
@@ -184,3 +205,6 @@ export const StudentAppShell: React.FC = () => {
     </div>
   );
 };
+
+export default StudentAppShell;
+

@@ -3,14 +3,15 @@ import { useCMS } from '../../context/CMSContext';
 import { useAuth } from '../../context/AuthContext';
 import { EditableText } from './EditableText';
 import { EditableImage } from './EditableImage';
-import { Shield, Phone, Mail, UserCheck, GraduationCap, School, Menu, X, ShieldAlert, Moon, Sun, LogOut, Download, Smartphone } from 'lucide-react';
+import { Shield, Phone, Mail, UserCheck, GraduationCap, School, Menu, X, ShieldAlert, Moon, Sun, LogOut, Download, Smartphone, Bus } from 'lucide-react';
 import { api } from '../../lib/api';
 import { AppDownloadModal } from './AppDownloadModal';
 
 export const Header: React.FC = React.memo(() => {
   const { settings, updateSettings } = useCMS();
-  const { user, teacher, student, logout } = useAuth();
+  const { user, teacher, student, staff, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [teacherMenuOpen, setTeacherMenuOpen] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('mps_dark_mode');
@@ -134,68 +135,124 @@ export const Header: React.FC = React.memo(() => {
             <span>App</span>
           </button>
 
-          {(user || teacher || student) ? (
+          {(user || teacher || student || staff) ? (
             <div className="flex items-center gap-2">
               <a
-                href={student ? '/portal' : (teacher ? '/teacher' : '/admin')}
+                href={staff ? '/staff' : (student ? '/portal' : (teacher ? '/teacher' : '/admin'))}
                 className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs px-3.5 py-1.5 rounded-full transition-all shadow-xs"
                 title="Go directly to your active dashboard"
               >
-                {student ? (
+                {staff ? (
+                  <Bus className="w-3.5 h-3.5 text-amber-400 dark:text-amber-500" />
+                ) : student ? (
                   <GraduationCap className="w-3.5 h-3.5 text-amber-400 dark:text-amber-500" />
                 ) : teacher ? (
                   <UserCheck className="w-3.5 h-3.5 text-blue-500" />
                 ) : (
                   <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
                 )}
-                <span>My Dashboard</span>
+                <span>{staff ? 'Driver Portal' : 'My Dashboard'}</span>
               </a>
 
-              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/90 py-1 pl-3 pr-1 rounded-full border border-slate-200 dark:border-slate-700/80">
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/90 py-1 pl-1.5 pr-1 rounded-full border border-slate-200 dark:border-slate-700/80">
+                {/* Profile Picture / Avatar Icon */}
+                <div className="relative flex-shrink-0">
+                  {student?.photo ? (
+                    <img
+                      src={student.photo}
+                      alt={student.name}
+                      className="w-7 h-7 rounded-full object-cover border border-amber-400 shadow-xs"
+                    />
+                  ) : teacher?.photo ? (
+                    <img
+                      src={teacher.photo}
+                      alt={teacher.name}
+                      className="w-7 h-7 rounded-full object-cover border border-amber-400 shadow-xs"
+                    />
+                  ) : staff?.photo ? (
+                    <img
+                      src={staff.photo}
+                      alt={staff.name}
+                      className="w-7 h-7 rounded-full object-cover border border-amber-400 shadow-xs"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-amber-500 text-slate-950 font-black flex items-center justify-center text-xs shadow-xs">
+                      {(user?.name || teacher?.name || student?.name || staff?.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 border border-white dark:border-slate-900 rounded-full"></span>
+                </div>
+
                 <div className="text-left leading-tight">
                   <div className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span className="text-[9.5px] text-amber-600 dark:text-amber-400 font-black uppercase tracking-wider">
-                      {user?.role || (teacher ? 'Teacher' : 'Student')}
+                      {staff ? `${staff.role}: ${staff.vehicleNumber || 'Staff'}` : student ? `Class ${student.class}-${student.section}` : (teacher ? `Class ${teacher.assignedClass}-${teacher.assignedSection}` : 'Admin')}
                     </span>
                   </div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[130px] block">
-                    {user?.name || teacher?.name || student?.name}
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[120px] block">
+                    {user?.name || teacher?.name || student?.name || staff?.name}
                   </span>
                 </div>
                 <button
                   onClick={logout}
-                  className="bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white dark:text-rose-400 dark:hover:text-white font-bold text-[11px] px-2.5 py-1 rounded-full border border-rose-200 dark:border-rose-800/60 flex items-center gap-1 transition-all cursor-pointer"
+                  className="bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white dark:text-rose-400 dark:hover:text-white font-bold text-[11px] px-2 py-1 rounded-full border border-rose-200 dark:border-rose-800/60 flex items-center gap-1 transition-all cursor-pointer ml-1"
                   title="Sign out of this device"
                 >
                   <LogOut className="w-3 h-3" />
-                  <span>Logout</span>
+                  <span className="hidden xl:inline">Logout</span>
                 </button>
               </div>
             </div>
           ) : (
             <>
-              {/* Minimal Student Portal Button */}
+              {/* Student Profile / Portal Button */}
               <a
                 href="/portal"
                 onMouseEnter={() => { api.prefetchStudents(); api.prefetchNotices(); }}
                 onFocus={() => { api.prefetchStudents(); api.prefetchNotices(); }}
                 className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs px-3.5 py-1.5 rounded-full transition-all shadow-xs"
-                title="Open Student & Parent Portal"
+                title="Open Student Profile & Portal"
               >
                 <GraduationCap className="w-3.5 h-3.5 text-amber-400 dark:text-amber-500" />
-                <span>Portal</span>
+                <span>Student Profile</span>
               </a>
 
-              <a
-                href="/teacher"
-                onMouseEnter={() => { api.prefetchTeachers(); api.prefetchStudents(); }}
-                onFocus={() => { api.prefetchTeachers(); api.prefetchStudents(); }}
-                className="flex items-center gap-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium text-xs px-2.5 py-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <span>Teacher</span>
-              </a>
+              {/* Teacher / Staff portal dropdown menu */}
+              <div className="relative group">
+                <a
+                  href="/teacher"
+                  onMouseEnter={() => { api.prefetchTeachers(); api.prefetchStudents(); }}
+                  onFocus={() => { api.prefetchTeachers(); api.prefetchStudents(); }}
+                  className="flex items-center gap-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium text-xs px-2.5 py-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Teacher & Staff</span>
+                </a>
+
+                {/* Dropdown Menu */}
+                <div className="absolute top-full right-0 mt-1 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 hidden group-hover:block hover:block z-50 animate-in fade-in-50 duration-150">
+                  <a
+                    href="/teacher"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 transition-colors"
+                  >
+                    <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <div>
+                      <div className="font-bold">Teacher Portal</div>
+                      <div className="text-[10px] text-slate-400">Classroom & Faculty</div>
+                    </div>
+                  </a>
+                  <a
+                    href="/staff"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-slate-800 hover:text-amber-600 transition-colors mt-1"
+                  >
+                    <Bus className="w-4 h-4 text-amber-500" />
+                    <div>
+                      <div className="font-bold">Staff & Driver Portal</div>
+                      <div className="text-[10px] text-slate-400">Bus tracking & Students</div>
+                    </div>
+                  </a>
+                </div>
+              </div>
 
               <a
                 href="/admin"
@@ -212,9 +269,9 @@ export const Header: React.FC = React.memo(() => {
 
         {/* Mobile Controls - Ultra Sleek Single-Line Layout */}
         <div className="flex sm:hidden items-center gap-1.5 flex-shrink-0">
-          {(user || teacher || student) ? (
+          {(user || teacher || student || staff) ? (
             <a
-              href={student ? '/portal' : (teacher ? '/teacher' : '/admin')}
+              href={staff ? '/staff' : (student ? '/portal' : (teacher ? '/teacher' : '/admin'))}
               className="flex items-center gap-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-[11px] px-2.5 py-1 rounded-full shadow-xs active:scale-95 transition-transform"
               title="Go to My Dashboard"
             >
@@ -225,10 +282,10 @@ export const Header: React.FC = React.memo(() => {
             <a
               href="/portal"
               className="flex items-center gap-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-[11px] px-2.5 py-1 rounded-full shadow-xs active:scale-95 transition-transform"
-              title="Student Portal"
+              title="Student Profile & Portal"
             >
               <GraduationCap className="w-3 h-3 text-amber-400" />
-              <span>Portal</span>
+              <span>Student</span>
             </a>
           )}
 
@@ -255,21 +312,47 @@ export const Header: React.FC = React.memo(() => {
         <div className="lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border-b border-slate-200 dark:border-slate-800 px-4 py-3.5 space-y-3 text-sm font-medium animate-in slide-in-from-top-3 duration-200">
           {(user || teacher || student) ? (
             <div className="bg-slate-100 dark:bg-slate-800/90 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-[10.5px] text-amber-600 dark:text-amber-400 font-extrabold uppercase tracking-wider">
-                    {user?.role || (teacher ? 'Teacher' : 'Student')} Signed In
-                  </span>
+              <div className="flex items-center gap-3">
+                {/* Profile Photo Avatar */}
+                <div className="relative flex-shrink-0">
+                  {student?.photo ? (
+                    <img
+                      src={student.photo}
+                      alt={student.name}
+                      className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400 shadow-sm"
+                    />
+                  ) : teacher?.photo ? (
+                    <img
+                      src={teacher.photo}
+                      alt={teacher.name}
+                      className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 font-black flex items-center justify-center text-base shadow-sm">
+                      {(user?.name || teacher?.name || student?.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></span>
                 </div>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  Saved on device ✓
-                </span>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase">
+                      {student ? `Class ${student.class}-${student.section}` : (teacher ? `Teacher: Class ${teacher.assignedClass}-${teacher.assignedSection}` : 'Admin')}
+                    </span>
+                    {student?.rollNo && (
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">
+                        Roll: {student.rollNo}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm font-black text-slate-900 dark:text-white truncate mt-0.5">
+                    {user?.name || teacher?.name || student?.name}
+                  </div>
+                </div>
               </div>
-              <div className="text-sm font-black text-slate-900 dark:text-white truncate">
-                {user?.name || teacher?.name || student?.name}
-              </div>
-              <div className="flex gap-2 pt-1">
+
+              <div className="flex gap-2 pt-1 border-t border-slate-200 dark:border-slate-700/60">
                 <a
                   href={student ? '/portal' : (teacher ? '/teacher' : '/admin')}
                   onClick={() => setMobileMenuOpen(false)}
@@ -369,16 +452,25 @@ export const Header: React.FC = React.memo(() => {
               Apply for Admission
             </a>
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               <a
                 href="/teacher"
-                className="w-1/2 flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700"
               >
-                <UserCheck className="w-3.5 h-3.5 text-blue-600" /> Teacher Workspace
+                <UserCheck className="w-3.5 h-3.5 text-blue-600" /> Teacher
+              </a>
+              <a
+                href="/staff"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold py-2 rounded-xl text-xs border border-amber-500/30"
+              >
+                <Bus className="w-3.5 h-3.5 text-amber-500" /> Driver
               </a>
               <a
                 href="/admin"
-                className="w-1/2 flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700"
               >
                 <ShieldAlert className="w-3.5 h-3.5 text-slate-500" /> Admin
               </a>

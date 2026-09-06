@@ -1,0 +1,199 @@
+# ==============================================================================
+# MODEL PUBLIC SCHOOL - COMPLETE SYSTEM UI, FEATURES & BUTTONS SPECIFICATION
+# ==============================================================================
+# Use this specification file in Stitch, Figma AI, or any UI builder.
+# ==============================================================================
+
+PROJECT_NAME: "Model Public School Web Platform"
+INSTITUTION: "Model Public School, Sikta, West Champaran, Bihar"
+CURRICULUM: "CBSE Pattern (Nursery to Class 10th)"
+
+THEME_TOKENS:
+  primary_dark: "#0F172A"      # Slate 900 (Navbars, dark cards)
+  primary_surface: "#020617"   # Slate 950 (Canvas background)
+  accent_gold: "#F59E0B"       # Warm Amber (Primary buttons, CTA, badges)
+  accent_emerald: "#10B981"    # Present / Paid status
+  accent_rose: "#F43F5E"       # Urgent alerts / Absent status
+  accent_sky: "#0EA5E9"        # Live classes / Information
+  neutral_light: "#F8FAFC"     # Light mode canvas
+  border_light: "#E2E8F0"      # Light borders
+  typography_display: "Plus Jakarta Sans, sans-serif"
+  typography_body: "Inter, sans-serif"
+
+# ==============================================================================
+# 1. GLOBAL HEADER & RUNNING NOTICE MARQUEE TICKER
+# ==============================================================================
+HEADER_COMPONENTS:
+  - top_announcement_ticker:
+      type: "dual_track_infinite_marquee"
+      badge: "Urgent / Notice (Custom color: Amber, Rose, Emerald, Blue)"
+      marquee_items: "School announcements, live event ticker, admission alerts"
+      action_button: "Apply Online CTA"
+  - main_navigation_bar:
+      branding: "Model Public School Crest + CBSE Affiliation Code"
+      nav_links:
+        - "Home"
+        - "About Us"
+        - "Academics"
+        - "Admissions"
+        - "Facilities"
+        - "Faculty"
+        - "Gallery"
+        - "Fee Structure"
+        - "Contact & Routes"
+      action_controls:
+        - button: "Student / Parent Portal Login (Amber Solid CTA)"
+        - button: "Teacher Login (Secondary Ghost)"
+        - button: "Admin Control Center Login (Secure Lock Icon)"
+        - toggle: "Light / Dark Theme Toggle"
+        - drawer: "Mobile Responsive Menu Drawer"
+
+# ==============================================================================
+# 2. PUBLIC HOMEPAGE SECTIONS
+# ==============================================================================
+PUBLIC_SECTIONS:
+  - hero_section:
+      badge: "Admissions Open 2026-27"
+      headline: "Nurturing Tomorrow's Leaders with Holistic Education"
+      subheadline: "CBSE Curriculum with World-Class Infrastructure, Digital Labs & Dedicated Mentorship in Sikta, Bihar"
+      buttons:
+        - "Apply for Admission 2026-27"
+        - "Explore Campus Facilities"
+        - "Download Prospectus (PDF)"
+      stats_bento:
+        - "1200+ Enrolled Students"
+        - "100% CBSE Pass Rate"
+        - "45+ Qualified Faculty"
+        - "15+ Smart Labs & Facilities"
+  - about_and_principal:
+      cards:
+        - "Mission & Vision Pillars"
+        - "Legacy of Academic Excellence"
+        - "Principal's Message with Photo & Digital Signature"
+  - academics_and_curriculum:
+      wing_tabs:
+        - "Primary Wing (Nursery to Class 5)"
+        - "Middle Wing (Class 6 to Class 8)"
+        - "Secondary Wing (Class 9 to Class 10)"
+      curriculum_details: "CBSE Core Curriculum, Olympiads, Co-Curricular Sports"
+  - online_admissions_center:
+      roadmap_steps: ["1. Registration", "2. Entrance Assessment", "3. Document Verification", "4. Enrollment"]
+      form_fields:
+        - "Student Full Name"
+        - "Date of Birth"
+        - "Gender"
+        - "Grade / Class Seeking"
+        - "Parent / Guardian Name"
+        - "Mobile Number"
+        - "Residential Address"
+        - "Document Upload (Birth Certificate / Aadhar / TC)"
+      submit_button: "Submit Online Admission Application"
+  - campus_facilities_bento:
+      cards:
+        - "Advanced Science Laboratories (Physics, Chemistry, Biology)"
+        - "Robotics & Modern Computer Lab"
+        - "Digital E-Library & Knowledge Center"
+        - "Multi-Sport Athletic Complex & Playgrounds"
+        - "Smart Audio-Visual Classrooms"
+        - "GPS-Monitored Safe School Transport Fleet"
+  - faculty_directory:
+      cards: "Teacher Photo, Full Name, Designation, Qualifications (M.Sc, B.Ed), Subject Taught, Experience"
+  - fee_structure_table:
+      class_filter: "Class Dropdown (Nursery to Class 10)"
+      columns: ["Class", "Monthly Tuition Fee", "Admission Fee", "Exam Fee", "Transport Tier Range"]
+  - photo_event_gallery:
+      filter_tabs: ["All", "Annual Function", "Sports Meet", "Science Expo", "Independence Day"]
+      lightbox_modal: "Full-screen viewer with Prev (<), Next (>), Close (X)"
+  - campus_travel_and_routes:
+      preset_origin_tabs:
+        - "From Bettiah HQ (25-35 Mins / 22 KM via SH-54)"
+        - "From Raxaul Border (30-40 Mins / 28 KM)"
+        - "From Sikta Railway Station (3-5 Mins / 1.2 KM)"
+        - "From Motihari (55-70 Mins / 54 KM)"
+      buttons:
+        - "Open Campus Location in Google Maps"
+        - "View Bus Route Waypoint Steps"
+        - "Direct Call Bus Driver Links"
+  - global_footer:
+      columns: ["Institution Bio & Accreditation", "Quick Links", "Campus Hours", "Contact Directory"]
+      floating_cta: "WhatsApp Quick Chat Button"
+
+# ==============================================================================
+# 3. STUDENT & PARENT PORTAL (8 INTEGRATED MODULES)
+# ==============================================================================
+STUDENT_PORTAL_SPECIFICATION:
+  header_identity_bar:
+    fields: ["Student Avatar", "Full Name", "Roll Number", "Class & Section", "Father's Name", "Attendance % Badge"]
+    actions:
+      - "Print Student Summary / PDF"
+      - "Session Logout Button"
+  navigation_tabs:
+    - tab_1_daily_homework:
+        filters: ["All", "Pending", "Completed"]
+        card_items: ["Subject Tag", "Assignment Title", "Teacher Name", "Due Date Timer", "Worksheet PDF Download", "Submit Solution File"]
+    - tab_2_attendance_calendar:
+        components: ["Interactive Month Calendar", "Day Markers (Present: Green, Absent: Red, Holiday: Yellow)", "Monthly Present/Absent Summary Counters"]
+    - tab_3_online_fee_payment:
+        components:
+          - "Outstanding Due Balance Indicator"
+          - "Fee Month Selector Dropdown"
+          - "Pay Fees Online (UPI / Card / NetBanking)"
+          - "Download Official Fee Receipt (PDF with Watermark & Stamp)"
+          - "Payment Invoices History Table"
+    - tab_4_report_card_analytics:
+        components:
+          - "Exam Term Dropdown (UT 1, Half Yearly, UT 2, Annual)"
+          - "Subject Marks Grid (Max Marks, Marks Obtained, Grade, Highest Class Score)"
+          - "Overall Percentage, GPA, Class Rank, Division"
+          - "CBSE Format Printable Report Card Download"
+          - "Exam Hall Ticket / Admit Card Download"
+    - tab_5_live_classes_timetable:
+        components:
+          - "6-Day Timetable Grid (Monday to Saturday, Periods 1 to 8)"
+          - "Active Class Banner with 1-Click Zoom / Google Meet Launcher"
+          - "Downloadable Chapter Notes & PDF Library"
+    - tab_6_digital_student_id_card:
+        components:
+          - "Printable Front & Back ID Card Layout"
+          - "School Crest, Photo, Roll No, Blood Group, Emergency Contact, QR/Barcode"
+          - "Download / Print Plastic Card Format"
+    - tab_7_campus_travel_guide:
+        components:
+          - "Assigned Bus Fleet Details (Bus No, Driver Name, Driver Phone, Pickup Timing)"
+          - "Direct Call Driver Link"
+          - "Route Waypoint Stop Sequence"
+          - "Interactive Travel Origin Directions"
+    - tab_8_notices_and_parent_grievances:
+        components:
+          - "Official Circulars & Exam Notices Feed"
+          - "Record Correction Form (Request changes to Name, DOB, Father Name with ID proof upload)"
+          - "Parent Grievance & Complaint Redressal Desk (Category selector, issue textarea, submit to Principal)"
+          - "Submitted Complaints Tracker with Real-Time Status Badge (Under Review, Resolved, Action Taken)"
+
+# ==============================================================================
+# 4. TEACHER WORKSPACE
+# ==============================================================================
+TEACHER_WORKSPACE_SPECIFICATION:
+  controls:
+    - "Class Selector (Class 1 to 10) + Section Selector (A, B, C)"
+    - "One-Click Bulk Daily Attendance Marker (Mark All Present / Mark All Absent)"
+    - "Homework & Assignment Publisher (Subject, Due Date, PDF worksheet upload)"
+    - "Term Marks & Exam Scores Entry Sheet with automated grade calculations"
+    - "Live Online Class Scheduler (Subject, Topic, Meeting Link, Date & Time)"
+    - "Digital School Diary Publisher"
+    - "Student Leave Application Review Desk (Approve / Reject)"
+
+# ==============================================================================
+# 5. ADMIN CONTROL CENTER & CMS MANAGER
+# ==============================================================================
+ADMIN_CONTROL_CENTER_SPECIFICATION:
+  modules:
+    - "Executive Analytics Bento (Total Students, Staff, Monthly Fee Revenue, Pending Admissions, Transport)"
+    - "Student Directory Manager (Search, Add, Edit, Delete, Reset Password)"
+    - "Teacher Directory Manager (Add Faculty, Assign Classes/Subjects, Edit, Delete)"
+    - "School Finance & Billing Engine (Class monthly fee master, offline cash payment logger, receipt generator)"
+    - "Admissions Desk (Application reviewer, document preview modal, approve with Roll No, reject)"
+    - "Website CMS Manager (Notice marquee ticker settings, speed, badge color, announcement broadcaster, gallery manager)"
+    - "Transport Fleet Manager (Bus routes, vehicle numbers, driver details, stop waypoints, fares)"
+    - "Parent Grievance & Correction Desk (Process student record changes, reply to complaints)"
+    - "System Backup & One-Click SQL Database Dump"

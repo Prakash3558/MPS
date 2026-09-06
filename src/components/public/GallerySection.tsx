@@ -406,3 +406,6 @@ export const GallerySection: React.FC = React.memo(() => {
     </section>
   );
 });
+
+export default GallerySection;
+

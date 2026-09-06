@@ -205,3 +205,6 @@ export const AdmissionsSection: React.FC = React.memo(() => {
     </section>
   );
 });
+
+export default AdmissionsSection;
+

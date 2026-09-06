@@ -226,4 +226,7 @@ export const ContactSection: React.FC = React.memo(() => {
   );
 });
 
+export default ContactSection;
+
+
 

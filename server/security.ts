@@ -108,7 +108,7 @@ export function sanitizeObject<T>(obj: T): T {
 // ZOD SCHEMAS FOR INPUT VALIDATION
 
 export const LoginInputSchema = z.object({
-  role: z.enum(['admin', 'teacher', 'student']),
+  role: z.enum(['admin', 'teacher', 'student', 'staff']),
   username: z.string().max(100).optional(),
   password: z.string().max(200).optional(),
   className: z.string().max(50).optional(),
@@ -163,8 +163,10 @@ export const CreateStudentSchema = z.object({
   password: z.string().max(200).optional(),
   parentName: z.string().max(100).optional(),
   motherName: z.string().max(100).optional(),
-  phone: z.string().max(20).optional(),
-  address: z.string().max(300).optional(),
+  phone: z.string().max(50).optional(),
+  address: z.string().max(1000).optional(),
+  teacherName: z.string().max(100).optional(),
+  classTeacher: z.string().max(100).optional(),
   photo: z.string().max(5000000).optional(),
   email: z.string().max(150).optional(),
   dob: z.string().max(50).optional(),

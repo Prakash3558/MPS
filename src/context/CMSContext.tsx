@@ -242,8 +242,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             },
             "geo": {
               "@type": "GeoCoordinates",
-              "latitude": 26.9063,
-              "longitude": 84.5054
+              "latitude": 27.0180,
+              "longitude": 84.6725
             },
             "hasCredential": [
               {
