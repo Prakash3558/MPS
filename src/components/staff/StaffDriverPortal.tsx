@@ -222,6 +222,11 @@ export const StaffDriverPortal: React.FC = () => {
   const accuracyCircleRef = useRef<L.Circle | null>(null);
   const stopMarkersRef = useRef<L.LayerGroup | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
+  const routeCasingPolylineRef = useRef<L.Polyline | null>(null);
+  const lastRoutedCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+  const [routeDistanceKm, setRouteDistanceKm] = useState<string | null>(null);
+  const [routeDurationMins, setRouteDurationMins] = useState<number | null>(null);
+  const [isRoutingLoading, setIsRoutingLoading] = useState<boolean>(false);
   const geoWatchIdRef = useRef<number | null>(null);
   const simulationTimerRef = useRef<any>(null);
   const lastFixRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
@@ -595,6 +600,103 @@ export const StaffDriverPortal: React.FC = () => {
     };
   }, [currentSpeed]);
 
+  // Real Google-grade road routing engine from driver's current coordinates
+  const fetchAndDrawRealRoadRoute = useCallback(async (
+    origin: { lat: number; lng: number },
+    targetStops: TransportStop[]
+  ) => {
+    if (!mapInstanceRef.current) return;
+
+    setIsRoutingLoading(true);
+    try {
+      // 1. Waypoints sequence: Driver live GPS position -> scheduled stops -> school campus
+      const waypoints: { lng: number; lat: number }[] = [
+        { lng: origin.lng, lat: origin.lat }
+      ];
+
+      // Add scheduled stops in sequence
+      const sortedStops = [...targetStops].sort((a, b) => (a.stopNumber || 0) - (b.stopNumber || 0));
+      sortedStops.slice(0, 6).forEach(s => {
+        if (s.latitude && s.longitude) {
+          waypoints.push({ lng: s.longitude, lat: s.latitude });
+        }
+      });
+
+      // Destination: School Campus Gate
+      waypoints.push({ lng: 84.6725, lat: 27.0180 });
+
+      const coordsString = waypoints.map(w => `${w.lng.toFixed(6)},${w.lat.toFixed(6)}`).join(';');
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      let latLngs: [number, number][] | null = null;
+      let distMeters = 0;
+      let durSecs = 0;
+
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+            const r = data.routes[0];
+            latLngs = r.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
+            distMeters = r.distance;
+            durSecs = r.duration;
+          }
+        }
+      } catch (fetchErr) {
+        console.warn('Real driving route network fetch fallback:', fetchErr);
+      }
+
+      // Smooth fallback if network or OSRM unavailable: Connect driver origin smoothly to paved road network
+      if (!latLngs || latLngs.length < 2) {
+        latLngs = [
+          [origin.lat, origin.lng],
+          ...SIKTA_ROAD_NETWORK_COORDS
+        ];
+        distMeters = 3800;
+        durSecs = 600;
+      }
+
+      setRouteDistanceKm((distMeters / 1000).toFixed(1));
+      setRouteDurationMins(Math.max(1, Math.round(durSecs / 60)));
+
+      // Remove existing polylines
+      if (routeCasingPolylineRef.current && mapInstanceRef.current.hasLayer(routeCasingPolylineRef.current)) {
+        mapInstanceRef.current.removeLayer(routeCasingPolylineRef.current);
+      }
+      if (routePolylineRef.current && mapInstanceRef.current.hasLayer(routePolylineRef.current)) {
+        mapInstanceRef.current.removeLayer(routePolylineRef.current);
+      }
+
+      // 1. Google Maps Royal Blue Casing (Dark border outline for authentic Google Maps look)
+      routeCasingPolylineRef.current = L.polyline(latLngs, {
+        color: '#1e3a8a',
+        weight: 9,
+        opacity: 0.7,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(mapInstanceRef.current);
+
+      // 2. Google Maps Vibrant Navigation Blue Line
+      routePolylineRef.current = L.polyline(latLngs, {
+        color: '#2563eb',
+        weight: 5,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(mapInstanceRef.current);
+
+    } catch (err) {
+      console.warn('Route draw error:', err);
+    } finally {
+      setIsRoutingLoading(false);
+    }
+  }, []);
+
   // Update stops and polyline on map whenever stops state updates
   useEffect(() => {
     if (!mapInstanceRef.current || !stopMarkersRef.current) return;
@@ -638,19 +740,32 @@ export const StaffDriverPortal: React.FC = () => {
       stopMarkersRef.current?.addLayer(marker);
     });
 
-    if (routePolylineRef.current && mapInstanceRef.current.hasLayer(routePolylineRef.current)) {
-      mapInstanceRef.current.removeLayer(routePolylineRef.current);
-    }
+    // Add School Campus destination marker
+    const schoolIcon = L.divIcon({
+      className: 'custom-school-icon',
+      html: `
+        <div class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black px-3 py-1.5 rounded-2xl text-xs shadow-2xl border-2 border-white flex items-center gap-1.5 whitespace-nowrap ring-4 ring-emerald-500/30">
+          <span class="text-sm">🏫</span>
+          <span>मॉडल पब्लिक स्कूल (मुख्य कैंपस)</span>
+        </div>
+      `,
+      iconSize: [210, 32],
+      iconAnchor: [105, 16]
+    });
+    const schoolMarker = L.marker([27.0180, 84.6725], { icon: schoolIcon });
+    schoolMarker.bindPopup(`
+      <div class="p-2 space-y-1 font-sans text-xs">
+        <div class="font-black text-emerald-800 text-sm">🏫 Model Public School, Sikta</div>
+        <div class="text-slate-600">अंतिम गंतव्य (Final Destination / Campus)</div>
+        <div class="text-[11px] text-slate-500 font-mono">27.0180° N, 84.6725° E</div>
+      </div>
+    `);
+    stopMarkersRef.current?.addLayer(schoolMarker);
 
-    // Always follow the real paved asphalt road of Sikta (Station -> Bazar -> Puraina -> Kursi Barwa -> School)
-    routePolylineRef.current = L.polyline(SIKTA_ROAD_NETWORK_COORDS, {
-      color: '#f59e0b',
-      weight: 6,
-      opacity: 0.95,
-      lineCap: 'round',
-      lineJoin: 'round'
-    }).addTo(mapInstanceRef.current);
-  }, [stops]);
+    // Fetch and draw real Google-grade road route from driver's current coordinates
+    lastRoutedCoordsRef.current = { lat: currentCoords.lat, lng: currentCoords.lng };
+    fetchAndDrawRealRoadRoute(currentCoords, stops);
+  }, [stops, fetchAndDrawRealRoadRoute]);
 
   // Center map on vehicle
   const centerMapOnVehicle = () => {
@@ -683,6 +798,15 @@ export const StaffDriverPortal: React.FC = () => {
       const etaMins = Math.max(1, Math.round((minDistance / ((effectiveSpeedKmh * 1000) / 60))));
       setNextStopEtaMinutes(etaMins);
       setCurrentStopName(nearestStop.stopName);
+    }
+
+    // Dynamic real road route calculation from driver current position
+    if (
+      !lastRoutedCoordsRef.current ||
+      haversineDistanceMeters(lat, lng, lastRoutedCoordsRef.current.lat, lastRoutedCoordsRef.current.lng) > 35
+    ) {
+      lastRoutedCoordsRef.current = { lat, lng };
+      fetchAndDrawRealRoadRoute({ lat, lng }, stops);
     }
 
     // Auto-pan map if auto-follow is active
@@ -1007,11 +1131,21 @@ export const StaffDriverPortal: React.FC = () => {
     showToast(`📍 Bus location set to ${name}`, 'info');
   };
 
-  // Launch Google Maps Driving Navigation (Turn-by-turn to School Campus)
-  const openGoogleMapsNavigation = () => {
-    const destLat = 27.0180;
-    const destLng = 84.6725;
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${currentCoords.lat},${currentCoords.lng}&destination=${destLat},${destLng}&travelmode=driving`;
+  // Launch Google Maps Driving Navigation (Turn-by-turn to School Campus from Current Location)
+  const openGoogleMapsNavigation = (targetStop?: TransportStop) => {
+    const destLat = targetStop ? targetStop.latitude : 27.0180;
+    const destLng = targetStop ? targetStop.longitude : 84.6725;
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${currentCoords.lat},${currentCoords.lng}&destination=${destLat},${destLng}&travelmode=driving`;
+    if (!targetStop && stops.length > 0) {
+      const waypoints = stops
+        .slice(0, 6)
+        .filter(s => s.latitude && s.longitude)
+        .map(s => `${s.latitude},${s.longitude}`)
+        .join('|');
+      if (waypoints) {
+        url += `&waypoints=${encodeURIComponent(waypoints)}`;
+      }
+    }
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -1590,13 +1724,13 @@ export const StaffDriverPortal: React.FC = () => {
         {/* Navigation Tabs Bar */}
         <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-900 rounded-2xl border border-slate-800">
           {[
-            { id: 'supabase_controller', label: '⚡ Supabase Live Map & Stop Controller', icon: Radio },
             { id: 'live_trip', label: '🧭 ड्राइवर कॉकपिट (Cockpit & Map)', icon: Navigation },
             { id: 'students', label: `👥 छात्र हाजिरी (${students.length})`, icon: Users },
             { id: 'stops', label: `📍 स्टॉप व समय (${stops.length})`, icon: MapPin },
             { id: 'fuel', label: '⛽ डीजल व खर्च (Fuel)', icon: Fuel },
             { id: 'inspection', label: '🛡️ गाड़ी जांच (Safety)', icon: Shield },
-            { id: 'logs', label: '📜 सफ़र रिकॉर्ड (Trip Logs)', icon: Calendar }
+            { id: 'logs', label: '📜 सफ़र रिकॉर्ड (Trip Logs)', icon: Calendar },
+            { id: 'supabase_controller', label: '⚡ क्लाउड स्टॉप कंट्रोलर', icon: Radio }
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1604,7 +1738,7 @@ export const StaffDriverPortal: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black transition cursor-pointer ${
+                className={`flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
                   isActive
                     ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -1618,7 +1752,7 @@ export const StaffDriverPortal: React.FC = () => {
         </div>
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 0: SUPABASE REALTIME MAP & DYNAMIC STOP CONTROLLER */}
+        {/* TAB: CLOUD SUPABASE CONTROLLER (OPTIONAL TOOL) */}
         {/* ------------------------------------------------------------- */}
         {activeTab === 'supabase_controller' && (
           <DriverStopController
@@ -1629,571 +1763,392 @@ export const StaffDriverPortal: React.FC = () => {
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 1: LIVE COCKPIT & MAP */}
+        {/* TAB: CLEAN DRIVER COCKPIT & GOOGLE ROAD ROUTE MAP */}
         {/* ------------------------------------------------------------- */}
         {activeTab === 'live_trip' && (
-          <div className="space-y-4">
-            {/* Top Driver Emergency Help Banner */}
-            <div className="bg-gradient-to-r from-rose-950/90 via-slate-900 to-rose-950/90 border-2 border-rose-500/70 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <span className="w-11 h-11 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-black text-2xl shadow-lg animate-pulse shrink-0">
-                  🚨
-                </span>
+          <div className="space-y-3.5">
+            {/* 1. Streamlined Driver Cockpit HUD (4 Key Focus Cards) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Card 1: Trip Control & Active State */}
+              <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-lg flex flex-col justify-between gap-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-400 flex items-center gap-1.5">
+                    <Navigation className="w-3.5 h-3.5 text-amber-400" />
+                    यात्रा नियंत्रण
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    isTripActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {isTripActive ? '● यात्रा चालू' : '○ यात्रा तैयार'}
+                  </span>
+                </div>
+
                 <div>
-                  <h4 className="text-sm font-black text-white flex items-center gap-2">
-                    आपातकालीन सहायता (Emergency SOS)
-                    <span className="text-[10px] font-bold bg-rose-900 text-rose-200 px-2 py-0.5 rounded-full">24x7 Active</span>
-                  </h4>
-                  <p className="text-xs text-rose-200/90 font-medium">
-                    गाड़ी में ख़राबी, टायर पंक्चर या भारी ट्रैफिक जाम होने पर तुरंत स्कूल को सूचित करें।
-                  </p>
+                  {!isTripActive ? (
+                    <div className="space-y-2">
+                      <select
+                        value={tripType}
+                        onChange={e => setTripType(e.target.value as any)}
+                        className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-white focus:ring-1 focus:ring-amber-500"
+                      >
+                        <option value="Morning Pickup">🌅 सुबह की पिकअप (Morning)</option>
+                        <option value="Afternoon Drop">🏫 दोपहर की ड्रॉप (Afternoon)</option>
+                        <option value="Special Event">🚌 स्कूल टूर / इवेंट (Tour)</option>
+                      </select>
+                      <button
+                        onClick={startTrip}
+                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>▶️ यात्रा शुरू करें (Start Trip)</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-800/80 px-2.5 py-1 rounded-lg">
+                        <span>सफ़र समय:</span>
+                        <strong className="font-mono text-amber-300 font-bold">{formatTime(tripElapsedSeconds)}</strong>
+                      </div>
+                      <button
+                        onClick={finishTrip}
+                        className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer animate-pulse"
+                      >
+                        <Square className="w-4 h-4 fill-current" />
+                        <span>⏹️ यात्रा समाप्त (Finish Trip)</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <a
-                  href="tel:9122334455"
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
-                >
-                  <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>मैनेजर को कॉल</span>
-                </a>
-                <button
-                  onClick={() => setShowSosModal(true)}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-rose-600/40 transition transform active:scale-95 cursor-pointer flex items-center gap-1.5 animate-pulse"
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                  <span>इमरजेंसी SOS भेजें</span>
-                </button>
-              </div>
-            </div>
 
-            {/* Top Primary Controls: Speedometer & Trip Controller */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              {/* Card 1: Giant Driver Speedometer (5 cols) */}
-              <div className="lg:col-span-5 bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-xl flex flex-col justify-between relative overflow-hidden">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-bold mb-2">
-                  <span className="flex items-center gap-1.5 text-white">
-                    <Gauge className="w-4 h-4 text-amber-400" />
-                    गाड़ी की रफ़्तार (VEHICLE SPEED)
+              {/* Card 2: Speedometer & Heading */}
+              <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-lg flex flex-col justify-between gap-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-400 flex items-center gap-1.5">
+                    <Gauge className="w-3.5 h-3.5 text-blue-400" />
+                    गाड़ी की रफ़्तार
                   </span>
-                  <span className="text-[11px] font-mono text-slate-400">
-                    अधिकतम: {maxTripSpeed} km/h
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    currentSpeed === 0
+                      ? 'bg-slate-800 text-slate-300'
+                      : currentSpeed > 40
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
+                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                  }`}>
+                    {currentSpeed === 0 ? '🛑 रुकी हुई' : currentSpeed > 40 ? '⚠️ तेज़' : '🚍 सामान्य'}
                   </span>
                 </div>
 
-                <div className="my-2 flex items-baseline justify-between">
-                  <div className="flex items-baseline gap-2">
-                    <span className={`text-6xl sm:text-7xl font-black font-mono tracking-tight ${
-                      currentSpeed === 0 ? 'text-slate-300' :
-                      currentSpeed > 40 ? 'text-rose-500 animate-pulse' :
-                      'text-emerald-400'
+                <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className={`text-4xl font-black font-mono tracking-tight ${
+                      currentSpeed === 0 ? 'text-white' : currentSpeed > 40 ? 'text-rose-400' : 'text-emerald-400'
                     }`}>
                       {currentSpeed}
                     </span>
-                    <span className="text-xl font-black text-slate-400">km/h</span>
+                    <span className="text-xs font-bold text-slate-400">km/h</span>
                   </div>
-
-                  {/* Status Badge */}
-                  <div className="text-right">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black shadow ${
-                      currentSpeed === 0
-                        ? 'bg-emerald-950/90 text-emerald-300 border border-emerald-500/50'
-                        : currentSpeed > 40
-                        ? 'bg-rose-950/90 text-rose-300 border border-rose-500/50 animate-pulse'
-                        : 'bg-blue-950/90 text-blue-300 border border-blue-500/50'
-                    }`}>
-                      <span className={`w-2 h-2 rounded-full ${
-                        currentSpeed === 0 ? 'bg-emerald-400' :
-                        currentSpeed > 40 ? 'bg-rose-400 animate-ping' :
-                        'bg-blue-400 animate-ping'
-                      }`} />
-                      {currentSpeed === 0 ? 'गाड़ी रुकी हुई है (STOPPED)' : currentSpeed > 40 ? '⚠️ रफ़्तार धीमी करें (OVERSPEED)' : '🚍 गाड़ी चल रही है (CRUISING)'}
-                    </span>
-                  </div>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Max: {maxTripSpeed} km/h
+                  </span>
                 </div>
 
-                {/* Speed Bar */}
-                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden my-2">
+                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${currentSpeed > 40 ? 'bg-rose-500' : 'bg-emerald-400'}`}
                     style={{ width: `${Math.min(100, (currentSpeed / 40) * 100)}%` }}
                   />
                 </div>
 
-                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
                   <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    सफ़र समय: <strong className="text-white font-mono">{formatTime(tripElapsedSeconds)}</strong>
+                    <Compass className="w-3 h-3 text-blue-400" />
+                    दिशा: <strong className="text-slate-200">{getCompassCardinal(currentHeading).label}</strong>
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Compass className="w-3.5 h-3.5 text-blue-400" />
-                    दिशा: <strong className="text-white">{getCompassCardinal(currentHeading).label} ({currentHeading}°)</strong>
-                  </span>
+                  <span>{currentHeading}°</span>
                 </div>
               </div>
 
-              {/* Card 2: Giant Trip Action Controller (7 cols) */}
-              <div className="lg:col-span-7 bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-xl flex flex-col justify-between gap-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div>
-                    <h3 className="text-sm font-black text-white flex items-center gap-1.5">
-                      <Navigation className="w-4 h-4 text-amber-400" />
-                      यात्रा नियंत्रण (TRIP CONTROLLER)
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      गाड़ी चलाने से पहले ट्रिप शुरू करें, ताकि GPS लोकेशन अभिभावकों को दिखे।
-                    </p>
-                  </div>
-
-                  <select
-                    value={tripType}
-                    disabled={isTripActive}
-                    onChange={e => setTripType(e.target.value as any)}
-                    className="px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-white focus:ring-2 focus:ring-amber-500 cursor-pointer"
-                  >
-                    <option value="Morning Pickup">🌅 सुबह की पिकअप (Morning Pickup)</option>
-                    <option value="Afternoon Drop">🏫 दोपहर की ड्रॉप (Afternoon Drop)</option>
-                    <option value="Special Event">🚌 स्पेशल टूर (School Event / Tour)</option>
-                  </select>
-                </div>
-
-                {/* Giant Main Start / Finish Button */}
-                {!isTripActive ? (
-                  <button
-                    onClick={startTrip}
-                    className="w-full h-16 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 transition transform active:scale-[0.98] cursor-pointer"
-                  >
-                    <Play className="w-6 h-6 fill-current" />
-                    <div className="text-left leading-tight">
-                      <span className="block">▶️ गाड़ी शुरू करें (START TRIP)</span>
-                      <span className="text-[11px] font-medium opacity-90 block">GPS लाइव लोकेशन चालू होगा</span>
-                    </div>
-                  </button>
-                ) : (
-                  <button
-                    onClick={finishTrip}
-                    className="w-full h-16 bg-gradient-to-r from-rose-600 via-rose-500 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl shadow-rose-600/30 flex items-center justify-center gap-3 transition transform active:scale-[0.98] cursor-pointer animate-pulse"
-                  >
-                    <Square className="w-6 h-6 fill-current" />
-                    <div className="text-left leading-tight">
-                      <span className="block">⏹️ यात्रा समाप्त करें (FINISH TRIP)</span>
-                      <span className="text-[11px] font-medium opacity-90 block">सफ़र पूरा हुआ, GPS बंद करें</span>
-                    </div>
-                  </button>
-                )}
-
-                {/* Secondary simulation test button */}
-                <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/80 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    <span className="text-slate-400 text-[11px]">
-                      GPS सिग्नल: <strong className="text-emerald-300">सक्रिय (±{gpsAccuracy || 5}m)</strong>
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={toggleRouteSimulation}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                      isSimulatingDrive
-                        ? 'bg-indigo-600 text-white border-indigo-400 shadow-md animate-pulse'
-                        : 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700'
-                    }`}
-                  >
-                    <Activity className="w-3.5 h-3.5" />
-                    <span>{isSimulatingDrive ? 'सिमुलेशन रोकें (Pause)' : '🚗 पक्की सड़क टेस्ट ड्राइव (Road Sim)'}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Next Stop & Passenger Quick Counter Row */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              {/* Card 3: Next Stop Navigator with 1-Tap Arrived Button (7 cols) */}
-              <div className="md:col-span-7 bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-xl flex flex-col justify-between gap-3">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-                  <span className="flex items-center gap-1.5 text-rose-400">
-                    <MapPin className="w-4 h-4" />
-                    अगला बस स्टॉप (NEXT BUS STOP)
+              {/* Card 3: Next Stop Navigator with 1-Tap Arrived */}
+              <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-lg flex flex-col justify-between gap-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-rose-400 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    अगला स्टॉप
                   </span>
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                    isDwellActive ? 'bg-amber-500 text-slate-950 animate-pulse font-black' : 'bg-slate-800 text-slate-300'
-                  }`}>
-                    {isDwellActive ? '🛑 बच्चे चढ़ रहे हैं' : 'आगामी स्टॉप'}
+                  <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                    ~{nextStopEtaMinutes || 1} min ETA
                   </span>
                 </div>
 
-                <div className="my-1">
-                  <h2 className="text-xl sm:text-2xl font-black text-white">
-                    {currentStopName || stops[0]?.stopName || 'Model Public School Campus'}
-                  </h2>
-                  <div className="flex items-center gap-4 text-xs font-bold mt-1.5 flex-wrap">
-                    <span className="text-amber-400">
-                      दूरी: {nextStopDistMeters !== null ? (nextStopDistMeters >= 1000 ? `${(nextStopDistMeters / 1000).toFixed(1)} km` : `${nextStopDistMeters} मीटर`) : 'प्रारंभिक बिंदु'}
-                    </span>
-                    <span className="text-emerald-400">
-                      समय: ~{nextStopEtaMinutes || 1} मिनट
-                    </span>
-                    {stops[0]?.landmark && (
-                      <span className="text-slate-400 font-normal">
-                        ({stops[0].landmark})
-                      </span>
-                    )}
+                <div>
+                  <div className="font-black text-sm text-white truncate" title={currentStopName || stops[0]?.stopName}>
+                    {currentStopName || stops[0]?.stopName || 'Model Public School'}
+                  </div>
+                  <div className="text-[11px] text-amber-400 font-bold mt-0.5">
+                    दूरी: {nextStopDistMeters !== null ? (nextStopDistMeters >= 1000 ? `${(nextStopDistMeters / 1000).toFixed(1)} km` : `${nextStopDistMeters} m`) : '--'}
                   </div>
                 </div>
 
-                {/* 1-Tap Reached Stop Button */}
                 <button
                   onClick={handleArriveAtNextStop}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition transform active:scale-98 cursor-pointer"
+                  className="w-full py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs rounded-xl shadow flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>✅ स्टॉप पर पहुंच गए (ARRIVED AT STOP)</span>
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>✅ स्टॉप पर पहुंचे (Arrived)</span>
                 </button>
               </div>
 
-              {/* Card 4: Passenger Quick Counter (5 cols) */}
-              <div className="md:col-span-5 bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-xl flex flex-col justify-between gap-3">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-                  <span className="flex items-center gap-1.5 text-amber-400">
-                    <UserCheck className="w-4 h-4" />
-                    बस में कुल बच्चे (STUDENTS ON BOARD)
+              {/* Card 4: Students On Board & Quick Adjusters */}
+              <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-lg flex flex-col justify-between gap-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    सवार छात्र (Manifest)
                   </span>
-                  <span className="text-xs font-bold text-amber-400 font-mono">
+                  <span className="text-[11px] font-bold text-amber-300 font-mono">
                     {boardingPercentage}%
                   </span>
                 </div>
 
-                <div className="my-1 flex items-baseline justify-between">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-4xl sm:text-5xl font-black text-white font-mono">
+                <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-black text-white font-mono">
                       {totalBoardedCount}
                     </span>
-                    <span className="text-base text-slate-400 font-bold">/ {students.length} बच्चे</span>
+                    <span className="text-xs text-slate-400">/ {students.length} बच्चे</span>
                   </div>
-
                   <button
                     onClick={() => setActiveTab('students')}
-                    className="text-xs font-bold text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                    className="text-[11px] font-bold text-amber-400 hover:underline cursor-pointer"
                   >
-                    पूरी हाजिरी सूची →
+                    पूरी सूची →
                   </button>
                 </div>
 
-                {/* Quick 1-Tap Buttons: +1 / -1 */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   <button
                     onClick={() => handleQuickPassengerCount(1)}
-                    className="py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs rounded-xl shadow transition transform active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
+                    className="py-1.5 bg-emerald-800 hover:bg-emerald-700 text-white font-black text-[11px] rounded-lg shadow transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>➕ 1 बच्चा चढ़ा</span>
+                    <Plus className="w-3 h-3" /> 1 चढ़ा
                   </button>
                   <button
                     onClick={() => handleQuickPassengerCount(-1)}
-                    className="py-2.5 bg-blue-700 hover:bg-blue-600 text-white font-black text-xs rounded-xl shadow transition transform active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
+                    className="py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-black text-[11px] rounded-lg border border-slate-700 shadow transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <UserMinus className="w-3.5 h-3.5" />
-                    <span>➖ 1 बच्चा उतरा</span>
+                    <UserMinus className="w-3 h-3" /> 1 उतरा
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Interactive Road Map & Real Google Maps Integration */}
-            <div className={`bg-slate-900 rounded-3xl p-3 sm:p-4 border border-slate-800 shadow-2xl relative transition-all ${
-              isMapFullscreen ? 'fixed inset-3 z-50 flex flex-col' : ''
-            }`}>
-              {/* Google Maps & Real GPS Device Action Bar */}
-              <div className="mb-3 p-3 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl border border-amber-500/30 flex flex-wrap items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Acquire Real Phone GPS */}
-                  <button
-                    onClick={() => acquireDeviceLocation(true, false)}
-                    disabled={isGpsAcquiring}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-xl shadow-lg transition active:scale-95 cursor-pointer disabled:opacity-50"
-                  >
-                    <LocateFixed className={`w-4 h-4 text-white ${isGpsAcquiring ? 'animate-spin' : ''}`} />
-                    <span>{isGpsAcquiring ? '📡 जीपीएस खोज रहे हैं...' : '🎯 असली डिवाइस लोकेशन खोजें (Real GPS)'}</span>
-                  </button>
+            {/* 2. Map Status & Google Road Navigation Ribbon */}
+            <div className="bg-slate-900 rounded-2xl p-3 border border-slate-800 shadow-xl flex flex-wrap items-center justify-between gap-2.5">
+              {/* Left: Dynamic Real Road Route Info */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-950/80 border border-blue-500/40 rounded-xl">
+                  <span className={`w-2.5 h-2.5 rounded-full ${isRoutingLoading ? 'bg-amber-400 animate-spin' : 'bg-blue-400 animate-ping'}`} />
+                  <span className="text-xs font-black text-blue-200 flex items-center gap-1.5">
+                    <span>🛣️ गूगल सड़क मार्ग:</span>
+                    <strong className="text-white font-mono">{routeDistanceKm || '4.2'} km</strong>
+                    <span className="text-blue-300">• ~{routeDurationMins || '11'} min</span>
+                  </span>
+                  <span className="text-[10px] text-blue-400 hidden md:inline font-medium">
+                    (वर्तमान जगह ➔ स्कूल गेट)
+                  </span>
+                </div>
 
-                  {/* Search / Pin Location Toggle */}
+                <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-slate-950 px-2.5 py-1.5 rounded-xl border border-slate-800">
+                  <span className={`w-1.5 h-1.5 rounded-full ${isUsingDeviceGps ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                  <span>📍 {currentCoords.lat.toFixed(5)}°, {currentCoords.lng.toFixed(5)}°</span>
+                  <span className="text-slate-500">(±{gpsAccuracy || 5}m)</span>
+                </div>
+              </div>
+
+              {/* Right: Controls, Map Toggle & Navigation Launcher */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Search / Pin Location Button */}
+                <button
+                  onClick={() => setShowLocationSearch(!showLocationSearch)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                    showLocationSearch
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                  }`}
+                  title="Search any location or coordinate on map"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  <span>खोजें / पिन</span>
+                </button>
+
+                {/* Map Layer Option (Streets vs Satellite) */}
+                {mapViewMode === 'leaflet' && (
                   <button
-                    onClick={() => setShowLocationSearch(!showLocationSearch)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                      showLocationSearch
-                        ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
-                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                    onClick={() => toggleMapLayer(mapLayerType === 'google_streets' ? 'google_hybrid' : 'google_streets')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                    title="Toggle Streets or Satellite View"
+                  >
+                    <Layers className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{mapLayerType === 'google_streets' ? '🛰️ सैटेलाइट' : '🗺️ सड़क नक्शा'}</span>
+                  </button>
+                )}
+
+                {/* Switch between Interactive Map & Live Google Embed */}
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <button
+                    onClick={() => setMapViewMode('leaflet')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                      mapViewMode === 'leaflet'
+                        ? 'bg-amber-500 text-slate-950 shadow'
+                        : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <Search className="w-3.5 h-3.5" />
-                    <span>🔍 लोकेशन खोजें / पिन करें</span>
+                    🗺️ नक्शा
                   </button>
-
-                  {/* Launch Turn-by-Turn Google Maps Navigation */}
                   <button
-                    onClick={openGoogleMapsNavigation}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-lg transition active:scale-95 cursor-pointer"
-                    title="Open Google Maps app with turn-by-turn driving directions to School"
+                    onClick={() => setMapViewMode('google_embed')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                      mapViewMode === 'google_embed'
+                        ? 'bg-blue-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
                   >
-                    <Navigation className="w-4 h-4 text-amber-300" />
-                    <span>🗺️ गूगल मैप्स नेविगेशन (Google Maps App)</span>
-                  </button>
-
-                  {/* Open School Pin on Google Maps */}
-                  <button
-                    onClick={openSchoolGoogleMaps}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer"
-                  >
-                    <span>🏫 स्कूल गूगल मैप पर</span>
+                    🌐 गूगल रूट
                   </button>
                 </div>
 
-                {/* View Mode Toggle: Leaflet vs Official Google Maps Embed */}
-                <div className="flex items-center gap-2">
-                  <span className="hidden sm:inline-block px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold bg-slate-800 border border-slate-700 text-emerald-400">
-                    {isUsingDeviceGps ? `±${gpsAccuracy || 5}m (${gpsSource === 'satellite' ? 'Sat GPS' : gpsSource === 'network' ? 'Network' : 'Manual'})` : 'Sikta Route'}
-                  </span>
-
-                  <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
-                    <button
-                      onClick={() => setMapViewMode('leaflet')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
-                        mapViewMode === 'leaflet'
-                          ? 'bg-amber-500 text-slate-950 shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      🗺️ इंटरैक्टिव नक्शा
-                    </button>
-                    <button
-                      onClick={() => setMapViewMode('google_embed')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
-                        mapViewMode === 'google_embed'
-                          ? 'bg-blue-600 text-white shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      🌐 गूगल मैप्स लाइव
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Location Search Bar Dropdown */}
-              {showLocationSearch && (
-                <div className="mb-3 p-3 bg-slate-950 rounded-2xl border border-amber-500/40 space-y-2">
-                  <form onSubmit={handleSearchLocation} className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        value={manualLocationQuery}
-                        onChange={(e) => setManualLocationQuery(e.target.value)}
-                        placeholder="पता, सड़क, शहर या Lat, Lng लिखें (उदा: Bettiah, Patna, या 27.025, 84.681)"
-                        className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={isSearchingLocation}
-                      className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
-                    >
-                      {isSearchingLocation ? 'खोज रहे हैं...' : 'खोजें (Search)'}
-                    </button>
-                  </form>
-
-                  {locationSearchResults.length > 0 && (
-                    <div className="bg-slate-900 rounded-xl border border-slate-800 divide-y divide-slate-800 max-h-48 overflow-y-auto">
-                      {locationSearchResults.map((result, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => applyManualCoordinates(parseFloat(result.lat), parseFloat(result.lon), result.display_name)}
-                          className="w-full text-left p-2.5 hover:bg-slate-800 transition text-xs text-slate-200 flex items-start gap-2 cursor-pointer"
-                        >
-                          <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                          <div className="truncate">
-                            <p className="font-semibold text-white truncate">{result.display_name.split(',')[0]}</p>
-                            <p className="text-[11px] text-slate-400 truncate">{result.display_name}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Permission Denied Warning Card */}
-              {locationPermissionDenied && (
-                <div className="mb-3 p-3 bg-rose-950/80 border border-rose-500/50 rounded-2xl flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 text-rose-200">
-                    <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
-                    <span>ब्राउज़र में लोकेशन अनुमति ब्लॉक है। कृपया एड्रेस बार में लोकेशन चालू करें ताकि गूगल मैप्स आपकी सही जगह दिखा सके।</span>
-                  </div>
-                  <button
-                    onClick={() => acquireDeviceLocation(true, false)}
-                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl whitespace-nowrap transition cursor-pointer"
-                  >
-                    पुनः प्रयास करें (Retry)
-                  </button>
-                </div>
-              )}
-
-              {/* Quick Accurate Landmark Presets */}
-              <div className="mb-3 px-2 flex items-center gap-1.5 overflow-x-auto text-[11px] pb-1">
-                <span className="text-slate-400 font-bold whitespace-nowrap">त्वरित स्टॉप पर सेट करें:</span>
+                {/* Launch Google Maps Native Driving Navigation */}
                 <button
-                  onClick={() => snapToPresetLocation('Sikta Railway Station (सिकटा स्टेशन)', 27.0249, 84.6812)}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition font-medium cursor-pointer"
+                  onClick={() => openGoogleMapsNavigation()}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl shadow-lg transition active:scale-95 cursor-pointer"
+                  title="Open Google Maps App with Turn-by-Turn driving directions from current location"
                 >
-                  🚉 1. सिकटा स्टेशन
-                </button>
-                <button
-                  onClick={() => snapToPresetLocation('Sikta Main Market Chowk (बाज़ार चौक)', 27.0268, 84.6818)}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition font-medium cursor-pointer"
-                >
-                  🏪 2. बाज़ार चौक
-                </button>
-                <button
-                  onClick={() => snapToPresetLocation('Sikta Hospital Mod (अस्पताल मोड़)', 27.0235, 84.6782)}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition font-medium cursor-pointer"
-                >
-                  🏥 3. अस्पताल मोड़
-                </button>
-                <button
-                  onClick={() => snapToPresetLocation('Bhawanipur Chowk (भवानीपुर चौक)', 27.0195, 84.6738)}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition font-medium cursor-pointer"
-                >
-                  🏘️ 4. भवानीपुर चौक
-                </button>
-                <button
-                  onClick={() => snapToPresetLocation('Model Public School Main Campus (स्कूल गेट)', 27.0180, 84.6725)}
-                  className="px-2.5 py-1 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-300 rounded-lg whitespace-nowrap border border-emerald-700 transition font-bold cursor-pointer"
-                >
-                  🏫 5. स्कूल गेट (कैंपस)
+                  <Navigation className="w-3.5 h-3.5 text-amber-300" />
+                  <span>गूगल मैप्स नेविगेशन</span>
                 </button>
               </div>
+            </div>
 
-              {/* Map Layer Switcher & Controls */}
-              {mapViewMode === 'leaflet' && (
-                <div className="flex items-center justify-between gap-2 mb-2 px-1 flex-wrap">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-white flex items-center gap-1">
-                      <Layers className="w-4 h-4 text-amber-400" />
-                      नक्शा स्टाइल (Map Style):
-                    </span>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {MAP_LAYERS.slice(0, 3).map(layer => (
-                        <button
-                          key={layer.id}
-                          onClick={() => toggleMapLayer(layer.id)}
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                            mapLayerType === layer.id
-                              ? 'bg-amber-500 text-slate-950 font-black shadow-md ring-2 ring-amber-400/40'
-                              : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700'
-                          }`}
-                        >
-                          <span>{layer.icon}</span>
-                          <span>{layer.label}</span>
-                        </button>
-                      ))}
-                    </div>
+            {/* 3. Search Bar & Quick Stop Presets (Expandable) */}
+            {showLocationSearch && (
+              <div className="p-3 bg-slate-900 rounded-2xl border border-amber-500/40 space-y-2.5 shadow-xl animate-in fade-in slide-in-from-top-2">
+                <form onSubmit={handleSearchLocation} className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={manualLocationQuery}
+                      onChange={(e) => setManualLocationQuery(e.target.value)}
+                      placeholder="पता, चौक, सड़क या Lat, Lng लिखें (उदा: Bettiah, Sikta Bazar, या 27.025, 84.681)"
+                      className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                    />
                   </div>
+                  <button
+                    type="submit"
+                    disabled={isSearchingLocation}
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
+                  >
+                    {isSearchingLocation ? 'खोज रहे हैं...' : 'खोजें (Search)'}
+                  </button>
+                </form>
 
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Center Map on Bus */}
-                    <button
-                      onClick={centerMapOnVehicle}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
-                    >
-                      <LocateFixed className="w-3.5 h-3.5" />
-                      <span>📍 बस पर लाएं</span>
-                    </button>
+                {/* Quick Accurate Presets */}
+                <div className="flex items-center gap-1.5 overflow-x-auto text-[11px] pt-1">
+                  <span className="text-slate-400 font-bold whitespace-nowrap">त्वरित स्टॉप:</span>
+                  <button
+                    onClick={() => snapToPresetLocation('Sikta Railway Station (सिकटा स्टेशन)', 27.0249, 84.6812)}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition cursor-pointer"
+                  >
+                    🚉 सिकटा स्टेशन
+                  </button>
+                  <button
+                    onClick={() => snapToPresetLocation('Sikta Main Market Chowk (बाज़ार चौक)', 27.0268, 84.6818)}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition cursor-pointer"
+                  >
+                    🏪 बाज़ार चौक
+                  </button>
+                  <button
+                    onClick={() => snapToPresetLocation('Sikta Hospital Mod (अस्पताल मोड़)', 27.0235, 84.6782)}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition cursor-pointer"
+                  >
+                    🏥 अस्पताल मोड़
+                  </button>
+                  <button
+                    onClick={() => snapToPresetLocation('Bhawanipur Chowk (भवानीपुर चौक)', 27.0195, 84.6738)}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition cursor-pointer"
+                  >
+                    🏘️ भवानीपुर चौक
+                  </button>
+                  <button
+                    onClick={() => snapToPresetLocation('Model Public School Main Campus (स्कूल गेट)', 27.0180, 84.6725)}
+                    className="px-2.5 py-1 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 rounded-lg whitespace-nowrap border border-emerald-600 transition font-bold cursor-pointer"
+                  >
+                    🏫 स्कूल गेट (कैंपस)
+                  </button>
+                </div>
 
-                    {/* Auto Follow Toggle */}
-                    <button
-                      onClick={() => setAutoFollowVehicle(!autoFollowVehicle)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                        autoFollowVehicle
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                          : 'bg-slate-800 text-slate-400 border-slate-700'
-                      }`}
-                    >
-                      {autoFollowVehicle ? <Lock className="w-3.5 h-3.5 text-amber-400" /> : <Unlock className="w-3.5 h-3.5" />}
-                      <span>ऑटो-फॉलो {autoFollowVehicle ? 'चालू' : 'बंद'}</span>
-                    </button>
-
-                    {/* Fullscreen Toggle */}
-                    <button
-                      onClick={() => setIsMapFullscreen(!isMapFullscreen)}
-                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl transition cursor-pointer"
-                      title={isMapFullscreen ? 'Exit Fullscreen' : 'Fullscreen Map'}
-                    >
-                      {isMapFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                    </button>
+                {locationSearchResults.length > 0 && (
+                  <div className="bg-slate-950 rounded-xl border border-slate-800 divide-y divide-slate-800 max-h-44 overflow-y-auto">
+                    {locationSearchResults.map((result, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => applyManualCoordinates(parseFloat(result.lat), parseFloat(result.lon), result.display_name)}
+                        className="w-full text-left p-2.5 hover:bg-slate-800 transition text-xs text-slate-200 flex items-start gap-2 cursor-pointer"
+                      >
+                        <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <div className="truncate">
+                          <p className="font-semibold text-white truncate">{result.display_name.split(',')[0]}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{result.display_name}</p>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                </div>
-              )}
-
-              {/* Subtitle Banner with Paved Road Note and Correct School Coordinates */}
-              <div className="mb-2 px-3 py-1.5 bg-slate-800/80 rounded-xl border border-slate-700 flex items-center justify-between text-xs gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${isUsingDeviceGps ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
-                  <span className="text-slate-300 font-bold">
-                    {isUsingDeviceGps ? '🛰️ असली डिवाइस जीपीएस लाइव सक्रिय' : 'पक्की सड़क मार्ग: सिकटा स्टेशन ➔ बाज़ार चौक ➔ अस्पताल मोड़ ➔ भवानीपुर ➔ मॉडल पब्लिक स्कूल'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-[11px] font-mono text-emerald-400 font-bold">
-                  <span>📍 बस: {currentCoords.lat.toFixed(5)}° N, {currentCoords.lng.toFixed(5)}° E</span>
-                  <span className="text-amber-300">🏫 MPS Sikta: 27.0180° N, 84.6725° E</span>
-                </div>
+                )}
               </div>
+            )}
 
-              {/* Next Stop Live Navigation Banner */}
-              {assignedRoute && (
-                <div className="mb-2 px-3 py-2 bg-gradient-to-r from-slate-800/90 via-slate-800/70 to-slate-800/90 rounded-xl border border-slate-700 flex items-center justify-between text-xs gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                    <span className="text-slate-400">Next Destination:</span>
-                    <strong className="text-white font-bold">{currentStopName || stops[0]?.stopName || 'MPS Main Campus'}</strong>
-                  </div>
-                  <div className="flex items-center gap-3 text-[11px]">
-                    <span className="text-amber-400 font-mono font-bold">
-                      Distance: {nextStopDistMeters !== null ? (nextStopDistMeters >= 1000 ? `${(nextStopDistMeters / 1000).toFixed(1)} km` : `${nextStopDistMeters} m`) : '--'}
-                    </span>
-                    <span className="text-emerald-400 font-mono font-bold">
-                      ETA: ~{nextStopEtaMinutes || 1} min
-                    </span>
-                    {isDwellActive && (
-                      <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black rounded-md animate-pulse">
-                        🛑 BOARDING IN PROGRESS (0 km/h)
-                      </span>
-                    )}
-                  </div>
+            {/* Permission Denied Notice */}
+            {locationPermissionDenied && (
+              <div className="p-3 bg-rose-950/80 border border-rose-500/50 rounded-2xl flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-rose-200">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>ब्राउज़र में लोकेशन अनुमति ब्लॉक है। कृपया एड्रेस बार में लोकेशन चालू करें।</span>
                 </div>
-              )}
+                <button
+                  onClick={() => acquireDeviceLocation(true, false)}
+                  className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg whitespace-nowrap transition cursor-pointer"
+                >
+                  पुनः प्रयास करें
+                </button>
+              </div>
+            )}
 
-              {/* Map Canvas: Interactive Leaflet vs Google Maps Live Embed */}
+            {/* 4. Full Featured Map Canvas with Real Google Road Routing */}
+            <div className={`bg-slate-900 rounded-3xl p-2.5 sm:p-3 border border-slate-800 shadow-2xl relative transition-all ${
+              isMapFullscreen ? 'fixed inset-3 z-50 flex flex-col' : ''
+            }`}>
               {mapViewMode === 'google_embed' ? (
                 <div className={`w-full rounded-2xl overflow-hidden border border-slate-800 relative z-10 shadow-inner bg-slate-950 ${
-                  isMapFullscreen ? 'flex-1 min-h-[500px]' : 'h-[480px]'
+                  isMapFullscreen ? 'flex-1 min-h-[500px]' : 'h-[500px]'
                 }`}>
                   <iframe
-                    src={`https://maps.google.com/maps?q=${currentCoords.lat},${currentCoords.lng}&t=m&z=16&output=embed`}
+                    src={`https://maps.google.com/maps?saddr=${currentCoords.lat},${currentCoords.lng}&daddr=27.0180,84.6725&t=m&z=15&output=embed`}
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}
                     allowFullScreen={false}
                     loading="lazy"
-                    title="Live Google Maps Bus Location"
+                    title="Live Google Road Route from Driver Location to School"
                     className="w-full h-full"
                   />
                   <div className="absolute bottom-3 right-3 z-20">
                     <button
-                      onClick={openGoogleMapsNavigation}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition"
+                      onClick={() => openGoogleMapsNavigation()}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition cursor-pointer"
                     >
                       <Navigation className="w-3.5 h-3.5" />
-                      <span>Open Full Google Maps</span>
+                      <span>गूगल मैप्स ऐप में खोलें</span>
                     </button>
                   </div>
                 </div>
@@ -2202,23 +2157,53 @@ export const StaffDriverPortal: React.FC = () => {
                   <div
                     ref={mapContainerRef}
                     className={`w-full rounded-2xl overflow-hidden border border-slate-800 relative z-10 shadow-inner ${
-                      isMapFullscreen ? 'flex-1 min-h-[500px]' : 'h-[480px]'
+                      isMapFullscreen ? 'flex-1 min-h-[500px]' : 'h-[500px]'
                     }`}
                   />
 
-                  {/* Floating Google Maps Style Locate Me Button & Controls */}
-                  <div className="absolute bottom-6 right-4 z-[450] flex flex-col items-end gap-2 pointer-events-auto">
-                    {/* Open Current Coordinates directly in Google Maps */}
+                  {/* Top-Right Map Controls (Center Bus, Auto-Follow, Fullscreen) */}
+                  <div className="absolute top-4 right-4 z-[450] flex items-center gap-1.5 pointer-events-auto">
                     <button
-                      onClick={openGoogleMapsPin}
-                      className="bg-slate-900/90 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl shadow-2xl border border-slate-700 backdrop-blur-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-                      title="Open these exact coordinates in Google Maps app"
+                      onClick={centerMapOnVehicle}
+                      className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-900 text-amber-400 border border-slate-700 rounded-xl text-xs font-bold shadow-lg backdrop-blur transition cursor-pointer flex items-center gap-1"
+                      title="बस पर लाएं"
                     >
-                      <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
-                      <span>गूगल मैप्स पर खोलें</span>
+                      <LocateFixed className="w-3.5 h-3.5" />
+                      <span>बस पर लाएं</span>
                     </button>
 
-                    {/* Google Maps Style Crosshair Locate-Me Floating Action Button */}
+                    <button
+                      onClick={() => setAutoFollowVehicle(!autoFollowVehicle)}
+                      className={`px-2 py-1.5 rounded-xl text-xs font-bold border shadow-lg backdrop-blur transition cursor-pointer flex items-center gap-1 ${
+                        autoFollowVehicle
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                          : 'bg-slate-900/90 text-slate-400 border-slate-700'
+                      }`}
+                      title={autoFollowVehicle ? 'ऑटो फॉलो चालू' : 'ऑटो फॉलो बंद'}
+                    >
+                      {autoFollowVehicle ? <Lock className="w-3 h-3 text-amber-400" /> : <Unlock className="w-3 h-3" />}
+                    </button>
+
+                    <button
+                      onClick={() => setIsMapFullscreen(!isMapFullscreen)}
+                      className="p-1.5 bg-slate-900/90 hover:bg-slate-900 text-slate-300 hover:text-white border border-slate-700 rounded-xl shadow-lg backdrop-blur transition cursor-pointer"
+                      title={isMapFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                    >
+                      {isMapFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  {/* Floating Google Maps Style Locate Me Action Button */}
+                  <div className="absolute bottom-6 right-4 z-[450] flex flex-col items-end gap-2.5 pointer-events-auto">
+                    <button
+                      onClick={() => openGoogleMapsNavigation()}
+                      className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow-2xl border border-blue-400/50 backdrop-blur-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                      title="Turn-by-turn driving directions in Google Maps app"
+                    >
+                      <Navigation className="w-3.5 h-3.5 text-amber-300" />
+                      <span>नेविगेशन शुरू करें</span>
+                    </button>
+
                     <button
                       onClick={() => acquireDeviceLocation(true, false)}
                       disabled={isGpsAcquiring}
@@ -2238,15 +2223,15 @@ export const StaffDriverPortal: React.FC = () => {
                   </div>
 
                   {/* Floating Live Location & Address Badge */}
-                  <div className="absolute bottom-6 left-4 z-[450] max-w-[75%] sm:max-w-md pointer-events-auto">
-                    <div className="bg-slate-950/90 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-slate-700 shadow-2xl space-y-1">
+                  <div className="absolute bottom-6 left-4 z-[450] max-w-[70%] sm:max-w-md pointer-events-auto">
+                    <div className="bg-slate-950/90 backdrop-blur-md px-3 py-2 rounded-2xl border border-slate-700 shadow-2xl space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${isUsingDeviceGps ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+                        <span className={`w-2 h-2 rounded-full ${isUsingDeviceGps ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
                         <span className="text-[11px] font-mono font-bold text-white">
-                          {currentCoords.lat.toFixed(6)}° N, {currentCoords.lng.toFixed(6)}° E
+                          {currentCoords.lat.toFixed(5)}° N, {currentCoords.lng.toFixed(5)}° E
                         </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                          {isUsingDeviceGps ? (gpsSource === 'satellite' ? '🛰️ Satellite GPS' : '📶 Network Fix') : '📍 Sikta Default'}
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                          {isUsingDeviceGps ? 'Live GPS' : 'Sikta Route'}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-300 truncate font-medium flex items-center gap-1">
