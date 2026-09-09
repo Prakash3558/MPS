@@ -9,6 +9,7 @@
         "@supabase/supabase-js": "^2.112.3",
         "@tailwindcss/vite": "^4.1.14",
         "@types/compression": "^1.8.1",
+        "@types/mapbox-gl": "^3.5.0",
         "@vitejs/plugin-react": "^5.0.4",
         "bcryptjs": "^3.0.3",
         "compression": "^1.8.1",
@@ -18,6 +19,7 @@
         "jspdf": "^4.2.1",
         "leaflet": "^1.9.4",
         "lucide-react": "^0.546.0",
+        "mapbox-gl": "^3.30.0",
         "motion": "^12.23.24",
         "react": "^19.0.1",
         "react-dom": "^19.0.1",
@@ -325,6 +327,8 @@
     "@types/http-errors": ["@types/http-errors@2.0.5", "", {}, "sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg=="],
 
     "@types/leaflet": ["@types/leaflet@1.9.22", "", { "dependencies": { "@types/geojson": "*" } }, "sha512-h3lhECYEKDasG7LFHu+GiHqAvsgLuQvlJvVZzJDGONo3sEL+wUOqSFLnwkZlK0qVxnxbuGFW8iBlJNYs5wgndA=="],
+
+    "@types/mapbox-gl": ["@types/mapbox-gl@3.5.0", "", { "dependencies": { "mapbox-gl": "*" } }, "sha512-3wVAUTC6q1UKatLP9YxFBnGJWi3neJUF9OKeyRdUf/BsYjZAP35xmZkL4zogVJbO3vdExuSVYCAkzUXjpjdhOg=="],
 
     "@types/mdast": ["@types/mdast@4.0.4", "", { "dependencies": { "@types/unist": "*" } }, "sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA=="],
 
@@ -653,6 +657,8 @@
     "lucide-react": ["lucide-react@0.546.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-Z94u6fKT43lKeYHiVyvyR8fT7pwCzDu7RyMPpTvh054+xahSgj4HFQ+NmflvzdXsoAjYGdCguGaFKYuvq0ThCQ=="],
 
     "magic-string": ["magic-string@0.30.21", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.5" } }, "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ=="],
+
+    "mapbox-gl": ["mapbox-gl@3.30.0", "", {}, "sha512-26m0CSBszLkvbdVWf2oIZ3SjqCuResxJKEbupwwSyNwbwJAcgnMhDy2Yl5cSgtUxeamUJ1UeXRqpBmGEUVaAeQ=="],
 
     "math-intrinsics": ["math-intrinsics@1.1.0", "", {}, "sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g=="],
 

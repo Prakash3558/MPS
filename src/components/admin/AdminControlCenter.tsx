@@ -10,6 +10,7 @@ import { WebsiteCMSManager } from './WebsiteCMSManager';
 import { SchoolFinanceSystem } from './SchoolFinanceSystem';
 import { StaffManagementSystem } from './StaffManagementSystem';
 import { AdminGlobalSearch, AdminTabType } from './AdminGlobalSearch';
+import { AdminFleetCenter } from '../fleet/AdminFleetCenter';
 import { generateDefault12MonthFeeList } from '../../lib/feeUtils';
 import {
   Palette, Users, GraduationCap, Megaphone, ClipboardList, Image, Settings, Home, LogOut,
@@ -22,9 +23,16 @@ export const AdminControlCenter: React.FC = () => {
   const { user, loginUser, logout, isEditMode, toggleEditMode } = useAuth();
   const { settings, updateSettings } = useCMS();
 
+  // Set admin mode in localStorage so floating toolbar appears when returning to homepage
+  useEffect(() => {
+    try {
+      localStorage.setItem('mps_admin_mode', 'true');
+    } catch {}
+  }, []);
+
   // Navigation state
   const [activeTab, setActiveTab] = useState<
-    'site_content' | 'teachers' | 'staff' | 'students' | 'fees' | 'online_classes' | 'online_exams' | 'notices' | 'admissions' | 'gallery' | 'account'
+    'site_content' | 'teachers' | 'staff' | 'fleet' | 'students' | 'fees' | 'online_classes' | 'online_exams' | 'notices' | 'admissions' | 'gallery' | 'account'
   >('site_content');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -84,6 +92,7 @@ export const AdminControlCenter: React.FC = () => {
     section: 'A',
     parentName: '',
     motherName: '',
+    teacherName: 'Ramesh Sharma',
     enrollmentNo: '',
     phone: '',
     email: '',
@@ -339,6 +348,7 @@ export const AdminControlCenter: React.FC = () => {
       section: 'A',
       parentName: '',
       motherName: '',
+      teacherName: 'Ramesh Sharma',
       enrollmentNo: '',
       phone: '',
       email: '',
@@ -370,6 +380,7 @@ export const AdminControlCenter: React.FC = () => {
       section: s.section || 'A',
       parentName: s.parentName || '',
       motherName: s.motherName || '',
+      teacherName: s.teacherName || s.classTeacher || 'Ramesh Sharma',
       enrollmentNo: s.enrollmentNo || '',
       phone: s.phone || '',
       email: s.email || '',
@@ -433,6 +444,8 @@ export const AdminControlCenter: React.FC = () => {
       section: newStudent.section,
       parentName: newStudent.parentName,
       motherName: newStudent.motherName,
+      teacherName: newStudent.teacherName || (isEdit && editingStudent?.teacherName) || 'Ramesh Sharma',
+      classTeacher: newStudent.teacherName || (isEdit && editingStudent?.classTeacher) || 'Ramesh Sharma',
       enrollmentNo: newStudent.enrollmentNo,
       phone: newStudent.phone,
       email: newStudent.email,
@@ -862,6 +875,24 @@ export const AdminControlCenter: React.FC = () => {
             </div>
           </button>
 
+          {/* Fleet & Bus Command Center (Supabase Realtime) */}
+          <button
+            onClick={() => { setActiveTab('fleet'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
+              activeTab === 'fleet'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/20'
+                : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+            }`}
+          >
+            <Bus className="w-5 h-5 flex-shrink-0" />
+            <div className="flex-1 text-left flex items-center justify-between">
+              <span>Fleet & GPS (Supabase)</span>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-black animate-pulse">
+                LIVE
+              </span>
+            </div>
+          </button>
+
           {/* Students */}
           <button
             onClick={() => { setActiveTab('students'); setIsSidebarOpen(false); }}
@@ -1036,8 +1067,14 @@ export const AdminControlCenter: React.FC = () => {
 
           {/* Logout */}
           <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 transition-all text-left"
+            onClick={() => {
+              try {
+                localStorage.removeItem('mps_admin_mode');
+                sessionStorage.removeItem('mps_admin_mode');
+              } catch {}
+              logout();
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 transition-all text-left cursor-pointer"
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
             <span>Logout</span>
@@ -1063,6 +1100,7 @@ export const AdminControlCenter: React.FC = () => {
                 {activeTab === 'site_content' && '🎨 Site Content'}
                 {activeTab === 'teachers' && '👥 Teachers'}
                 {activeTab === 'staff' && '🚌 Staff & Transport'}
+                {activeTab === 'fleet' && '🛰️ Supabase Fleet Command Center'}
                 {activeTab === 'students' && '🎓 Students'}
                 {activeTab === 'notices' && '📢 Notices'}
                 {activeTab === 'admissions' && '📋 Admissions'}
@@ -1123,6 +1161,9 @@ export const AdminControlCenter: React.FC = () => {
 
           {/* TAB: STAFF & TRANSPORT */}
           {activeTab === 'staff' && <StaffManagementSystem />}
+
+          {/* TAB: SUPABASE FLEET COMMAND CENTER */}
+          {activeTab === 'fleet' && <AdminFleetCenter />}
 
           {/* TAB 2: TEACHERS */}
           {activeTab === 'teachers' && (
@@ -2587,7 +2628,24 @@ export const AdminControlCenter: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block mb-1 text-slate-300 font-bold">Class Teacher / In-charge</label>
+                  <input
+                    type="text"
+                    list="admin-student-teachers-list"
+                    value={newStudent.teacherName}
+                    onChange={e => setNewStudent({ ...newStudent, teacherName: e.target.value })}
+                    placeholder="e.g. Ramesh Sharma"
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white font-medium"
+                  />
+                  <datalist id="admin-student-teachers-list">
+                    {teachers.map(t => (
+                      <option key={t.id} value={t.name}>{t.name} ({t.subject || 'Faculty'})</option>
+                    ))}
+                  </datalist>
+                </div>
+
                 <div>
                   <label className="block mb-1 text-slate-300 font-bold">Date of Birth</label>
                   <input

@@ -75,18 +75,14 @@ export const Header: React.FC = React.memo(() => {
         {/* Brand Logo & Title - Compact 1-line on mobile */}
         <a href="/" className="flex items-center gap-1.5 sm:gap-3 group min-w-0 flex-shrink hover:opacity-95 transition-opacity">
           <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 text-slate-900 flex items-center justify-center shadow-xs border border-slate-200/80 dark:border-slate-700/80 flex-shrink-0 overflow-hidden p-0.5 sm:p-1 transition-transform group-hover:scale-105">
-            <img
+            <EditableImage
               src={settings?.logo_url || '/logo.svg'}
               alt={settings?.school_name ? `${settings.school_name} Logo` : 'MPS Logo'}
               loading="eager"
               decoding="async"
+              onSaveImage={(newUrl) => updateSettings({ logo_url: newUrl })}
+              blockKey="logo_url"
               className="max-h-full max-w-full w-auto h-auto object-contain"
-              onError={(e) => {
-                const target = e.currentTarget;
-                if (!target.src.endsWith('/logo.svg')) {
-                  target.src = '/logo.svg';
-                }
-              }}
             />
           </div>
           <div className="min-w-0 truncate">

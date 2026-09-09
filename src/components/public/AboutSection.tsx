@@ -3,8 +3,9 @@ import { motion } from 'motion/react';
 import { useCMS } from '../../context/CMSContext';
 import { EditableText } from '../common/EditableText';
 import { EditableImage } from '../common/EditableImage';
+import { EditableIcon } from '../common/EditableIcon';
 import { Card3DTilt } from '../common/Card3DTilt';
-import { Quote, CheckCircle2 } from 'lucide-react';
+import { Quote } from 'lucide-react';
 
 export const AboutSection: React.FC = React.memo(() => {
   const { settings, updateSettings } = useCMS();
@@ -53,7 +54,7 @@ export const AboutSection: React.FC = React.memo(() => {
             {/* Key Value Points */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div className="flex items-start gap-3 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200/80 dark:border-slate-800">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                <EditableIcon iconKey="about.p1.icon" defaultIcon="CheckCircle2" defaultColor="#10b981" className="flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-slate-900 dark:text-white text-sm">
                     <EditableText blockKey="about.p1.title" defaultText="CBSE Curriculum" />
@@ -65,7 +66,7 @@ export const AboutSection: React.FC = React.memo(() => {
               </div>
 
               <div className="flex items-start gap-3 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200/80 dark:border-slate-800">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                <EditableIcon iconKey="about.p2.icon" defaultIcon="Heart" defaultColor="#10b981" className="flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-slate-900 dark:text-white text-sm">
                     <EditableText blockKey="about.p2.title" defaultText="Individual Care" />
@@ -77,7 +78,7 @@ export const AboutSection: React.FC = React.memo(() => {
               </div>
 
               <div className="flex items-start gap-3 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200/80 dark:border-slate-800">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                <EditableIcon iconKey="about.p3.icon" defaultIcon="Laptop" defaultColor="#10b981" className="flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-slate-900 dark:text-white text-sm">
                     <EditableText blockKey="about.p3.title" defaultText="Digital Classrooms" />
@@ -89,7 +90,7 @@ export const AboutSection: React.FC = React.memo(() => {
               </div>
 
               <div className="flex items-start gap-3 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200/80 dark:border-slate-800">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                <EditableIcon iconKey="about.p4.icon" defaultIcon="Bus" defaultColor="#10b981" className="flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-slate-900 dark:text-white text-sm">
                     <EditableText blockKey="about.p4.title" defaultText="Safe Bus Fleet" />

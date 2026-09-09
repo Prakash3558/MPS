@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../context/AuthContext';
 import { useCMS } from '../../context/CMSContext';
 import { EditableText } from '../common/EditableText';
 import { EditableImage } from '../common/EditableImage';
+import { EditableIcon } from '../common/EditableIcon';
 import { Card3DTilt } from '../common/Card3DTilt';
 import { Facility } from '../../types';
 import {
@@ -10,6 +12,7 @@ import {
 } from 'lucide-react';
 
 export const FacilitiesSection: React.FC = React.memo(() => {
+  const { isEditMode } = useAuth();
   const { settings } = useCMS();
   const facilities = settings?.facilities || [];
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
@@ -125,13 +128,13 @@ export const FacilitiesSection: React.FC = React.memo(() => {
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
           <div className="space-y-2 max-w-xl">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-700 dark:text-slate-300 bg-slate-200/60 dark:bg-slate-800/80 border border-slate-300/50 dark:border-slate-700/60 px-3.5 py-1 rounded-full inline-block">
-              Facilities
+              <EditableText blockKey="facilities.badge" defaultText="Facilities" />
             </span>
             <h2 className="text-3xl sm:text-4xl font-serif font-black text-slate-900 dark:text-white tracking-tight">
               <EditableText blockKey="facilities.heading" defaultText="Campus & Facilities" />
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              Modern environments crafted for holistic student growth and academic exploration.
+              <EditableText blockKey="facilities.subtext" defaultText="Modern environments crafted for holistic student growth and academic exploration." />
             </p>
           </div>
 
@@ -173,17 +176,19 @@ export const FacilitiesSection: React.FC = React.memo(() => {
           {facilities.map((f, idx) => (
             <div
               key={`facility-${f.id}-${idx}`}
-              onClick={() => setSelectedFacility(f)}
+              onClick={() => {
+                if (!isEditMode) setSelectedFacility(f);
+              }}
               className="w-[82vw] max-w-[340px] sm:w-[380px] md:w-[400px] flex-shrink-0 cursor-pointer snap-start"
             >
               <Card3DTilt maxTilt={4} scaleOnHover={1.02} className="h-full">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col h-full group relative">
                   
                   {/* Category & Status Badges */}
-                  <div className="absolute top-3.5 left-3.5 z-10 flex flex-wrap gap-1.5 pointer-events-none">
+                  <div className="absolute top-3.5 left-3.5 z-10 flex flex-wrap gap-1.5">
                     {f.category && (
                       <span className="text-[10px] font-semibold uppercase tracking-wider bg-black/60 text-white backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/20">
-                        {f.category}
+                        <EditableText blockKey={`facility.${f.id}.category`} defaultText={f.category} />
                       </span>
                     )}
                   </div>
@@ -193,9 +198,10 @@ export const FacilitiesSection: React.FC = React.memo(() => {
                     <EditableImage
                       src={f.image}
                       alt={f.title}
+                      blockKey={`facility.${f.id}.image`}
                       loading={idx < 3 ? 'eager' : 'lazy'}
                       decoding="async"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out pointer-events-none will-change-transform"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out will-change-transform"
                     />
                   </div>
 
@@ -204,7 +210,7 @@ export const FacilitiesSection: React.FC = React.memo(() => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 flex-shrink-0">
-                          {getIcon(f.iconName)}
+                          <EditableIcon iconKey={`facility.${f.id}.icon`} defaultIcon={f.iconName || 'Monitor'} size={18} />
                         </div>
                         <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading line-clamp-1">
                           <EditableText blockKey={`facility.${f.id}.title`} defaultText={f.title} />
@@ -217,7 +223,7 @@ export const FacilitiesSection: React.FC = React.memo(() => {
                     </div>
 
                     <div className="w-full py-2 bg-slate-100 group-hover:bg-amber-500 group-hover:text-white dark:bg-slate-800 dark:group-hover:bg-amber-500 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all mt-2">
-                      <span>View Details</span>
+                      <EditableText blockKey={`facility.${f.id}.viewDetails`} defaultText="View Details" />
                       <ChevronRight className="w-3.5 h-3.5" />
                     </div>
                   </div>

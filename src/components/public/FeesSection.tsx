@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { useCMS } from '../../context/CMSContext';
 import { EditableText } from '../common/EditableText';
+import { EditableIcon } from '../common/EditableIcon';
 import { Card3DTilt } from '../common/Card3DTilt';
 import { Info, ArrowRight } from 'lucide-react';
 
@@ -14,7 +15,7 @@ export const FeesSection: React.FC = React.memo(() => {
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-3 flex flex-col items-center">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-700 dark:text-slate-300 bg-slate-200/60 dark:bg-slate-800/80 border border-slate-300/50 dark:border-slate-700/60 px-3.5 py-1 rounded-full">
-            Fee Structure
+            <EditableText blockKey="fee.badge" defaultText="Fee Structure" />
           </span>
           <h2 className="text-3xl sm:text-4xl font-serif font-black text-slate-900 dark:text-white tracking-tight">
             <EditableText blockKey="fee.headline" defaultText="Class-wise Fee Structure (2026-27)" />
@@ -54,23 +55,23 @@ export const FeesSection: React.FC = React.memo(() => {
                         <EditableText blockKey={`fee.${f.id}.class`} defaultText={f.className} />
                       </td>
                       <td className="py-4 px-6 font-medium text-slate-600 dark:text-slate-300">
-                        ₹{f.admissionFee}
+                        ₹<EditableText blockKey={`fee.${f.id}.admission`} defaultText={String(f.admissionFee)} />
                       </td>
                       <td className="py-4 px-6 font-bold text-slate-900 dark:text-white">
-                        ₹{f.monthlyTuition} / mo
+                        ₹<EditableText blockKey={`fee.${f.id}.tuition`} defaultText={String(f.monthlyTuition)} /> / mo
                       </td>
                       <td className="py-4 px-6 text-slate-600 dark:text-slate-300">
-                        ₹{f.annualCharges}
+                        ₹<EditableText blockKey={`fee.${f.id}.annual`} defaultText={String(f.annualCharges)} />
                       </td>
                       <td className="py-4 px-6 text-slate-600 dark:text-slate-300">
-                        ₹{f.examFee}
+                        ₹<EditableText blockKey={`fee.${f.id}.exam`} defaultText={String(f.examFee)} />
                       </td>
                       <td className="py-4 px-6 text-right">
                         <a
                           href="#admissions"
                           className="inline-flex items-center gap-1 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-semibold text-xs px-3.5 py-1.5 rounded-full transition-colors"
                         >
-                          <span>Inquire</span>
+                          <span><EditableText blockKey="fee.inquireBtn" defaultText="Inquire" /></span>
                           <ArrowRight className="w-3 h-3" />
                         </a>
                       </td>
@@ -90,11 +91,17 @@ export const FeesSection: React.FC = React.memo(() => {
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="mt-6 p-4 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-start gap-3 text-xs text-slate-600 dark:text-slate-300"
         >
-          <Info className="w-4 h-4 flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+          <EditableIcon iconKey="fee.infoIcon" defaultIcon="Info" defaultColor="#2563eb" className="flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold text-slate-800 dark:text-slate-200">Fee Payment Policy:</p>
+            <p className="font-bold text-slate-800 dark:text-slate-200">
+              <EditableText blockKey="fee.policyTitle" defaultText="Fee Payment Policy:" />
+            </p>
             <p className="mt-0.5 leading-relaxed">
-              Tuition fees are payable by the 10th of every month. Online fee payment is available via the Student & Parent Portal. Bus transport charges vary based on distance from Bhawanipur, Sikta campus.
+              <EditableText
+                blockKey="fee.policyDesc"
+                defaultText="Tuition fees are payable by the 10th of every month. Online fee payment is available via the Student & Parent Portal. Bus transport charges vary based on distance from Bhawanipur, Sikta campus."
+                multiline
+              />
             </p>
           </div>
         </motion.div>

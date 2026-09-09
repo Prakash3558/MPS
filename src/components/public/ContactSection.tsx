@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useCMS } from '../../context/CMSContext';
 import { EditableText } from '../common/EditableText';
+import { EditableImage } from '../common/EditableImage';
+import { EditableIcon } from '../common/EditableIcon';
 import { Card3DTilt } from '../common/Card3DTilt';
 import { MapPin, Phone, Mail, Clock, School, ExternalLink, Navigation, Compass } from 'lucide-react';
 
 export const ContactSection: React.FC = React.memo(() => {
-  const { settings } = useCMS();
+  const { settings, updateSettings } = useCMS();
   const [selectedRoute, setSelectedRoute] = useState<'bettiah' | 'raxaul' | 'sikta' | 'motihari'>('bettiah');
 
   const routeGuides = {
@@ -37,7 +39,7 @@ export const ContactSection: React.FC = React.memo(() => {
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-14 space-y-3">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-700 dark:text-slate-300 bg-slate-200/60 dark:bg-slate-800/80 border border-slate-300/50 dark:border-slate-700/60 px-3.5 py-1 rounded-full inline-block">
-            Location & Contact
+            <EditableText blockKey="contact.badge" defaultText="Location & Contact" />
           </span>
           <h2 className="text-3xl sm:text-4xl font-serif font-black text-slate-900 dark:text-white tracking-tight">
             <EditableText blockKey="contact.heading" defaultText="Visit or Contact Us" />
@@ -56,70 +58,77 @@ export const ContactSection: React.FC = React.memo(() => {
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
                     <div className="w-11 h-11 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 flex-shrink-0 overflow-hidden p-1">
-                      <img
+                      <EditableImage
                         src={settings?.logo_url || '/logo.svg'}
                         alt="MPS Logo"
+                        blockKey="logo_url"
                         className="w-full h-full object-contain"
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          if (!target.src.endsWith('/logo.svg')) {
-                            target.src = '/logo.svg';
-                          }
-                        }}
                       />
                     </div>
                     <div>
                       <h3 className="font-extrabold text-lg font-heading text-white">
-                        {settings?.school_name || 'Model Public School'}
+                        <EditableText blockKey="school_name" defaultText={settings?.school_name || 'Model Public School'} />
                       </h3>
-                      <p className="text-xs text-amber-400 font-bold">CBSE Affiliation No. {settings?.cbse_affiliation || '330854'}</p>
+                      <p className="text-xs text-amber-400 font-bold">
+                        CBSE Affiliation No. <EditableText blockKey="cbse_affiliation" defaultText={settings?.cbse_affiliation || '330854'} />
+                      </p>
                     </div>
                   </div>
 
                   <div className="space-y-4 text-xs sm:text-sm text-slate-300 font-body">
                     <div className="flex items-start gap-3">
-                      <MapPin className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <EditableIcon iconKey="contact.pinIcon" defaultIcon="MapPin" defaultColor="#f59e0b" size={18} className="flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong className="block text-white font-bold mb-0.5">Campus Address:</strong>
+                        <strong className="block text-white font-bold mb-0.5">
+                          <EditableText blockKey="contact.addressLabel" defaultText="Campus Address:" />
+                        </strong>
                         <p className="text-slate-400 leading-relaxed">
-                          {settings?.address || 'AT- Bhawanipur, P.O.- Kursi Barwa, P.S.- Sikta, West Champaran, Bihar - 845307'}
+                          <EditableText blockKey="address" defaultText={settings?.address || 'AT- Bhawanipur, P.O.- Kursi Barwa, P.S.- Sikta, West Champaran, Bihar - 845307'} />
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <Phone className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                      <EditableIcon iconKey="contact.phoneIcon" defaultIcon="Phone" defaultColor="#60a5fa" size={18} className="flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong className="block text-white font-bold mb-0.5">Helpline Phone Numbers:</strong>
+                        <strong className="block text-white font-bold mb-0.5">
+                          <EditableText blockKey="contact.phoneLabel" defaultText="Helpline Phone Numbers:" />
+                        </strong>
                         <p className="text-slate-400">
-                          {settings?.phones || '+91 87579 68130, +91 91620 24642'}
+                          <EditableText blockKey="phones" defaultText={settings?.phones || '+91 87579 68130, +91 91620 24642'} />
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <Mail className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <EditableIcon iconKey="contact.emailIcon" defaultIcon="Mail" defaultColor="#34d399" size={18} className="flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong className="block text-white font-bold mb-0.5">Official Email:</strong>
+                        <strong className="block text-white font-bold mb-0.5">
+                          <EditableText blockKey="contact.emailLabel" defaultText="Official Email:" />
+                        </strong>
                         <p className="text-slate-400">
-                          {settings?.email || 'modelpublicschool@gmail.com'}
+                          <EditableText blockKey="email" defaultText={settings?.email || 'modelpublicschool@gmail.com'} />
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <Clock className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <EditableIcon iconKey="contact.clockIcon" defaultIcon="Clock" defaultColor="#f59e0b" size={18} className="flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong className="block text-white font-bold mb-0.5">Office Timings:</strong>
-                        <p className="text-slate-400">Monday to Saturday: 8:00 AM – 3:00 PM</p>
+                        <strong className="block text-white font-bold mb-0.5">
+                          <EditableText blockKey="contact.timingsLabel" defaultText="Office Timings:" />
+                        </strong>
+                        <p className="text-slate-400">
+                          <EditableText blockKey="contact.timings" defaultText="Monday to Saturday: 8:00 AM – 3:00 PM" />
+                        </p>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
-                  <span>West Champaran, Bihar</span>
-                  <span className="text-amber-400 font-bold">India - 845307</span>
+                  <span><EditableText blockKey="contact.footerRegion" defaultText="West Champaran, Bihar" /></span>
+                  <span className="text-amber-400 font-bold"><EditableText blockKey="contact.footerPin" defaultText="India - 845307" /></span>
                 </div>
               </div>
             </Card3DTilt>
@@ -130,13 +139,13 @@ export const ContactSection: React.FC = React.memo(() => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white font-heading flex items-center gap-2">
-                  <span>Interactive Campus Location Map</span>
+                  <span><EditableText blockKey="contact.mapTitle" defaultText="Interactive Campus Location Map" /></span>
                   <span className="text-[10px] bg-emerald-500/10 text-emerald-500 font-bold px-2 py-0.5 rounded-full border border-emerald-500/20">
                     Live GPS
                   </span>
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  AT- Bhawanipur, P.O.- Kursi Barwa, Sikta, West Champaran, Bihar - 845307
+                  <EditableText blockKey="contact.mapSubtitle" defaultText="AT- Bhawanipur, P.O.- Kursi Barwa, Sikta, West Champaran, Bihar - 845307" />
                 </p>
               </div>
 
@@ -147,8 +156,8 @@ export const ContactSection: React.FC = React.memo(() => {
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-medium text-xs px-4 py-2 rounded-full transition-colors flex-shrink-0 cursor-pointer"
                 >
-                  <span>Open in Google Maps</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span><EditableText blockKey="contact.mapBtn" defaultText="Open in Google Maps" /></span>
+                  <EditableIcon iconKey="contact.extIcon" defaultIcon="ExternalLink" defaultColor="currentColor" size={14} />
                 </a>
               </div>
             </div>
@@ -174,14 +183,14 @@ export const ContactSection: React.FC = React.memo(() => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                <Compass className="w-5 h-5" />
+                <EditableIcon iconKey="contact.compassIcon" defaultIcon="Compass" defaultColor="#34d399" size={20} />
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">
-                  Campus Travel & Route Guide
+                  <EditableText blockKey="contact.routeTitle" defaultText="Campus Travel & Route Guide" />
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Select your starting point to view directions to our school campus.
+                  <EditableText blockKey="contact.routeSubtitle" defaultText="Select your starting point to view directions to our school campus." />
                 </p>
               </div>
             </div>

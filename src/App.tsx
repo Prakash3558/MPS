@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AuthProvider } from './context/AuthContext';
 import { CMSProvider } from './context/CMSContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -58,7 +59,8 @@ const StudentAppShell = lazyRetry(() => import('./components/portal/StudentAppSh
 const PublicHomepageBackground = lazyRetry(() => import('./components/common/PublicHomepageBackground'), 'PublicHomepageBackground');
 const FallingStarsCanvas = lazyRetry(() => import('./components/common/FallingStarsCanvas'), 'FallingStarsCanvas');
 
-import { UniversalPortalSwitcher } from './components/common/UniversalPortalSwitcher';
+import { AdminCMSToolbar } from './components/cms/AdminCMSToolbar';
+import { VisualInlineEditor } from './components/common/VisualInlineEditor';
 
 const PageLoader = () => (
   <div className="min-h-[300px] flex items-center justify-center py-16">
@@ -145,7 +147,7 @@ export default function App() {
             setTimeout(() => {
               const el = document.querySelector(targetUrl.hash);
               if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
+            }, 250);
           } else {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
@@ -167,95 +169,110 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <CMSProvider>
-          <div className="min-h-screen bg-brand-bg text-brand-text font-body transition-colors selection:bg-amber-500 selection:text-slate-950 relative">
+          <div className="min-h-screen bg-brand-bg text-brand-text font-body transition-colors selection:bg-amber-500 selection:text-slate-950 relative flex flex-col">
             <Suspense fallback={null}>
               {route === 'public' ? <PublicHomepageBackground /> : <FallingStarsCanvas />}
             </Suspense>
 
-            {route === 'student-app' ? (
-              <Suspense fallback={<PageLoader />}>
-                <StudentAppShell />
-              </Suspense>
-            ) : route === 'teacher' ? (
-              <div>
-                <Header />
-                <Suspense fallback={<PageLoader />}>
-                  <TeacherWorkspace />
-                </Suspense>
-                <Suspense fallback={null}>
-                  <Footer />
-                </Suspense>
-              </div>
-            ) : route === 'staff' ? (
-              <div>
-                <Header />
-                <Suspense fallback={<PageLoader />}>
-                  <StaffDriverPortal />
-                </Suspense>
-                <Suspense fallback={null}>
-                  <Footer />
-                </Suspense>
-              </div>
-            ) : route === 'admin' ? (
-              <div>
-                <Header />
-                <Suspense fallback={<PageLoader />}>
-                  <AdminControlCenter />
-                </Suspense>
-                <Suspense fallback={null}>
-                  <Footer />
-                </Suspense>
-              </div>
-            ) : route === 'portal' ? (
-              <div>
-                <Header />
-                <Suspense fallback={<PageLoader />}>
-                  <StudentPortal />
-                </Suspense>
-                <Suspense fallback={null}>
-                  <Footer />
-                </Suspense>
-              </div>
-            ) : (
-              <div>
-                <Header />
-                <NoticeTicker />
-                <main>
-                  <HeroSection />
-                  <AboutSection />
-                  <Suspense fallback={<SectionSkeleton />}>
-                    <FacilitiesSection />
-                  </Suspense>
-                  <Suspense fallback={<SectionSkeleton />}>
-                    <GallerySection />
-                  </Suspense>
-                  <Suspense fallback={<SectionSkeleton />}>
-                    <FeesSection />
-                  </Suspense>
-                  <Suspense fallback={<SectionSkeleton />}>
-                    <ThreeDSolarSystem />
-                  </Suspense>
-                  <Suspense fallback={<SectionSkeleton />}>
-                    <AdmissionsSection />
-                  </Suspense>
-                  <Suspense fallback={<SectionSkeleton />}>
-                    <FacultySection />
-                  </Suspense>
-                  <Suspense fallback={<SectionSkeleton />}>
-                    <FAQSection />
-                  </Suspense>
-                  <Suspense fallback={<SectionSkeleton />}>
-                    <ContactSection />
-                  </Suspense>
-                </main>
-                <Suspense fallback={null}>
-                  <Footer />
-                </Suspense>
-              </div>
-            )}
+            {/* Persistent Global Header for standard web pages & portals */}
+            {route !== 'student-app' && <Header />}
 
-            {/* Always-accessible Universal Portal Navigator Dock */}
-            <UniversalPortalSwitcher currentRoute={route} />
+            {/* Subtle Framer Motion fade-in transition when navigating between homepage and portals */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={route}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                className="w-full flex-1 flex flex-col"
+              >
+                {route === 'student-app' ? (
+                  <Suspense fallback={<PageLoader />}>
+                    <StudentAppShell />
+                  </Suspense>
+                ) : route === 'teacher' ? (
+                  <div className="flex-1 flex flex-col">
+                    <Suspense fallback={<PageLoader />}>
+                      <TeacherWorkspace />
+                    </Suspense>
+                    <Suspense fallback={null}>
+                      <Footer />
+                    </Suspense>
+                  </div>
+                ) : route === 'staff' ? (
+                  <div className="flex-1 flex flex-col">
+                    <Suspense fallback={<PageLoader />}>
+                      <StaffDriverPortal />
+                    </Suspense>
+                    <Suspense fallback={null}>
+                      <Footer />
+                    </Suspense>
+                  </div>
+                ) : route === 'admin' ? (
+                  <div className="flex-1 flex flex-col">
+                    <Suspense fallback={<PageLoader />}>
+                      <AdminControlCenter />
+                    </Suspense>
+                    <Suspense fallback={null}>
+                      <Footer />
+                    </Suspense>
+                  </div>
+                ) : route === 'portal' ? (
+                  <div className="flex-1 flex flex-col">
+                    <Suspense fallback={<PageLoader />}>
+                      <StudentPortal />
+                    </Suspense>
+                    <Suspense fallback={null}>
+                      <Footer />
+                    </Suspense>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col">
+                    <NoticeTicker />
+                    <main className="flex-1">
+                      <HeroSection />
+                      <AboutSection />
+                      <Suspense fallback={<SectionSkeleton />}>
+                        <FacilitiesSection />
+                      </Suspense>
+                      <Suspense fallback={<SectionSkeleton />}>
+                        <GallerySection />
+                      </Suspense>
+                      <Suspense fallback={<SectionSkeleton />}>
+                        <FeesSection />
+                      </Suspense>
+                      <Suspense fallback={<SectionSkeleton />}>
+                        <ThreeDSolarSystem />
+                      </Suspense>
+                      <Suspense fallback={<SectionSkeleton />}>
+                        <AdmissionsSection />
+                      </Suspense>
+                      <Suspense fallback={<SectionSkeleton />}>
+                        <FacultySection />
+                      </Suspense>
+                      <Suspense fallback={<SectionSkeleton />}>
+                        <FAQSection />
+                      </Suspense>
+                      <Suspense fallback={<SectionSkeleton />}>
+                        <ContactSection />
+                      </Suspense>
+                    </main>
+                    <Suspense fallback={null}>
+                      <Footer />
+                    </Suspense>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Floating Admin Toolbar & Visual Live Editor - appears for administrators on homepage */}
+            {route === 'public' && (
+              <>
+                <AdminCMSToolbar />
+                <VisualInlineEditor />
+              </>
+            )}
           </div>
         </CMSProvider>
       </AuthProvider>

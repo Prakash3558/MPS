@@ -1,12 +1,16 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useCMS } from '../../context/CMSContext';
 import { FacultyMember } from '../../types';
 import { EditableText } from '../common/EditableText';
+import { EditableImage } from '../common/EditableImage';
+import { EditableIcon } from '../common/EditableIcon';
 import {
   GraduationCap, BookOpen, Award, Mail, Search, Sparkles, UserCheck, Briefcase, ChevronLeft, ChevronRight, Play, Pause, Filter, ShieldCheck, Eye
 } from 'lucide-react';
 
 export const FacultySection: React.FC = React.memo(() => {
+  const { isEditMode } = useAuth();
   const { settings, loading } = useCMS();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
@@ -112,8 +116,8 @@ export const FacultySection: React.FC = React.memo(() => {
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto space-y-3 flex flex-col items-center">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-300 bg-slate-800/80 border border-slate-700/60 px-3.5 py-1 rounded-full inline-flex items-center gap-1.5">
-            <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
-            <span>Faculty</span>
+            <EditableIcon iconKey="faculty.badgeIcon" defaultIcon="GraduationCap" defaultColor="#f59e0b" size={14} />
+            <span><EditableText blockKey="faculty.badge" defaultText="Faculty" /></span>
           </span>
 
           <h2 className="text-3xl sm:text-4xl font-serif font-black tracking-tight text-white">
@@ -252,15 +256,18 @@ export const FacultySection: React.FC = React.memo(() => {
             {filteredFaculty.map((member) => (
               <div
                 key={member.id}
-                onClick={() => setSelectedMember(member)}
+                onClick={() => {
+                  if (!isEditMode) setSelectedMember(member);
+                }}
                 className="snap-start flex-shrink-0 w-72 bg-slate-900 rounded-2xl border border-slate-800/90 p-5 flex flex-col items-center text-center shadow-sm hover:border-slate-700 hover:-translate-y-1 transition-all duration-200 group cursor-pointer relative overflow-hidden"
               >
                 {/* Circular Photo Container */}
                 <div className="relative mb-3 mt-1">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full p-1 bg-slate-800 border border-slate-700 shadow-sm group-hover:scale-105 transition-transform duration-200">
-                    <img
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full p-1 bg-slate-800 border border-slate-700 shadow-sm group-hover:scale-105 transition-transform duration-200 overflow-hidden">
+                    <EditableImage
                       src={member.photo || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=600'}
                       alt={member.name}
+                      blockKey={`faculty.${member.id}.photo`}
                       className="w-full h-full rounded-full object-cover object-top"
                     />
                   </div>
@@ -268,28 +275,30 @@ export const FacultySection: React.FC = React.memo(() => {
 
                 {/* Name & Class / Designation Info */}
                 <h3 className="text-sm sm:text-base font-bold font-heading text-white group-hover:text-amber-400 transition-colors line-clamp-1 mb-1">
-                  {member.name}
+                  <EditableText blockKey={`faculty.${member.id}.name`} defaultText={member.name} />
                 </h3>
 
                 {/* Designation / Class badge */}
                 <span className="inline-block bg-slate-800 text-slate-300 border border-slate-700 text-[10.5px] font-medium px-2.5 py-0.5 rounded-full mb-2 max-w-full truncate">
-                  {member.designation}
+                  <EditableText blockKey={`faculty.${member.id}.designation`} defaultText={member.designation} />
                 </span>
 
                 {/* Subject Taught */}
                 <p className="text-xs font-normal text-slate-400 flex items-center justify-center gap-1.5 mb-2">
-                  <BookOpen className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                  <span className="truncate">{member.subject}</span>
+                  <EditableIcon iconKey={`faculty.${member.id}.subIcon`} defaultIcon="BookOpen" defaultColor="#f59e0b" size={14} />
+                  <span className="truncate">
+                    <EditableText blockKey={`faculty.${member.id}.subject`} defaultText={member.subject} />
+                  </span>
                 </p>
 
                 {/* Credentials / Experience */}
                 <div className="w-full pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
                   <span className="truncate max-w-[130px] font-normal" title={member.qualification}>
-                    {member.qualification}
+                    <EditableText blockKey={`faculty.${member.id}.qualification`} defaultText={member.qualification} />
                   </span>
                   {member.experience && (
                     <span className="text-amber-400 font-semibold flex-shrink-0">
-                      {member.experience}
+                      <EditableText blockKey={`faculty.${member.id}.experience`} defaultText={member.experience} />
                     </span>
                   )}
                 </div>

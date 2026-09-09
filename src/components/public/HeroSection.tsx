@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useCMS } from '../../context/CMSContext';
 import { EditableText } from '../common/EditableText';
 import { EditableImage } from '../common/EditableImage';
-import { ChevronLeft, ChevronRight, Bookmark, Download, Smartphone, GraduationCap, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { EditableIcon } from '../common/EditableIcon';
+import { ChevronLeft, ChevronRight, Bookmark, Download, Smartphone, GraduationCap, ArrowRight, ShieldCheck, Sparkles, Camera } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ThreeDHeroCanvas } from '../common/ThreeDHeroCanvas';
 import { AppDownloadModal } from '../common/AppDownloadModal';
 
 export const HeroSection: React.FC = React.memo(() => {
+  const { isEditMode } = useAuth();
   const { settings, updateSettings } = useCMS();
   const slides = settings?.hero_slides || [];
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
@@ -149,7 +152,7 @@ export const HeroSection: React.FC = React.memo(() => {
           key={`badge-${currentSlideIndex}`}
           className="inline-flex items-center gap-2 bg-black/40 border border-white/20 text-white font-medium text-xs sm:text-sm px-4 py-1.5 rounded-full shadow-sm backdrop-blur-md"
         >
-          <Bookmark className="w-3.5 h-3.5 text-amber-400" />
+          <EditableIcon iconKey="hero.badgeIcon" defaultIcon="Bookmark" defaultColor="#f59e0b" size={14} />
           <EditableText
             blockKey={`hero.slide.${currentSlideIndex}.badge`}
             defaultText={currentSlide.badge || `CBSE Affiliated · ${settings?.cbse_affiliation || '330854'}`}
@@ -189,7 +192,7 @@ export const HeroSection: React.FC = React.memo(() => {
             href="#admissions"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-sm sm:text-base py-3 px-8 rounded-full shadow-sm transition-all transform hover:-translate-y-0.5 active:translate-y-0"
           >
-            <span>Apply for Admission 2026-27</span>
+            <EditableText blockKey="hero.applyButton" defaultText="Apply for Admission 2026-27" />
             <ArrowRight className="w-4 h-4 stroke-[2.5]" />
           </a>
 
@@ -199,8 +202,8 @@ export const HeroSection: React.FC = React.memo(() => {
               href="/portal"
               className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 bg-black/40 hover:bg-black/60 border border-white/20 hover:border-white/40 text-white font-semibold text-xs sm:text-sm py-2.5 px-4 rounded-full shadow-sm backdrop-blur-md transition-all"
             >
-              <GraduationCap className="w-4 h-4 text-amber-400" />
-              <span>Student Portal</span>
+              <EditableIcon iconKey="hero.portalIcon" defaultIcon="GraduationCap" defaultColor="#f59e0b" size={16} />
+              <EditableText blockKey="hero.portalButton" defaultText="Student Portal" />
             </a>
 
             <button
@@ -208,8 +211,8 @@ export const HeroSection: React.FC = React.memo(() => {
               onClick={() => setDownloadModalOpen(true)}
               className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 bg-black/40 hover:bg-black/60 border border-white/20 hover:border-white/40 text-white font-semibold text-xs sm:text-sm py-2.5 px-4 rounded-full shadow-sm backdrop-blur-md transition-all cursor-pointer"
             >
-              <Smartphone className="w-4 h-4 text-amber-400" />
-              <span>Download App</span>
+              <EditableIcon iconKey="hero.downloadIcon" defaultIcon="Smartphone" defaultColor="#f59e0b" size={16} />
+              <EditableText blockKey="hero.downloadButton" defaultText="Download App" />
             </button>
           </div>
 
@@ -218,10 +221,30 @@ export const HeroSection: React.FC = React.memo(() => {
             href="#facilities"
             className="text-xs text-white/70 hover:text-white font-medium hover:underline underline-offset-4 transition-colors pt-1 inline-flex items-center gap-1"
           >
-            <span>Explore Campus & Facilities</span>
+            <EditableText blockKey="hero.exploreButton" defaultText="Explore Campus & Facilities" />
             <ChevronRight className="w-3 h-3" />
           </a>
         </div>
+
+        {/* Quick Hero Banner Photo Editor Tooltip when Visual Edit is Active */}
+        {isEditMode && (
+          <div className="pt-2 z-30 flex items-center justify-center">
+            <div className="bg-slate-900/95 text-white border-2 border-amber-500 px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3 text-xs">
+              <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                <Camera className="w-4 h-4" />
+                <span>Hero Banner Photo (Slide {safeIndex + 1}/{slides.length})</span>
+              </span>
+              <div className="w-20 h-10 rounded-lg overflow-hidden border border-amber-400/80 shadow">
+                <EditableImage
+                  src={currentSlide.image}
+                  alt={`Slide ${safeIndex + 1}`}
+                  onSaveImage={(newUrl) => handleUpdateSlideImage(newUrl, safeIndex)}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* App Download Modal */}

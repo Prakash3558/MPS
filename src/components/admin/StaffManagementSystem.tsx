@@ -746,19 +746,36 @@ export const StaffManagementSystem: React.FC = () => {
               })}
             </div>
 
-            {/* Simulated Live Route Visualizer Banner */}
-            <div className="p-4 bg-slate-900 text-white rounded-2xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  Active Vehicle Coordinates & Telemetry
-                </span>
-                <span className="text-xs text-emerald-400 font-mono">
-                  GPS Fix: High Accuracy (±5m)
-                </span>
+            {/* Live GPS Fleet Telemetry & Google Maps Stream */}
+            <div className="p-5 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+                    🛰️ Live GPS Vehicle Telemetry & Satellite Radar
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    Real satellite fixes from driver mobile portals & vehicle tracking units
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-emerald-400 font-mono bg-emerald-950/60 border border-emerald-800/80 px-2.5 py-1 rounded-full">
+                    GPS Fix: High Accuracy (±5m)
+                  </span>
+                  <a
+                    href="https://www.google.com/maps/dir/?api=1&destination=27.0180,84.6725"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 bg-amber-400 hover:bg-amber-300 px-3 py-1 rounded-lg transition"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Open Campus in Google Maps</span>
+                  </a>
+                </div>
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
                 {liveLocations.map(l => (
-                  <div key={l.routeId} className="p-3 bg-slate-800/90 rounded-xl border border-slate-700 space-y-1">
+                  <div key={l.routeId} className="p-3 bg-slate-800/90 rounded-xl border border-slate-700 space-y-2">
                     <div className="flex items-center justify-between text-blue-400 font-bold">
                       <span>{l.vehicleNumber} ({l.numberPlate})</span>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -775,8 +792,41 @@ export const StaffManagementSystem: React.FC = () => {
                       <span>Next Stop: {l.nextStopName || 'Campus Depot'}</span>
                       <span>{new Date(l.lastUpdated).toLocaleTimeString()}</span>
                     </div>
+                    <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between gap-2">
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${l.latitude},${l.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-sans font-bold"
+                      >
+                        <Navigation className="w-3 h-3" /> Track on Google Maps
+                      </a>
+                      {l.driverPhone && (
+                        <a href={`tel:${l.driverPhone}`} className="text-xs text-emerald-400 hover:underline font-sans">
+                          📞 Call Driver
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Admin Google Maps Live Stream Embed */}
+              <div className="h-64 rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950 relative">
+                <iframe
+                  src={
+                    liveLocations.find(l => l.isActive)
+                      ? `https://maps.google.com/maps?q=${liveLocations.find(l => l.isActive)?.latitude},${liveLocations.find(l => l.isActive)?.longitude}&t=m&z=15&output=embed`
+                      : `https://maps.google.com/maps?q=27.0180,84.6725+(Model+Public+School+Campus+Depot)&t=m&z=15&output=embed`
+                  }
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen={false}
+                  loading="lazy"
+                  title="Admin Fleet Live GPS Stream"
+                  className="w-full h-full filter contrast-[1.02]"
+                />
               </div>
             </div>
           </div>

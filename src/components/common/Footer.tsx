@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useCMS } from '../../context/CMSContext';
 import { EditableText } from './EditableText';
+import { EditableImage } from './EditableImage';
+import { EditableIcon } from './EditableIcon';
 import { Phone, Mail, MapPin, School, ShieldCheck, Download, Smartphone } from 'lucide-react';
 import { LegalPagesModal, LegalTab } from './LegalPagesModal';
 import { AppDownloadModal } from './AppDownloadModal';
@@ -23,18 +25,11 @@ export const Footer: React.FC = React.memo(() => {
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
             <div className="h-10 max-w-[140px] rounded-xl bg-white text-slate-900 flex items-center justify-center font-bold overflow-hidden p-1 shadow-sm border border-slate-200 dark:border-slate-800 flex-shrink-0">
-              <img
+              <EditableImage
                 src={settings?.logo_url || '/logo.svg'}
                 alt={settings?.school_name ? `${settings.school_name} Logo` : 'MPS School Logo'}
-                loading="lazy"
-                decoding="async"
+                blockKey="logo_url"
                 className="max-h-full max-w-full w-auto h-auto object-contain"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  if (!target.src.endsWith('/logo.svg')) {
-                    target.src = '/logo.svg';
-                  }
-                }}
               />
             </div>
             <h3 className="text-base font-black text-slate-900 dark:text-white font-heading">
@@ -46,30 +41,34 @@ export const Footer: React.FC = React.memo(() => {
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
             <span className="inline-block bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[10.5px] font-medium px-3 py-0.5 rounded-full">
-              CBSE: {settings?.cbse_affiliation || '330854'}
+              CBSE: <EditableText blockKey="cbse_affiliation" defaultText={settings?.cbse_affiliation || '330854'} />
             </span>
             <span className="inline-block bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[10.5px] font-medium px-3 py-0.5 rounded-full">
-              UDISE: {settings?.udise_code || '10011503402'}
+              UDISE: <EditableText blockKey="udise_code" defaultText={settings?.udise_code || '10011503402'} />
             </span>
           </div>
         </div>
 
         {/* Col 2 */}
         <div className="space-y-2 font-medium">
-          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-heading mb-3">Quick Links</h4>
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-heading mb-3">
+            <EditableText blockKey="footer.col2Heading" defaultText="Quick Links" />
+          </h4>
           <ul className="space-y-2 text-slate-600 dark:text-slate-400">
-            <li><a href="#about" className="hover:text-slate-900 dark:hover:text-white transition-colors">About Us</a></li>
-            <li><a href="#facilities" className="hover:text-slate-900 dark:hover:text-white transition-colors">Campus & Facilities</a></li>
-            <li><a href="#gallery" className="hover:text-slate-900 dark:hover:text-white transition-colors">Photo Gallery</a></li>
-            <li><a href="#fees" className="hover:text-slate-900 dark:hover:text-white transition-colors">Fee Structure</a></li>
-            <li><a href="#admissions" className="hover:text-slate-900 dark:hover:text-white transition-colors">Admissions 2026</a></li>
-            <li><a href="#contact" className="hover:text-slate-900 dark:hover:text-white transition-colors">Contact Us</a></li>
+            <li><a href="#about" className="hover:text-slate-900 dark:hover:text-white transition-colors"><EditableText blockKey="footer.linkAbout" defaultText="About Us" /></a></li>
+            <li><a href="#facilities" className="hover:text-slate-900 dark:hover:text-white transition-colors"><EditableText blockKey="footer.linkFacilities" defaultText="Campus & Facilities" /></a></li>
+            <li><a href="#gallery" className="hover:text-slate-900 dark:hover:text-white transition-colors"><EditableText blockKey="footer.linkGallery" defaultText="Photo Gallery" /></a></li>
+            <li><a href="#fees" className="hover:text-slate-900 dark:hover:text-white transition-colors"><EditableText blockKey="footer.linkFees" defaultText="Fee Structure" /></a></li>
+            <li><a href="#admissions" className="hover:text-slate-900 dark:hover:text-white transition-colors"><EditableText blockKey="footer.linkAdmissions" defaultText="Admissions 2026" /></a></li>
+            <li><a href="#contact" className="hover:text-slate-900 dark:hover:text-white transition-colors"><EditableText blockKey="footer.linkContact" defaultText="Contact Us" /></a></li>
           </ul>
         </div>
 
         {/* Col 3 */}
         <div className="space-y-2 font-medium">
-          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-heading mb-3">Portals & Apps</h4>
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-heading mb-3">
+            <EditableText blockKey="footer.col3Heading" defaultText="Portals & Apps" />
+          </h4>
           <ul className="space-y-2">
             <li>
               <button
@@ -78,19 +77,19 @@ export const Footer: React.FC = React.memo(() => {
                 className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors text-amber-500 font-bold flex items-center gap-1.5 cursor-pointer"
               >
                 <Smartphone className="w-3.5 h-3.5" />
-                <span>Download Official App</span>
+                <span><EditableText blockKey="footer.btnDownload" defaultText="Download Official App" /></span>
               </button>
             </li>
-            <li><a href="/portal" className="hover:text-slate-900 dark:hover:text-white transition-colors text-slate-900 dark:text-white font-semibold">Student & Parent Portal</a></li>
-            <li><a href="/teacher" className="hover:text-slate-900 dark:hover:text-white transition-colors text-slate-600 dark:text-slate-400">Teacher Workspace</a></li>
-            <li><a href="/admin" className="hover:text-slate-900 dark:hover:text-white transition-colors text-slate-600 dark:text-slate-400">Admin Control Center</a></li>
+            <li><a href="/portal" className="hover:text-slate-900 dark:hover:text-white transition-colors text-slate-900 dark:text-white font-semibold"><EditableText blockKey="footer.linkPortal" defaultText="Student & Parent Portal" /></a></li>
+            <li><a href="/teacher" className="hover:text-slate-900 dark:hover:text-white transition-colors text-slate-600 dark:text-slate-400"><EditableText blockKey="footer.linkTeacher" defaultText="Teacher Workspace" /></a></li>
+            <li><a href="/admin" className="hover:text-slate-900 dark:hover:text-white transition-colors text-slate-600 dark:text-slate-400"><EditableText blockKey="footer.linkAdmin" defaultText="Admin Control Center" /></a></li>
             <li className="pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => openLegalTab('disclosures')}
                 className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:underline font-medium flex items-center gap-1 text-[11px] cursor-pointer"
               >
-                <ShieldCheck className="w-3.5 h-3.5" /> CBSE Mandatory Disclosure
+                <ShieldCheck className="w-3.5 h-3.5" /> <EditableText blockKey="footer.cbseDisclosure" defaultText="CBSE Mandatory Disclosure" />
               </button>
             </li>
           </ul>
@@ -98,18 +97,20 @@ export const Footer: React.FC = React.memo(() => {
 
         {/* Col 4 */}
         <div className="space-y-2 font-body">
-          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-heading mb-3">Contact Information</h4>
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-heading mb-3">
+            <EditableText blockKey="footer.col4Heading" defaultText="Contact Information" />
+          </h4>
           <p className="flex items-start gap-2 text-slate-600 dark:text-slate-400">
-            <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <span>{settings?.address || 'AT- Bhawanipur, P.O.- Kursi Barwa, Sikta, Bihar - 845307'}</span>
+            <EditableIcon iconKey="footer.pinIcon" defaultIcon="MapPin" defaultColor="#2563eb" size={16} className="flex-shrink-0 mt-0.5" />
+            <span><EditableText blockKey="address" defaultText={settings?.address || 'AT- Bhawanipur, P.O.- Kursi Barwa, Sikta, Bihar - 845307'} /></span>
           </p>
           <p className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-            <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-            <span>{settings?.phones || '+91 87579 68130, +91 91620 24642'}</span>
+            <EditableIcon iconKey="footer.phoneIcon" defaultIcon="Phone" defaultColor="#2563eb" size={16} className="flex-shrink-0" />
+            <span><EditableText blockKey="phones" defaultText={settings?.phones || '+91 87579 68130, +91 91620 24642'} /></span>
           </p>
           <p className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-            <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-            <span>{settings?.email || 'modelpublicschool@gmail.com'}</span>
+            <EditableIcon iconKey="footer.mailIcon" defaultIcon="Mail" defaultColor="#2563eb" size={16} className="flex-shrink-0" />
+            <span><EditableText blockKey="email" defaultText={settings?.email || 'modelpublicschool@gmail.com'} /></span>
           </p>
         </div>
       </div>
@@ -118,29 +119,29 @@ export const Footer: React.FC = React.memo(() => {
       <div className="max-w-7xl mx-auto px-4 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400">
         <div className="flex flex-wrap items-center gap-3 font-medium">
           <button type="button" onClick={() => openLegalTab('privacy')} className="hover:text-slate-900 dark:hover:text-white hover:underline">
-            Privacy Policy
+            <EditableText blockKey="footer.privacy" defaultText="Privacy Policy" />
           </button>
           <span>•</span>
           <button type="button" onClick={() => openLegalTab('terms')} className="hover:text-slate-900 dark:hover:text-white hover:underline">
-            Terms of Use
+            <EditableText blockKey="footer.terms" defaultText="Terms of Use" />
           </button>
           <span>•</span>
           <button type="button" onClick={() => openLegalTab('refund')} className="hover:text-slate-900 dark:hover:text-white hover:underline">
-            Fee & Refund Policy
+            <EditableText blockKey="footer.refund" defaultText="Fee & Refund Policy" />
           </button>
           <span>•</span>
           <button type="button" onClick={() => openLegalTab('disclosures')} className="hover:text-slate-900 dark:hover:text-white hover:underline">
-            CBSE Disclosure
+            <EditableText blockKey="footer.disclosure" defaultText="CBSE Disclosure" />
           </button>
           <span>•</span>
           <button type="button" onClick={() => openLegalTab('disclaimer')} className="hover:text-slate-900 dark:hover:text-white hover:underline">
-            Disclaimer
+            <EditableText blockKey="footer.disclaimer" defaultText="Disclaimer" />
           </button>
         </div>
 
         <div className="text-right">
-          <p>© {new Date().getFullYear()} Model Public School (MPS Sikta). All rights reserved.</p>
-          <p className="text-amber-600 dark:text-amber-400 font-bold mt-0.5">Developed By Prakash Sah (2026)</p>
+          <p><EditableText blockKey="footer.copyright" defaultText={`© ${new Date().getFullYear()} Model Public School (MPS Sikta). All rights reserved.`} /></p>
+          <p className="text-amber-600 dark:text-amber-400 font-bold mt-0.5"><EditableText blockKey="footer.developer" defaultText="Developed By Prakash Sah (2026)" /></p>
         </div>
       </div>
 

@@ -7,7 +7,8 @@ import { CountryPhoneInput, detectUserCountryCode, fetchUserCountryCodeFromIP } 
 import {
   Student, Homework, AttendanceRecord, ExamResult, Notice,
   OnlineClass, OnlineExam, TimeTableSlot, StudyMaterial, SchoolDiaryEntry,
-  SyllabusItem, TransportRoute, AdmitCard, StudentDeclaration, SchoolMessage, RecordUpdateReq, ParentComplaint
+  SyllabusItem, TransportRoute, AdmitCard, StudentDeclaration, SchoolMessage, RecordUpdateReq, ParentComplaint,
+  VehicleLiveLocation
 } from '../../types';
 import { StudentIDCard } from '../common/StudentIDCard';
 import { CaptchaWidget } from '../common/CaptchaWidget';
@@ -15,6 +16,7 @@ import { AcademicProgressAnalytics } from './AcademicProgressAnalytics';
 import { downloadElementAsPDF } from '../../lib/pdf';
 import { OfficialFeeReceipt } from '../common/OfficialFeeReceipt';
 import { sortFeeMonths, getNormalizedStudentFeeMonths } from '../../lib/feeUtils';
+import { ParentFleetTracker } from '../fleet/ParentFleetTracker';
 import {
   GraduationCap, LogOut, Calendar, BookOpen, FileText, IndianRupee, Bell, AlertTriangle, AlertCircle,
   CheckCircle2, XCircle, Clock, Award, ShieldCheck, Download, UserCheck, Key, User, TrendingUp, Printer, Check,
@@ -115,6 +117,7 @@ export const StudentPortal: React.FC = () => {
   const [schoolDiary, setSchoolDiary] = useState<SchoolDiaryEntry[]>([]);
   const [syllabus, setSyllabus] = useState<SyllabusItem[]>([]);
   const [transportRoutes, setTransportRoutes] = useState<TransportRoute[]>([]);
+  const [liveLocations, setLiveLocations] = useState<VehicleLiveLocation[]>([]);
   const [admitCards, setAdmitCards] = useState<AdmitCard[]>([]);
   const [declarations, setDeclarations] = useState<StudentDeclaration[]>([]);
   const [schoolMessages, setSchoolMessages] = useState<SchoolMessage[]>([]);
@@ -153,7 +156,7 @@ export const StudentPortal: React.FC = () => {
 
       const [
         hw, att, exams, nots,
-        oc, oe, tt, sm, sd, syl, tr, ac, dec, msgs, reqs, cmps
+        oc, oe, tt, sm, sd, syl, tr, ac, dec, msgs, reqs, cmps, liveLocs
       ] = await Promise.all([
         api.getHomework(st.class, st.section),
         api.getAttendance(st.id),
@@ -170,7 +173,8 @@ export const StudentPortal: React.FC = () => {
         api.getDeclarations(),
         api.getSchoolMessages(st.id, st.class, st.section),
         api.getRecordUpdates(st.id),
-        api.getComplaints(st.class, st.section)
+        api.getComplaints(st.class, st.section),
+        api.getLiveLocations()
       ]);
 
       const cleanStr = (v?: string) => String(v || '').replace(/^class/i, '').trim().toLowerCase();
@@ -192,6 +196,7 @@ export const StudentPortal: React.FC = () => {
       setSchoolDiary(sd.filter(d => matchClassSec(d.class, d.section)));
       setSyllabus(syl.filter(s => matchClassSec(s.class, s.section)));
       setTransportRoutes(tr);
+      setLiveLocations(liveLocs || []);
       setAdmitCards(ac);
       setDeclarations(dec);
       setSchoolMessages(msgs.filter(m => matchClassSec(m.class, m.section)));
@@ -236,6 +241,23 @@ export const StudentPortal: React.FC = () => {
       loadStudentDashboardData(student);
     }
   }, [student?.id, refreshCount]);
+
+  // Polling for live vehicle telemetry updates when on transport tab
+  useEffect(() => {
+    if (activeTab === 'transport') {
+      const fetchLiveLocations = async () => {
+        try {
+          const locs = await api.getLiveLocations();
+          setLiveLocations(locs || []);
+        } catch (e) {
+          // silent background catch
+        }
+      };
+      fetchLiveLocations();
+      const interval = setInterval(fetchLiveLocations, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
 
   const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1311,6 +1333,10 @@ export const StudentPortal: React.FC = () => {
                     <span className="font-bold text-rose-600 dark:text-rose-400">B+ (Verified)</span>
                   </div>
                   <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
+                    <span className="text-slate-400">Class Teacher / Mentor</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-400">{student.teacherName || student.classTeacher || 'Ramesh Sharma'}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
                     <span className="text-slate-400">House</span>
                     <span className="font-bold text-amber-600 dark:text-amber-400">Tagore House (Yellow)</span>
                   </div>
@@ -1343,15 +1369,27 @@ export const StudentPortal: React.FC = () => {
                   <span className="text-[10px] text-slate-400 font-bold">Contact Card</span>
                 </div>
 
-                <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/40 space-y-1">
-                  <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                    Primary Guardian
+                <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/40 space-y-2">
+                  <div>
+                    <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                      Father / Primary Guardian
+                    </div>
+                    <div className="text-base font-extrabold text-slate-900 dark:text-white">
+                      {student.parentName || 'Ramesh Kumar'}
+                    </div>
                   </div>
-                  <div className="text-base font-extrabold text-slate-900 dark:text-white">
-                    {student.parentName || 'Ramesh Kumar'}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    Relationship: Father • Occupation: Business / Agriculture
+                  {student.motherName && (
+                    <div className="pt-2 border-t border-blue-100 dark:border-blue-900/50">
+                      <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                        Mother's Name
+                      </div>
+                      <div className="text-sm font-extrabold text-slate-900 dark:text-white">
+                        {student.motherName}
+                      </div>
+                    </div>
+                  )}
+                  <div className="text-xs text-slate-500 pt-1">
+                    Relationship: Parents • Verified School Records
                   </div>
                 </div>
 
@@ -1815,6 +1853,15 @@ export const StudentPortal: React.FC = () => {
         {/* --- TAB 7: TRANSPORT & CAMPUS ROUTE GUIDE --- */}
         {activeTab === 'transport' && (
           <div className="space-y-6">
+            {/* Live Real-Time Supabase Bus & Fleet Tracker */}
+            <ParentFleetTracker
+              studentId={student?.id || 'stu-01'}
+              studentName={student?.name || 'Aarav Sharma'}
+              busId="bus-01"
+              routeId="route-01"
+              stopId="stop-01"
+            />
+
             <div>
               <span className="text-[10px] font-medium uppercase tracking-widest text-amber-600 bg-amber-100 dark:bg-amber-950/60 px-3 py-1 rounded-full">
                 Connectivity & Commute
@@ -1915,21 +1962,24 @@ export const StudentPortal: React.FC = () => {
 
                   <div className="pt-2 flex flex-wrap items-center gap-3">
                     <a
-                      href="https://maps.google.com/?q=Model+Public+School+Sikta+West+Champaran+Bihar"
+                      href="https://www.google.com/maps/dir/?api=1&destination=27.0180,84.6725"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all hover:scale-[1.02]"
                     >
                       <Navigation className="w-3.5 h-3.5" />
-                      <span>Open in Google Maps</span>
+                      <span>🗺️ Get Directions on Google Maps</span>
                     </a>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      📍 GPS: 27.0180° N, 84.6725° E
+                    </span>
                   </div>
                 </div>
 
                 {/* Campus Location Map View */}
                 <div className="h-56 lg:h-auto rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 relative">
                   <iframe
-                    src="https://maps.google.com/maps?q=27.0278,84.6828+(Model+Public+School+Sikta+West+Champaran)&t=&z=16&ie=UTF8&iwloc=B&output=embed"
+                    src="https://maps.google.com/maps?q=27.0180,84.6725+(Model+Public+School+Bhawanipur+Kursi+Barwa+Sikta)&t=m&z=16&output=embed"
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}
@@ -1939,6 +1989,157 @@ export const StudentPortal: React.FC = () => {
                     className="w-full h-full filter contrast-[1.02]"
                   ></iframe>
                 </div>
+              </div>
+            </div>
+
+            {/* Real-Time Live Bus GPS Tracker Stream */}
+            <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-3xl p-5 border border-slate-800 shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+                <div>
+                  <h4 className="text-base font-black text-white flex items-center gap-2">
+                    <Navigation className="w-5 h-5 text-amber-400" />
+                    🛰️ Live School Bus GPS Tracker (लाइव बस लोकेशन)
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Real-time satellite GPS tracking fed directly from the driver's onboard navigation unit.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/80">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    Auto-Syncing Live GPS
+                  </span>
+                </div>
+              </div>
+
+              {/* Active Vehicles Live Radar Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {(liveLocations.length > 0 ? liveLocations : [
+                  {
+                    routeId: 'route_1',
+                    routeName: 'Route 1 - Sikta Station to School Campus',
+                    vehicleNumber: 'Bus #01',
+                    numberPlate: 'BR 22 P 4412',
+                    driverName: 'Vikram Singh',
+                    driverPhone: '+91 91620 24642',
+                    latitude: 27.0249,
+                    longitude: 84.6812,
+                    speed: 0,
+                    isActive: false,
+                    tripType: 'Morning Pickup' as const,
+                    lastUpdated: new Date().toISOString(),
+                    nextStopName: 'Sikta Railway Station'
+                  }
+                ]).map((live, idx) => {
+                  const isMoving = (live.speed || 0) > 2;
+                  return (
+                    <div
+                      key={live.routeId || idx}
+                      className={`p-4 rounded-2xl border transition-all ${
+                        live.isActive
+                          ? 'bg-slate-900/90 border-amber-500/50 shadow-lg shadow-amber-500/5 ring-1 ring-amber-500/30'
+                          : 'bg-slate-900/50 border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2.5 py-0.5 rounded-md bg-amber-500 text-slate-950 font-black text-xs">
+                              {live.vehicleNumber || 'Bus #01'}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                              live.isActive
+                                ? 'bg-emerald-600 text-white animate-pulse'
+                                : 'bg-slate-800 text-slate-400'
+                            }`}>
+                              {live.isActive ? '● ON ACTIVE TRIP' : 'STANDBY AT CAMPUS DEPOT'}
+                            </span>
+                          </div>
+                          <h5 className="text-sm font-bold text-white mt-1">
+                            {live.routeName || 'MPS Central Sikta Route'}
+                          </h5>
+                          <span className="text-[11px] text-slate-400 font-mono">
+                            Plate: {live.numberPlate || 'BR 22 P 4412'}
+                          </span>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="text-xl font-black text-amber-400 font-mono block">
+                            {live.isActive ? live.speed : 0} <span className="text-xs text-slate-400 font-sans">km/h</span>
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {live.isActive && isMoving ? '🚀 In Transit' : '🛑 At Stop'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Telemetry info row */}
+                      <div className="grid grid-cols-2 gap-2 text-xs mb-3 p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Driver:</span>
+                          <strong className="text-slate-200">{live.driverName || 'Vikram Singh'}</strong>
+                          {live.driverPhone && (
+                            <a
+                              href={`tel:${live.driverPhone}`}
+                              className="text-amber-400 hover:underline block text-[11px] font-mono mt-0.5"
+                            >
+                              📞 {live.driverPhone}
+                            </a>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Upcoming Stop:</span>
+                          <strong className="text-emerald-400 truncate block">
+                            {live.nextStopName || 'Model Public School'}
+                          </strong>
+                          <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
+                            {live.latitude.toFixed(4)}° N, {live.longitude.toFixed(4)}° E
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Embedded Google Maps View for this Vehicle */}
+                      <div className="h-44 rounded-xl overflow-hidden border border-slate-800 bg-slate-950 relative mb-3">
+                        <iframe
+                          src={`https://maps.google.com/maps?q=${live.latitude},${live.longitude}&t=m&z=16&output=embed`}
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          allowFullScreen={false}
+                          loading="lazy"
+                          title={`Live Map for ${live.vehicleNumber || 'School Bus'}`}
+                          className="w-full h-full filter contrast-[1.02]"
+                        />
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${live.latitude},${live.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow transition"
+                        >
+                          <Navigation className="w-3.5 h-3.5" />
+                          <span>Track Bus on Google Maps</span>
+                        </a>
+
+                        {live.driverPhone && (
+                          <a
+                            href={`https://wa.me/${live.driverPhone.replace(/\D/g, '')}?text=Hello%20${encodeURIComponent(live.driverName || 'Driver')},%20inquiring%20about%20the%20MPS%20school%20bus%20location.`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-1 py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition"
+                            title="Chat with Driver on WhatsApp"
+                          >
+                            <span>💬 WhatsApp</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

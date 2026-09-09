@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@400;500;700&family=Outfit:wght@400;500;700&family=Playfair+Display:ital,wght@0,500;0,700;1,500;1,700&family=Plus+Jakarta+Sans:wght@400;500;700&family=Inter:wght@400;500;700&display=swap');
 @import "leaflet/dist/leaflet.css";
+@import "mapbox-gl/dist/mapbox-gl.css";
 @import "tailwindcss";
 @import "./typography.css";
 
@@ -319,6 +320,23 @@ body {
 .shadow-3d-blue {
   box-shadow: 0 20px 35px -10px rgba(37, 99, 235, 0.35), 0 10px 15px -8px rgba(0, 0, 0, 0.2);
 }
+
+/* Visual Live Edit Mode Highlight System */
+.mps-highlight-editable [class*="group/editable"] {
+  outline: 2px dashed #f59e0b !important;
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+.mps-highlight-editable [class*="group/img-edit"] {
+  outline: 3px dashed #f59e0b !important;
+  outline-offset: 2px;
+}
+
+.mps-highlight-editable [class*="group/icon-edit"] {
+  outline: 2px dashed #f59e0b !important;
+  background-color: rgba(245, 158, 11, 0.2) !important;
+}
+
 
 
 

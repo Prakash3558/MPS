@@ -5,13 +5,15 @@ import {
   ChevronRight, Compass, Check, X, Search, Calendar, UserCheck, UserMinus, Award,
   AlertTriangle, Key, Radio, Fuel, Wrench, ShieldAlert, Sparkles, Share2,
   Send, Zap, Home, Gauge, Layers, Eye, Activity, Smartphone, BellRing,
-  Maximize2, Minimize2, LocateFixed, Lock, Unlock, ArrowUpRight, TrendingUp
+  Maximize2, Minimize2, LocateFixed, Lock, Unlock, ArrowUpRight, TrendingUp,
+  Crosshair, Satellite, ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCMS } from '../../context/CMSContext';
 import { StaffMember, TransportRoute, TransportStop, TransportStudentRosterItem, Student } from '../../types';
 import { api } from '../../lib/api';
 import L from 'leaflet';
+import { DriverStopController } from '../fleet/DriverStopController';
 
 // Accurate Math & Geodesic Telemetry Utilities
 export const haversineDistanceMeters = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -201,6 +203,17 @@ export const StaffDriverPortal: React.FC = () => {
   const [nextStopDistMeters, setNextStopDistMeters] = useState<number | null>(null);
   const [nextStopEtaMinutes, setNextStopEtaMinutes] = useState<number | null>(null);
   const [currentStopName, setCurrentStopName] = useState<string | null>('Sikta Railway Station (सिकटा स्टेशन)');
+  const [isUsingDeviceGps, setIsUsingDeviceGps] = useState(false);
+  const [isGpsAcquiring, setIsGpsAcquiring] = useState(false);
+  const [gpsStatus, setGpsStatus] = useState<'searching' | 'locked' | 'error' | 'idle'>('idle');
+  const [gpsSource, setGpsSource] = useState<'satellite' | 'network' | 'manual' | 'preset'>('preset');
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  const [manualLocationQuery, setManualLocationQuery] = useState('');
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [locationSearchResults, setLocationSearchResults] = useState<any[]>([]);
+  const [showLocationSearch, setShowLocationSearch] = useState(false);
+  const [currentAddress, setCurrentAddress] = useState<string>('Sikta Main Road, West Champaran, Bihar');
+  const [mapViewMode, setMapViewMode] = useState<'leaflet' | 'google_embed'>('leaflet');
 
   // Map Controls & Layers
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -219,7 +232,7 @@ export const StaffDriverPortal: React.FC = () => {
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 
   // Navigation Tabs
-  type TabType = 'live_trip' | 'students' | 'stops' | 'inspection' | 'fuel' | 'logs';
+  type TabType = 'live_trip' | 'supabase_controller' | 'students' | 'stops' | 'inspection' | 'fuel' | 'logs';
   const [activeTab, setActiveTab] = useState<TabType>('live_trip');
 
   // Modals
@@ -645,7 +658,7 @@ export const StaffDriverPortal: React.FC = () => {
     mapInstanceRef.current.setView([currentCoords.lat, currentCoords.lng], 16, { animate: true });
   };
 
-  // 4. Accurate GPS Real-time Watch and Transmission
+  // 4. Accurate GPS Real-time Telemetry & Map Update Engine
   const updateVehiclePosition = (lat: number, lng: number, speed: number, heading = 0, accuracy = 5) => {
     setCurrentCoords({ lat, lng });
     setCurrentSpeed(speed);
@@ -699,9 +712,9 @@ export const StaffDriverPortal: React.FC = () => {
               </div>
 
               <div class="relative flex items-center justify-center w-12 h-12" style="transform: rotate(${h}deg); transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);">
-                <div class="absolute inset-0 rounded-full bg-amber-400/30 ${isStopped ? 'animate-pulse' : 'animate-ping'}"></div>
+                <div class="absolute inset-0 rounded-full bg-blue-500/30 ${isStopped ? 'animate-pulse' : 'animate-ping'}"></div>
                 <div class="absolute -top-3 flex flex-col items-center">
-                  <div class="w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-b-[12px] border-b-amber-500 drop-shadow-md"></div>
+                  <div class="w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-b-[12px] border-b-blue-600 drop-shadow-md"></div>
                 </div>
                 <div class="relative w-11 h-11 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 text-slate-950 border-2 border-white shadow-2xl flex items-center justify-center font-black text-xl ring-4 ring-amber-400/40">
                   🚌
@@ -725,11 +738,11 @@ export const StaffDriverPortal: React.FC = () => {
 
     if (accuracyCircleRef.current) {
       accuracyCircleRef.current.setLatLng([lat, lng]);
-      accuracyCircleRef.current.setRadius(Math.max(8, accuracy));
+      accuracyCircleRef.current.setRadius(Math.max(6, accuracy));
     }
 
-    // Broadcast live telemetry to backend API
-    if (assignedRoute) {
+    // Broadcast live telemetry to backend API when trip is active
+    if (assignedRoute && isTripActive) {
       const nextStop = stops.find(s => s.stopNumber === 1) || stops[0];
       const boardedCount = Object.values(boardedStatus).filter(s => s === 'Boarded').length;
 
@@ -748,84 +761,300 @@ export const StaffDriverPortal: React.FC = () => {
     }
   };
 
-  // 5. Start Trip Handler with High-Precision Phone GPS Watcher and Stationary Filter
+  // Continuous Mobile Geolocation Watcher (Google Maps Grade)
+  const startContinuousWatcher = useCallback(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) return;
+
+    if (geoWatchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(geoWatchIdRef.current);
+      geoWatchIdRef.current = null;
+    }
+
+    const onPos = (pos: GeolocationPosition) => {
+      const { latitude, longitude, speed, heading, accuracy } = pos.coords;
+      const now = Date.now();
+      let resolvedSpeed = 0;
+      let resolvedHeading = currentHeading;
+
+      setIsUsingDeviceGps(true);
+      setGpsStatus('locked');
+      setGpsAccuracy(Math.round(accuracy || 5));
+
+      if (!stationaryAnchorRef.current) {
+        stationaryAnchorRef.current = { lat: latitude, lng: longitude };
+      }
+
+      const distFromAnchor = haversineDistanceMeters(
+        stationaryAnchorRef.current.lat,
+        stationaryAnchorRef.current.lng,
+        latitude,
+        longitude
+      );
+
+      // Speed resolution
+      if (speed !== null && speed !== undefined && !isNaN(speed) && speed >= 0.8) {
+        resolvedSpeed = Math.min(65, Math.round(speed * 3.6));
+        stationaryAnchorRef.current = { lat: latitude, lng: longitude };
+        if (heading !== null && heading !== undefined && !isNaN(heading) && heading >= 0) {
+          resolvedHeading = Math.round(heading);
+        } else if (lastFixRef.current) {
+          resolvedHeading = computeBearing(lastFixRef.current.lat, lastFixRef.current.lng, latitude, longitude);
+        }
+      } else if (distFromAnchor < 4) {
+        // Micro-jitter suppression under 4m
+        resolvedSpeed = 0;
+        updateVehiclePosition(
+          stationaryAnchorRef.current.lat,
+          stationaryAnchorRef.current.lng,
+          0,
+          currentHeading,
+          Math.round(accuracy || 5)
+        );
+        return;
+      } else {
+        const dt = (now - (lastFixRef.current?.time || now - 1000)) / 1000;
+        const rawKmh = (distFromAnchor / Math.max(1, dt)) * 3.6;
+        if (rawKmh < 2.5) {
+          resolvedSpeed = 0;
+        } else {
+          resolvedSpeed = Math.min(65, Math.round(rawKmh));
+          stationaryAnchorRef.current = { lat: latitude, lng: longitude };
+          if (lastFixRef.current) {
+            resolvedHeading = computeBearing(lastFixRef.current.lat, lastFixRef.current.lng, latitude, longitude);
+          }
+        }
+      }
+
+      lastFixRef.current = { lat: latitude, lng: longitude, time: now };
+      updateVehiclePosition(latitude, longitude, resolvedSpeed, resolvedHeading, Math.round(accuracy || 5));
+    };
+
+    const onError = (err: GeolocationPositionError) => {
+      console.warn('GPS continuous watcher notice:', err.message);
+      if (err.code === err.PERMISSION_DENIED) {
+        setLocationPermissionDenied(true);
+        if (geoWatchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(geoWatchIdRef.current);
+          geoWatchIdRef.current = null;
+        }
+      }
+    };
+
+    geoWatchIdRef.current = navigator.geolocation.watchPosition(
+      onPos,
+      onError,
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+    );
+  }, [currentHeading, isTripActive, assignedRoute, driverStaff, stops, boardedStatus, tripType]);
+
+  // Acquire Real High-Precision GPS Location from Browser/Device with Multi-Tier Fallback
+  const acquireDeviceLocation = useCallback((centerMap = true, silent = false) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      if (!silent) showToast('Geolocation is not supported by your current browser.', 'alert');
+      return;
+    }
+
+    setIsGpsAcquiring(true);
+    setGpsStatus('searching');
+    setLocationPermissionDenied(false);
+
+    if (!silent) {
+      showToast('📡 Connecting to device GPS & satellite sensors...', 'info');
+    }
+
+    const applyFix = async (pos: GeolocationPosition, source: 'satellite' | 'network') => {
+      setIsGpsAcquiring(false);
+      setIsUsingDeviceGps(true);
+      setGpsStatus('locked');
+      setGpsSource(source);
+      setLocationPermissionDenied(false);
+
+      const { latitude, longitude, speed, heading, accuracy } = pos.coords;
+      const resolvedSpeed = speed && !isNaN(speed) && speed > 0 ? Math.round(speed * 3.6) : 0;
+      const resolvedHeading = heading && !isNaN(heading) && heading >= 0 ? Math.round(heading) : currentHeading;
+      const resolvedAccuracy = Math.round(accuracy || (source === 'satellite' ? 5 : 25));
+
+      stationaryAnchorRef.current = { lat: latitude, lng: longitude };
+      lastFixRef.current = { lat: latitude, lng: longitude, time: Date.now() };
+
+      updateVehiclePosition(latitude, longitude, resolvedSpeed, resolvedHeading, resolvedAccuracy);
+
+      if (mapInstanceRef.current && centerMap) {
+        mapInstanceRef.current.setView([latitude, longitude], 16, { animate: true });
+      }
+
+      // Reverse geocoding to retrieve readable physical address
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.display_name) {
+            const addr = data.address;
+            const shortName = [
+              addr?.road || addr?.suburb || addr?.neighbourhood,
+              addr?.city || addr?.town || addr?.village || addr?.county,
+              addr?.state
+            ].filter(Boolean).join(', ') || data.display_name;
+            setCurrentAddress(shortName);
+            setCurrentStopName(shortName);
+          }
+        }
+      } catch (e) {
+        // fallback
+      }
+
+      if (!silent) {
+        showToast(
+          `🎯 Real Location Locked: ${latitude.toFixed(5)}° N, ${longitude.toFixed(5)}° E (±${resolvedAccuracy}m ${source === 'satellite' ? 'GPS' : 'Network'})`,
+          'success'
+        );
+      }
+
+      startContinuousWatcher();
+    };
+
+    // Strategy: First try high-accuracy satellite GPS. If timeout or unavailable, fallback to network/wifi
+    navigator.geolocation.getCurrentPosition(
+      pos => applyFix(pos, 'satellite'),
+      () => {
+        // Fallback to standard network location
+        navigator.geolocation.getCurrentPosition(
+          pos => applyFix(pos, 'network'),
+          (fallbackErr) => {
+            setIsGpsAcquiring(false);
+            setGpsStatus('idle');
+            if (fallbackErr.code === fallbackErr.PERMISSION_DENIED) {
+              setLocationPermissionDenied(true);
+              if (!silent) {
+                showToast('Location permission is disabled in browser. Please enable location or use search below.', 'info');
+              }
+            } else if (!silent) {
+              showToast('Could not acquire device GPS. You can pin or search any location manually below.', 'info');
+            }
+          },
+          { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+        );
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  }, [currentHeading, startContinuousWatcher]);
+
+  // Search Address / Coordinates
+  const handleSearchLocation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualLocationQuery.trim()) return;
+
+    setIsSearchingLocation(true);
+    try {
+      // Check if user entered Lat, Lng directly
+      const latLngMatch = manualLocationQuery.match(/^([-+]?[0-9]*\.?[0-9]+)\s*,\s*([-+]?[0-9]*\.?[0-9]+)$/);
+      if (latLngMatch) {
+        const lat = parseFloat(latLngMatch[1]);
+        const lng = parseFloat(latLngMatch[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          applyManualCoordinates(lat, lng, `Pin Coordinates (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
+          setIsSearchingLocation(false);
+          return;
+        }
+      }
+
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(manualLocationQuery)}&limit=5`);
+      if (res.ok) {
+        const data = await res.json();
+        setLocationSearchResults(data || []);
+        if (data && data.length === 0) {
+          showToast('No location found for this search. Try entering city name or Lat, Lng coordinates.', 'info');
+        }
+      }
+    } catch (err) {
+      console.warn('Location search notice:', err);
+      showToast('Location search failed. Check your internet connection.', 'alert');
+    } finally {
+      setIsSearchingLocation(false);
+    }
+  };
+
+  const applyManualCoordinates = (lat: number, lng: number, label: string) => {
+    setIsUsingDeviceGps(true);
+    setGpsSource('manual');
+    setGpsStatus('locked');
+    setGpsAccuracy(5);
+    stationaryAnchorRef.current = { lat, lng };
+    lastFixRef.current = { lat, lng, time: Date.now() };
+
+    updateVehiclePosition(lat, lng, 0, currentHeading, 5);
+    setCurrentStopName(label);
+    setCurrentAddress(label);
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([lat, lng], 16, { animate: true });
+    }
+
+    setLocationSearchResults([]);
+    setShowLocationSearch(false);
+    showToast(`📍 Location updated to: ${label}`, 'success');
+  };
+
+  // Quick Landmark / Preset Snapper for testing or when GPS is restricted
+  const snapToPresetLocation = (name: string, lat: number, lng: number) => {
+    updateVehiclePosition(lat, lng, 0, currentHeading, 3);
+    stationaryAnchorRef.current = { lat, lng };
+    setCurrentStopName(name);
+    setCurrentAddress(`${name}, Sikta, West Champaran (845307)`);
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([lat, lng], 16, { animate: true });
+    }
+    showToast(`📍 Bus location set to ${name}`, 'info');
+  };
+
+  // Launch Google Maps Driving Navigation (Turn-by-turn to School Campus)
+  const openGoogleMapsNavigation = () => {
+    const destLat = 27.0180;
+    const destLng = 84.6725;
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${currentCoords.lat},${currentCoords.lng}&destination=${destLat},${destLng}&travelmode=driving`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  // Open Current Location Pin on Google Maps
+  const openGoogleMapsPin = () => {
+    const url = `https://www.google.com/maps?q=${currentCoords.lat},${currentCoords.lng}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  // Open School Campus on Google Maps
+  const openSchoolGoogleMaps = () => {
+    const url = `https://www.google.com/maps?q=27.0180,84.6725+(Model+Public+School+Sikta+West+Champaran)`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  // 5. Start Trip Handler with High-Precision Continuous GPS Tracking
   const startTrip = () => {
     setIsTripActive(true);
     const startStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setTripStartTime(startStr);
     showToast(`🚀 ${tripType} चालू हुआ! GPS लाइव लोकेशन स्कूल व अभिभावकों को जा रहा है।`, 'success');
 
-    // First broadcast
-    updateVehiclePosition(currentCoords.lat, currentCoords.lng, 0, currentHeading, 5);
-    stationaryAnchorRef.current = { lat: currentCoords.lat, lng: currentCoords.lng };
-
-    // Start phone GPS watcher with high precision
-    if (navigator.geolocation) {
-      geoWatchIdRef.current = navigator.geolocation.watchPosition(
-        pos => {
-          const { latitude, longitude, speed, heading, accuracy } = pos.coords;
-          const now = Date.now();
-          let resolvedSpeed = 0;
-          let resolvedHeading = currentHeading;
-
-          // Stationary drift filter:
-          if (!stationaryAnchorRef.current) {
-            stationaryAnchorRef.current = { lat: latitude, lng: longitude };
-          }
-
-          const distFromAnchor = haversineDistanceMeters(
-            stationaryAnchorRef.current.lat,
-            stationaryAnchorRef.current.lng,
-            latitude,
-            longitude
-          );
-
-          // If device reports speed and speed is >= 1.0 m/s (>= 3.6 km/h)
-          if (speed !== null && speed !== undefined && !isNaN(speed) && speed >= 1.0) {
-            resolvedSpeed = Math.min(65, Math.round(speed * 3.6));
-            stationaryAnchorRef.current = { lat: latitude, lng: longitude };
-            if (heading !== null && heading !== undefined && !isNaN(heading) && heading >= 0) {
-              resolvedHeading = Math.round(heading);
-            } else if (lastFixRef.current) {
-              resolvedHeading = computeBearing(lastFixRef.current.lat, lastFixRef.current.lng, latitude, longitude);
-            }
-          } else if (distFromAnchor < 14) {
-            // Within 14 meters = stationary GPS jitter! Bus is stopped or driver is not moving!
-            // Force speed to 0 km/h and lock coordinates to anchor so map does not jitter!
-            resolvedSpeed = 0;
-            updateVehiclePosition(
-              stationaryAnchorRef.current.lat,
-              stationaryAnchorRef.current.lng,
-              0,
-              currentHeading,
-              Math.round(accuracy || 5)
-            );
-            return;
-          } else {
-            // Genuine physical movement (> 14m displacement from stationary anchor)
-            const dt = (now - (lastFixRef.current?.time || now - 1000)) / 1000;
-            const rawKmh = (distFromAnchor / Math.max(1, dt)) * 3.6;
-            if (rawKmh < 3.5) {
-              resolvedSpeed = 0;
-            } else {
-              resolvedSpeed = Math.min(65, Math.round(rawKmh));
-              stationaryAnchorRef.current = { lat: latitude, lng: longitude };
-              if (lastFixRef.current) {
-                resolvedHeading = computeBearing(lastFixRef.current.lat, lastFixRef.current.lng, latitude, longitude);
-              }
-            }
-          }
-
-          lastFixRef.current = { lat: latitude, lng: longitude, time: now };
-          updateVehiclePosition(latitude, longitude, resolvedSpeed, resolvedHeading, Math.round(accuracy || 5));
-        },
-        err => {
-          console.warn('Phone GPS sensor notice:', err.message);
-        },
-        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
-      );
-    }
+    // Acquire real high-accuracy GPS fix from device & start continuous watcher
+    acquireDeviceLocation(true, false);
+    startContinuousWatcher();
   };
+
+  // Check geolocation permissions on portal mount; acquire only if already granted
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((res) => {
+          if (res.state === 'granted') {
+            acquireDeviceLocation(true, true);
+          } else if (res.state === 'denied') {
+            setLocationPermissionDenied(true);
+          }
+        }).catch(() => {
+          // If query fails or is not allowed in iframe, avoid uninvited prompt
+        });
+      }
+    }
+  }, [acquireDeviceLocation]);
 
   // 6. Test Route Simulation (Strictly along Sikta Paved Road Network, never across fields or houses)
   const toggleRouteSimulation = () => {
@@ -1361,6 +1590,7 @@ export const StaffDriverPortal: React.FC = () => {
         {/* Navigation Tabs Bar */}
         <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-900 rounded-2xl border border-slate-800">
           {[
+            { id: 'supabase_controller', label: '⚡ Supabase Live Map & Stop Controller', icon: Radio },
             { id: 'live_trip', label: '🧭 ड्राइवर कॉकपिट (Cockpit & Map)', icon: Navigation },
             { id: 'students', label: `👥 छात्र हाजिरी (${students.length})`, icon: Users },
             { id: 'stops', label: `📍 स्टॉप व समय (${stops.length})`, icon: MapPin },
@@ -1386,6 +1616,17 @@ export const StaffDriverPortal: React.FC = () => {
             );
           })}
         </div>
+
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 0: SUPABASE REALTIME MAP & DYNAMIC STOP CONTROLLER */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === 'supabase_controller' && (
+          <DriverStopController
+            busId={driverStaff?.vehicleNumber ? driverStaff.vehicleNumber.toLowerCase().replace(/\s+/g, '-').replace(/#/g, '') : 'bus-01'}
+            routeId="route-01"
+            driverName={driverStaff?.name || 'Rajesh Kumar Singh (राजेश कुमार)'}
+          />
+        )}
 
         {/* ------------------------------------------------------------- */}
         {/* TAB 1: LIVE COCKPIT & MAP */}
@@ -1658,77 +1899,252 @@ export const StaffDriverPortal: React.FC = () => {
               </div>
             </div>
 
-            {/* Interactive Road Map */}
+            {/* Interactive Road Map & Real Google Maps Integration */}
             <div className={`bg-slate-900 rounded-3xl p-3 sm:p-4 border border-slate-800 shadow-2xl relative transition-all ${
               isMapFullscreen ? 'fixed inset-3 z-50 flex flex-col' : ''
             }`}>
-              {/* Map Layer Switcher & Controls */}
-              <div className="flex items-center justify-between gap-2 mb-2 px-1 flex-wrap">
+              {/* Google Maps & Real GPS Device Action Bar */}
+              <div className="mb-3 p-3 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl border border-amber-500/30 flex flex-wrap items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold text-white flex items-center gap-1">
-                    <Layers className="w-4 h-4 text-amber-400" />
-                    नक्शा स्टाइल (Map Style):
-                  </span>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {MAP_LAYERS.slice(0, 3).map(layer => (
-                      <button
-                        key={layer.id}
-                        onClick={() => toggleMapLayer(layer.id)}
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                          mapLayerType === layer.id
-                            ? 'bg-amber-500 text-slate-950 font-black shadow-md ring-2 ring-amber-400/40'
-                            : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700'
-                        }`}
-                      >
-                        <span>{layer.icon}</span>
-                        <span>{layer.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Center Map on Bus */}
+                  {/* Acquire Real Phone GPS */}
                   <button
-                    onClick={centerMapOnVehicle}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                    onClick={() => acquireDeviceLocation(true, false)}
+                    disabled={isGpsAcquiring}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-xl shadow-lg transition active:scale-95 cursor-pointer disabled:opacity-50"
                   >
-                    <LocateFixed className="w-3.5 h-3.5" />
-                    <span>📍 बस पर लाएं</span>
+                    <LocateFixed className={`w-4 h-4 text-white ${isGpsAcquiring ? 'animate-spin' : ''}`} />
+                    <span>{isGpsAcquiring ? '📡 जीपीएस खोज रहे हैं...' : '🎯 असली डिवाइस लोकेशन खोजें (Real GPS)'}</span>
                   </button>
 
-                  {/* Auto Follow Toggle */}
+                  {/* Search / Pin Location Toggle */}
                   <button
-                    onClick={() => setAutoFollowVehicle(!autoFollowVehicle)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                      autoFollowVehicle
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    onClick={() => setShowLocationSearch(!showLocationSearch)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      showLocationSearch
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
                     }`}
                   >
-                    {autoFollowVehicle ? <Lock className="w-3.5 h-3.5 text-amber-400" /> : <Unlock className="w-3.5 h-3.5" />}
-                    <span>ऑटो-फॉलो {autoFollowVehicle ? 'चालू' : 'बंद'}</span>
+                    <Search className="w-3.5 h-3.5" />
+                    <span>🔍 लोकेशन खोजें / पिन करें</span>
                   </button>
 
-                  {/* Fullscreen Toggle */}
+                  {/* Launch Turn-by-Turn Google Maps Navigation */}
                   <button
-                    onClick={() => setIsMapFullscreen(!isMapFullscreen)}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl transition cursor-pointer"
-                    title={isMapFullscreen ? 'Exit Fullscreen' : 'Fullscreen Map'}
+                    onClick={openGoogleMapsNavigation}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-lg transition active:scale-95 cursor-pointer"
+                    title="Open Google Maps app with turn-by-turn driving directions to School"
                   >
-                    {isMapFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    <Navigation className="w-4 h-4 text-amber-300" />
+                    <span>🗺️ गूगल मैप्स नेविगेशन (Google Maps App)</span>
+                  </button>
+
+                  {/* Open School Pin on Google Maps */}
+                  <button
+                    onClick={openSchoolGoogleMaps}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer"
+                  >
+                    <span>🏫 स्कूल गूगल मैप पर</span>
                   </button>
                 </div>
+
+                {/* View Mode Toggle: Leaflet vs Official Google Maps Embed */}
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:inline-block px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold bg-slate-800 border border-slate-700 text-emerald-400">
+                    {isUsingDeviceGps ? `±${gpsAccuracy || 5}m (${gpsSource === 'satellite' ? 'Sat GPS' : gpsSource === 'network' ? 'Network' : 'Manual'})` : 'Sikta Route'}
+                  </span>
+
+                  <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+                    <button
+                      onClick={() => setMapViewMode('leaflet')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
+                        mapViewMode === 'leaflet'
+                          ? 'bg-amber-500 text-slate-950 shadow-md'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      🗺️ इंटरैक्टिव नक्शा
+                    </button>
+                    <button
+                      onClick={() => setMapViewMode('google_embed')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
+                        mapViewMode === 'google_embed'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      🌐 गूगल मैप्स लाइव
+                    </button>
+                  </div>
+                </div>
               </div>
+
+              {/* Location Search Bar Dropdown */}
+              {showLocationSearch && (
+                <div className="mb-3 p-3 bg-slate-950 rounded-2xl border border-amber-500/40 space-y-2">
+                  <form onSubmit={handleSearchLocation} className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={manualLocationQuery}
+                        onChange={(e) => setManualLocationQuery(e.target.value)}
+                        placeholder="पता, सड़क, शहर या Lat, Lng लिखें (उदा: Bettiah, Patna, या 27.025, 84.681)"
+                        className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isSearchingLocation}
+                      className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
+                    >
+                      {isSearchingLocation ? 'खोज रहे हैं...' : 'खोजें (Search)'}
+                    </button>
+                  </form>
+
+                  {locationSearchResults.length > 0 && (
+                    <div className="bg-slate-900 rounded-xl border border-slate-800 divide-y divide-slate-800 max-h-48 overflow-y-auto">
+                      {locationSearchResults.map((result, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => applyManualCoordinates(parseFloat(result.lat), parseFloat(result.lon), result.display_name)}
+                          className="w-full text-left p-2.5 hover:bg-slate-800 transition text-xs text-slate-200 flex items-start gap-2 cursor-pointer"
+                        >
+                          <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <div className="truncate">
+                            <p className="font-semibold text-white truncate">{result.display_name.split(',')[0]}</p>
+                            <p className="text-[11px] text-slate-400 truncate">{result.display_name}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Permission Denied Warning Card */}
+              {locationPermissionDenied && (
+                <div className="mb-3 p-3 bg-rose-950/80 border border-rose-500/50 rounded-2xl flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-rose-200">
+                    <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+                    <span>ब्राउज़र में लोकेशन अनुमति ब्लॉक है। कृपया एड्रेस बार में लोकेशन चालू करें ताकि गूगल मैप्स आपकी सही जगह दिखा सके।</span>
+                  </div>
+                  <button
+                    onClick={() => acquireDeviceLocation(true, false)}
+                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl whitespace-nowrap transition cursor-pointer"
+                  >
+                    पुनः प्रयास करें (Retry)
+                  </button>
+                </div>
+              )}
+
+              {/* Quick Accurate Landmark Presets */}
+              <div className="mb-3 px-2 flex items-center gap-1.5 overflow-x-auto text-[11px] pb-1">
+                <span className="text-slate-400 font-bold whitespace-nowrap">त्वरित स्टॉप पर सेट करें:</span>
+                <button
+                  onClick={() => snapToPresetLocation('Sikta Railway Station (सिकटा स्टेशन)', 27.0249, 84.6812)}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition font-medium cursor-pointer"
+                >
+                  🚉 1. सिकटा स्टेशन
+                </button>
+                <button
+                  onClick={() => snapToPresetLocation('Sikta Main Market Chowk (बाज़ार चौक)', 27.0268, 84.6818)}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition font-medium cursor-pointer"
+                >
+                  🏪 2. बाज़ार चौक
+                </button>
+                <button
+                  onClick={() => snapToPresetLocation('Sikta Hospital Mod (अस्पताल मोड़)', 27.0235, 84.6782)}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition font-medium cursor-pointer"
+                >
+                  🏥 3. अस्पताल मोड़
+                </button>
+                <button
+                  onClick={() => snapToPresetLocation('Bhawanipur Chowk (भवानीपुर चौक)', 27.0195, 84.6738)}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg whitespace-nowrap border border-slate-700 transition font-medium cursor-pointer"
+                >
+                  🏘️ 4. भवानीपुर चौक
+                </button>
+                <button
+                  onClick={() => snapToPresetLocation('Model Public School Main Campus (स्कूल गेट)', 27.0180, 84.6725)}
+                  className="px-2.5 py-1 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-300 rounded-lg whitespace-nowrap border border-emerald-700 transition font-bold cursor-pointer"
+                >
+                  🏫 5. स्कूल गेट (कैंपस)
+                </button>
+              </div>
+
+              {/* Map Layer Switcher & Controls */}
+              {mapViewMode === 'leaflet' && (
+                <div className="flex items-center justify-between gap-2 mb-2 px-1 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-white flex items-center gap-1">
+                      <Layers className="w-4 h-4 text-amber-400" />
+                      नक्शा स्टाइल (Map Style):
+                    </span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {MAP_LAYERS.slice(0, 3).map(layer => (
+                        <button
+                          key={layer.id}
+                          onClick={() => toggleMapLayer(layer.id)}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                            mapLayerType === layer.id
+                              ? 'bg-amber-500 text-slate-950 font-black shadow-md ring-2 ring-amber-400/40'
+                              : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700'
+                          }`}
+                        >
+                          <span>{layer.icon}</span>
+                          <span>{layer.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Center Map on Bus */}
+                    <button
+                      onClick={centerMapOnVehicle}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      <LocateFixed className="w-3.5 h-3.5" />
+                      <span>📍 बस पर लाएं</span>
+                    </button>
+
+                    {/* Auto Follow Toggle */}
+                    <button
+                      onClick={() => setAutoFollowVehicle(!autoFollowVehicle)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                        autoFollowVehicle
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                      }`}
+                    >
+                      {autoFollowVehicle ? <Lock className="w-3.5 h-3.5 text-amber-400" /> : <Unlock className="w-3.5 h-3.5" />}
+                      <span>ऑटो-फॉलो {autoFollowVehicle ? 'चालू' : 'बंद'}</span>
+                    </button>
+
+                    {/* Fullscreen Toggle */}
+                    <button
+                      onClick={() => setIsMapFullscreen(!isMapFullscreen)}
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl transition cursor-pointer"
+                      title={isMapFullscreen ? 'Exit Fullscreen' : 'Fullscreen Map'}
+                    >
+                      {isMapFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Subtitle Banner with Paved Road Note and Correct School Coordinates */}
               <div className="mb-2 px-3 py-1.5 bg-slate-800/80 rounded-xl border border-slate-700 flex items-center justify-between text-xs gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                  <span className="text-slate-300 font-bold">पक्की सड़क मार्ग: सिकटा स्टेशन ➔ बाज़ार चौक ➔ अस्पताल मोड़ ➔ भवानीपुर चौक ➔ मॉडल पब्लिक स्कूल</span>
+                  <span className={`w-2.5 h-2.5 rounded-full ${isUsingDeviceGps ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+                  <span className="text-slate-300 font-bold">
+                    {isUsingDeviceGps ? '🛰️ असली डिवाइस जीपीएस लाइव सक्रिय' : 'पक्की सड़क मार्ग: सिकटा स्टेशन ➔ बाज़ार चौक ➔ अस्पताल मोड़ ➔ भवानीपुर ➔ मॉडल पब्लिक स्कूल'}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 text-[11px] font-mono text-emerald-400 font-bold">
-                  <span>🏫 मॉडल पब्लिक स्कूल: 27.0180° N, 84.6725° E</span>
+                <div className="flex items-center gap-3 text-[11px] font-mono text-emerald-400 font-bold">
+                  <span>📍 बस: {currentCoords.lat.toFixed(5)}° N, {currentCoords.lng.toFixed(5)}° E</span>
+                  <span className="text-amber-300">🏫 MPS Sikta: 27.0180° N, 84.6725° E</span>
                 </div>
               </div>
 
@@ -1756,12 +2172,91 @@ export const StaffDriverPortal: React.FC = () => {
                 </div>
               )}
 
-              <div
-                ref={mapContainerRef}
-                className={`w-full rounded-2xl overflow-hidden border border-slate-800 relative z-10 shadow-inner ${
+              {/* Map Canvas: Interactive Leaflet vs Google Maps Live Embed */}
+              {mapViewMode === 'google_embed' ? (
+                <div className={`w-full rounded-2xl overflow-hidden border border-slate-800 relative z-10 shadow-inner bg-slate-950 ${
                   isMapFullscreen ? 'flex-1 min-h-[500px]' : 'h-[480px]'
-                }`}
-              />
+                }`}>
+                  <iframe
+                    src={`https://maps.google.com/maps?q=${currentCoords.lat},${currentCoords.lng}&t=m&z=16&output=embed`}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen={false}
+                    loading="lazy"
+                    title="Live Google Maps Bus Location"
+                    className="w-full h-full"
+                  />
+                  <div className="absolute bottom-3 right-3 z-20">
+                    <button
+                      onClick={openGoogleMapsNavigation}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition"
+                    >
+                      <Navigation className="w-3.5 h-3.5" />
+                      <span>Open Full Google Maps</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative w-full">
+                  <div
+                    ref={mapContainerRef}
+                    className={`w-full rounded-2xl overflow-hidden border border-slate-800 relative z-10 shadow-inner ${
+                      isMapFullscreen ? 'flex-1 min-h-[500px]' : 'h-[480px]'
+                    }`}
+                  />
+
+                  {/* Floating Google Maps Style Locate Me Button & Controls */}
+                  <div className="absolute bottom-6 right-4 z-[450] flex flex-col items-end gap-2 pointer-events-auto">
+                    {/* Open Current Coordinates directly in Google Maps */}
+                    <button
+                      onClick={openGoogleMapsPin}
+                      className="bg-slate-900/90 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl shadow-2xl border border-slate-700 backdrop-blur-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                      title="Open these exact coordinates in Google Maps app"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
+                      <span>गूगल मैप्स पर खोलें</span>
+                    </button>
+
+                    {/* Google Maps Style Crosshair Locate-Me Floating Action Button */}
+                    <button
+                      onClick={() => acquireDeviceLocation(true, false)}
+                      disabled={isGpsAcquiring}
+                      className="w-12 h-12 bg-white hover:bg-slate-100 text-slate-800 rounded-full shadow-2xl border-2 border-slate-200 flex items-center justify-center transition active:scale-90 cursor-pointer group"
+                      title="मेरी लाइव लोकेशन (Google Maps High Accuracy GPS)"
+                    >
+                      <Crosshair
+                        className={`w-6 h-6 transition ${
+                          isGpsAcquiring
+                            ? 'text-blue-600 animate-spin'
+                            : isUsingDeviceGps
+                            ? 'text-blue-600 fill-blue-50'
+                            : 'text-slate-700 group-hover:text-blue-600'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Floating Live Location & Address Badge */}
+                  <div className="absolute bottom-6 left-4 z-[450] max-w-[75%] sm:max-w-md pointer-events-auto">
+                    <div className="bg-slate-950/90 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-slate-700 shadow-2xl space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${isUsingDeviceGps ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+                        <span className="text-[11px] font-mono font-bold text-white">
+                          {currentCoords.lat.toFixed(6)}° N, {currentCoords.lng.toFixed(6)}° E
+                        </span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                          {isUsingDeviceGps ? (gpsSource === 'satellite' ? '🛰️ Satellite GPS' : '📶 Network Fix') : '📍 Sikta Default'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 truncate font-medium flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span className="truncate">{currentAddress || 'Sikta Main Road, West Champaran'}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Quick Live Passenger Boarding Checklist */}

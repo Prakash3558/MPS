@@ -4,6 +4,8 @@ import { Notice, NoticeBannerConfig } from '../../types';
 import { useCMS } from '../../context/CMSContext';
 import { useSupabaseRealtimeRefresh } from '../../hooks/useSupabaseRealtimeRefresh';
 import { Bell, Sparkles, ExternalLink } from 'lucide-react';
+import { EditableText } from '../common/EditableText';
+import { EditableIcon } from '../common/EditableIcon';
 
 export const NoticeTicker: React.FC = React.memo(() => {
   const { settings } = useCMS();
@@ -130,8 +132,8 @@ export const NoticeTicker: React.FC = React.memo(() => {
     >
       <div className="flex items-center gap-2 flex-shrink-0 z-10 bg-slate-900 pr-3">
         <span className={`px-2.5 py-0.5 rounded-full text-[10px] tracking-wide uppercase flex items-center gap-1 shadow-sm ${badgeColorClass}`}>
-          <Bell className="w-2.5 h-2.5" />
-          <span>{bannerConfig.badgeText || (useUrgent ? 'Urgent' : 'Notice')}</span>
+          <EditableIcon iconKey="ticker.bellIcon" defaultIcon="Bell" defaultColor="currentColor" size={10} />
+          <span><EditableText blockKey="ticker.badgeText" defaultText={bannerConfig.badgeText || (useUrgent ? 'Urgent' : 'Notice')} /></span>
         </span>
       </div>
 
@@ -153,7 +155,7 @@ export const NoticeTicker: React.FC = React.memo(() => {
             {itemsToDisplay.map((item, idx) => (
               <span key={`static-${item.id}-${idx}`} className="inline-flex items-center gap-2 whitespace-nowrap text-xs">
                 <span className="font-bold text-amber-300">{item.title}:</span>
-                <span className="text-slate-200">{item.content}</span>
+                <span className="text-slate-200"><EditableText blockKey="notice_banner.customText" defaultText={item.content} /></span>
               </span>
             ))}
           </div>
@@ -166,8 +168,8 @@ export const NoticeTicker: React.FC = React.memo(() => {
           href={bannerConfig.linkUrl}
           className="hidden sm:inline-flex items-center gap-1 ml-3 px-3 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-medium text-[10px] tracking-wide transition-all border border-white/15 flex-shrink-0 z-10 bg-slate-900"
         >
-          <span>{bannerConfig.linkText}</span>
-          <ExternalLink className="w-2.5 h-2.5" />
+          <span><EditableText blockKey="notice_banner.linkText" defaultText={bannerConfig.linkText} /></span>
+          <EditableIcon iconKey="ticker.linkIcon" defaultIcon="ExternalLink" defaultColor="currentColor" size={10} />
         </a>
       )}
     </div>

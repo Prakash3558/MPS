@@ -2277,7 +2277,7 @@ export const api = {
         pickupTime: '07:15 AM',
         dropTime: '02:40 PM',
         landmark: 'Opposite Platform 1 Exit Gate, Sikta Station Road',
-        latitude: 27.0250,
+        latitude: 27.0249,
         longitude: 84.6812,
         assignedStudentIds: ['s-1001'],
         studentCount: 1,
@@ -2291,8 +2291,8 @@ export const api = {
         pickupTime: '07:25 AM',
         dropTime: '02:50 PM',
         landmark: 'Near Thana Chowk / Gandhi Murti, Sikta Bazar',
-        latitude: 27.0270,
-        longitude: 84.6826,
+        latitude: 27.0268,
+        longitude: 84.6818,
         assignedStudentIds: [],
         studentCount: 0,
         feeMonthly: 600
@@ -2300,13 +2300,13 @@ export const api = {
       {
         id: 'stp-3',
         routeId: 'tr-1',
-        stopName: 'Puraina Mod (पुरैना मोड़)',
+        stopName: 'Sikta Hospital Mod (सिकटा अस्पताल मोड़)',
         stopNumber: 3,
         pickupTime: '07:38 AM',
         dropTime: '03:02 PM',
-        landmark: 'Sikta-Mainatand Road Junction',
-        latitude: 27.0305,
-        longitude: 84.6845,
+        landmark: 'Near Government Hospital & Canal Road',
+        latitude: 27.0235,
+        longitude: 84.6782,
         assignedStudentIds: [],
         studentCount: 0,
         feeMonthly: 650
@@ -2314,13 +2314,13 @@ export const api = {
       {
         id: 'stp-4',
         routeId: 'tr-1',
-        stopName: 'Kursi Barwa Chowk (कुर्सी बरवा चौक)',
+        stopName: 'Bhawanipur Tola Chowk (भवानीपुर चौक)',
         stopNumber: 4,
         pickupTime: '07:50 AM',
         dropTime: '03:15 PM',
-        landmark: 'Bhawanipur-Kursi Barwa Road Corner',
-        latitude: 27.0335,
-        longitude: 84.6865,
+        landmark: 'Bhawanipur Paved Road Corner',
+        latitude: 27.0195,
+        longitude: 84.6738,
         assignedStudentIds: [],
         studentCount: 0,
         feeMonthly: 600
@@ -2332,9 +2332,9 @@ export const api = {
         stopNumber: 5,
         pickupTime: '08:05 AM',
         dropTime: '03:30 PM',
-        landmark: 'Bhawanipur, Sikta Campus Gate & Depot',
-        latitude: 27.0368,
-        longitude: 84.6895,
+        landmark: 'AT- Bhawanipur, P.O.- Kursi Barwa, Sikta Main Depot',
+        latitude: 27.0180,
+        longitude: 84.6725,
         assignedStudentIds: [],
         studentCount: 0,
         feeMonthly: 0
@@ -2346,9 +2346,8 @@ export const api = {
       { headers: await getAuthHeaders() },
       () => {
         let saved = getLocalData<TransportStop[]>('transport_stops', SIKTA_DEFAULT_STOPS);
-        // Migrate old incorrect/farmland coordinates if present (longitude < 84.65)
-        const hasOutdatedCoords = saved.some(s => s.longitude < 84.65 || s.latitude < 27.02);
-        if (hasOutdatedCoords) {
+        // Ensure valid stops with real school coords
+        if (!saved || saved.length === 0 || !saved.some(s => s.latitude === 27.0180)) {
           saved = SIKTA_DEFAULT_STOPS;
           setLocalData('transport_stops', SIKTA_DEFAULT_STOPS);
         }

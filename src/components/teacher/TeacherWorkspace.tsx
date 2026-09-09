@@ -485,17 +485,22 @@ export const TeacherWorkspace: React.FC = () => {
     e.preventDefault();
     if (!editingStudent) return;
     try {
+      const teacherAssigned = editingStudent.teacherName || editingStudent.classTeacher || teacher?.name || 'Ramesh Sharma';
       if (editingStudent.id && !editingStudent.id.startsWith('temp-')) {
         await api.updateStudent(editingStudent.id, {
           ...editingStudent,
           class: editingStudent.class || selectedClass,
-          section: editingStudent.section || selectedSection
+          section: editingStudent.section || selectedSection,
+          teacherName: teacherAssigned,
+          classTeacher: teacherAssigned
         });
       } else {
         await api.createStudent({
           ...editingStudent,
           class: editingStudent.class || selectedClass,
           section: editingStudent.section || selectedSection,
+          teacherName: teacherAssigned,
+          classTeacher: teacherAssigned,
           id: 's-' + Date.now(),
           userId: editingStudent.userId || 'u-st-' + Date.now(),
           admissionDate: editingStudent.admissionDate || new Date().toISOString().split('T')[0]

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCMS } from '../../context/CMSContext';
 import { EditableText } from '../common/EditableText';
+import { EditableIcon } from '../common/EditableIcon';
 import { api } from '../../lib/api';
 import { Send, CheckCircle } from 'lucide-react';
 
@@ -34,7 +35,7 @@ export const AdmissionsSection: React.FC = React.memo(() => {
           {/* Left Column: Guidelines */}
           <div className="lg:col-span-6 space-y-6">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-700 dark:text-slate-300 bg-slate-200/60 dark:bg-slate-800/80 border border-slate-300/50 dark:border-slate-700/60 px-3.5 py-1 rounded-full inline-block">
-              Admissions 2026-27
+              <EditableText blockKey="admissions.badge" defaultText="Admissions 2026-27" />
             </span>
 
             <h2 className="text-3xl sm:text-4xl font-serif font-black text-slate-900 dark:text-white tracking-tight">
@@ -42,7 +43,7 @@ export const AdmissionsSection: React.FC = React.memo(() => {
             </h2>
 
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-body">
-              Admissions open for Nursery to Class 10. Simple 3-step registration process for the upcoming academic session.
+              <EditableText blockKey="admissions.desc" defaultText="Admissions open for Nursery to Class 10. Simple 3-step registration process for the upcoming academic session." />
             </p>
 
             {/* Admission Steps */}
@@ -52,8 +53,12 @@ export const AdmissionsSection: React.FC = React.memo(() => {
                   1
                 </span>
                 <div>
-                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">Online Registration</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Submit the inquiry form or visit the campus counter.</p>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                    <EditableText blockKey="admissions.step1Title" defaultText="Online Registration" />
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <EditableText blockKey="admissions.step1Desc" defaultText="Submit the inquiry form or visit the campus counter." />
+                  </p>
                 </div>
               </div>
 
@@ -62,8 +67,12 @@ export const AdmissionsSection: React.FC = React.memo(() => {
                   2
                 </span>
                 <div>
-                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">Student Interaction</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Short interactive assessment to understand learning level.</p>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                    <EditableText blockKey="admissions.step2Title" defaultText="Student Interaction" />
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <EditableText blockKey="admissions.step2Desc" defaultText="Short interactive assessment to understand learning level." />
+                  </p>
                 </div>
               </div>
 
@@ -72,8 +81,12 @@ export const AdmissionsSection: React.FC = React.memo(() => {
                   3
                 </span>
                 <div>
-                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">Document Verification</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Verify birth certificate / TC and confirm enrollment.</p>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                    <EditableText blockKey="admissions.step3Title" defaultText="Document Verification" />
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <EditableText blockKey="admissions.step3Desc" defaultText="Verify birth certificate / TC and confirm enrollment." />
+                  </p>
                 </div>
               </div>
             </div>
@@ -85,10 +98,10 @@ export const AdmissionsSection: React.FC = React.memo(() => {
               {!submitted ? (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white font-heading mb-1">
-                    Online Admission Inquiry Form
+                    <EditableText blockKey="admissions.formTitle" defaultText="Online Admission Inquiry Form" />
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                    Submit your details and our admission team will get in touch with you.
+                    <EditableText blockKey="admissions.formSubtitle" defaultText="Submit your details and our admission team will get in touch with you." />
                   </p>
 
                   <div>
@@ -176,7 +189,8 @@ export const AdmissionsSection: React.FC = React.memo(() => {
                     disabled={submitting}
                     className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-semibold py-3.5 rounded-full transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Send className="w-4 h-4" /> {submitting ? 'Submitting...' : 'Submit Admission Inquiry'}
+                    <EditableIcon iconKey="admissions.sendIcon" defaultIcon="Send" defaultColor="currentColor" size={16} />
+                    <span>{submitting ? 'Submitting...' : <EditableText blockKey="admissions.submitBtn" defaultText="Submit Admission Inquiry" />}</span>
                   </button>
                 </form>
               ) : (
