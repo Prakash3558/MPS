@@ -242,8 +242,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             },
             "geo": {
               "@type": "GeoCoordinates",
-              "latitude": 27.0180,
-              "longitude": 84.6725
+              "latitude": 27.035265,
+              "longitude": 84.660400
             },
             "hasCredential": [
               {
@@ -272,7 +272,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ],
             "sameAs": [
               "https://www.facebook.com",
-              "https://maps.google.com/?q=Model+Public+School+Bhawanipur+Sikta+West+Champaran+Bihar"
+              "https://maps.app.goo.gl/wjptsD9GwK8ucjie7"
             ]
           },
           {

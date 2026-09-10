@@ -147,14 +147,20 @@ export const ContactSection: React.FC = React.memo(() => {
                 <p className="text-xs text-slate-600 dark:text-slate-400">
                   <EditableText blockKey="contact.mapSubtitle" defaultText="AT- Bhawanipur, P.O.- Kursi Barwa, Sikta, West Champaran, Bihar - 845307" />
                 </p>
+                <p className="text-[11px] font-mono text-amber-600 dark:text-amber-400 font-bold mt-1 flex items-center gap-1.5 flex-wrap">
+                  <span>📍 GPS Coordinates:</span>
+                  <span className="bg-amber-500/10 dark:bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                    27.0353° N, 84.6604° E (27.035265, 84.660400)
+                  </span>
+                </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent('Model Public School Bhawanipur Sikta West Champaran Bihar')}`}
+                  href="https://maps.app.goo.gl/wjptsD9GwK8ucjie7"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-medium text-xs px-4 py-2 rounded-full transition-colors flex-shrink-0 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-medium text-xs px-4 py-2 rounded-full transition-colors flex-shrink-0 cursor-pointer shadow-sm"
                 >
                   <span><EditableText blockKey="contact.mapBtn" defaultText="Open in Google Maps" /></span>
                   <EditableIcon iconKey="contact.extIcon" defaultIcon="ExternalLink" defaultColor="currentColor" size={14} />
@@ -164,7 +170,7 @@ export const ContactSection: React.FC = React.memo(() => {
 
             <div className="w-full h-80 rounded-xl overflow-hidden relative border border-slate-200 dark:border-slate-800 shadow-inner bg-slate-100 dark:bg-slate-950">
               <iframe
-                src="https://maps.google.com/maps?q=Model+Public+School+Bhawanipur+Sikta+West+Champaran+Bihar&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                src="https://maps.google.com/maps?q=27.035265,84.660400+(Model+Public+School+Bhawanipur+Sikta+West+Champaran)&t=m&z=16&output=embed"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}

@@ -6,7 +6,7 @@ import {
   AlertTriangle, Key, Radio, Fuel, Wrench, ShieldAlert, Sparkles, Share2,
   Send, Zap, Home, Gauge, Layers, Eye, Activity, Smartphone, BellRing,
   Maximize2, Minimize2, LocateFixed, Lock, Unlock, ArrowUpRight, TrendingUp,
-  Crosshair, Satellite, ExternalLink
+  Crosshair, Satellite, ExternalLink, Volume2, VolumeX, Sun, Moon, ArrowRight, CheckCheck, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCMS } from '../../context/CMSContext';
@@ -64,6 +64,69 @@ export const getCompassCardinal = (deg: number): { label: string; abbr: string }
   ];
   const index = Math.round(normalized / 22.5) % 16;
   return points[index];
+};
+
+// Web Audio Synthesizer for tactile audio cues in the driver portal
+export const playDriverSound = (type: 'tap' | 'arrive' | 'board' | 'trip_start' | 'trip_finish' | 'alert') => {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'tap') {
+      osc.frequency.setValueAtTime(520, ctx.currentTime);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.06);
+    } else if (type === 'board') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+      osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.07);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } else if (type === 'arrive') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.09);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.18);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.32);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.32);
+    } else if (type === 'trip_start') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.14, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.28);
+    } else if (type === 'trip_finish') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.28);
+      gain.gain.setValueAtTime(0.14, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } else if (type === 'alert') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(320, ctx.currentTime);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    }
+  } catch {
+    // Autoplay or audio context permission fallback
+  }
 };
 
 export type MapLayerOption = 'google_streets' | 'google_hybrid' | 'google_terrain' | 'carto_dark' | 'carto_voyager' | 'osm';
@@ -154,14 +217,13 @@ export const SIKTA_ROAD_NETWORK_COORDS: [number, number][] = [
   // 6. Bhawanipur Tola Chowk (भवानीपुर चौक) - Stop 4
   [27.019500, 84.673800],
 
-  // 7. Bhawanipur Village Paved Approach to School Campus
-  [27.019200, 84.673500],
-  [27.018900, 84.673200],
-  [27.018600, 84.672900],
-  [27.018300, 84.672700],
-  [27.018100, 84.672550],
-  // 8. Model Public School Main Gate (स्कूल गेट) - Stop 5
-  [27.018000, 84.672500]
+  // 7. Bhawanipur Village Approach to Model Public School Campus
+  [27.022000, 84.670000],
+  [27.026000, 84.667000],
+  [27.031000, 84.663500],
+  [27.033500, 84.661800],
+  // 8. Model Public School Main Gate (स्कूल गेट) - Stop 5 (27.035265° N, 84.660400° E)
+  [27.035265, 84.660400]
 ];
 
 export const StaffDriverPortal: React.FC = () => {
@@ -236,6 +298,12 @@ export const StaffDriverPortal: React.FC = () => {
   const [autoFollowVehicle, setAutoFollowVehicle] = useState(true);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 
+  // Driver Experience & Accessibility States
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+  const [isHighContrast, setIsHighContrast] = useState(false);
+  const [manifestFilter, setManifestFilter] = useState<'All' | 'Waiting' | 'Boarded' | 'Dropped' | 'Absent'>('All');
+  const [selectedTimelineStopId, setSelectedTimelineStopId] = useState<string | null>(null);
+
   // Navigation Tabs
   type TabType = 'live_trip' | 'supabase_controller' | 'students' | 'stops' | 'inspection' | 'fuel' | 'logs';
   const [activeTab, setActiveTab] = useState<TabType>('live_trip');
@@ -246,6 +314,15 @@ export const StaffDriverPortal: React.FC = () => {
   const [showInspectionModal, setShowInspectionModal] = useState(false);
   const [showFuelModal, setShowFuelModal] = useState(false);
   const [showSosModal, setShowSosModal] = useState(false);
+
+  // Map state tracker for guaranteed sync
+  const [mapReady, setMapReady] = useState(0);
+
+  // Add Stop with Student Selection States
+  const [isSubmittingStop, setIsSubmittingStop] = useState(false);
+  const [selectedStudentIdsForStop, setSelectedStudentIdsForStop] = useState<string[]>([]);
+  const [studentSearchInStopModal, setStudentSearchInStopModal] = useState<string>('');
+  const [filterClassInStopModal, setFilterClassInStopModal] = useState<string>('All');
 
   // Fuel & Inspection historical lists
   const [inspectionLogs, setInspectionLogs] = useState<any[]>([]);
@@ -264,6 +341,28 @@ export const StaffDriverPortal: React.FC = () => {
     feeMonthly: 600,
     selectedStudentIds: [] as string[]
   });
+
+  // Open Add Stop modal helper with optional coordinates pre-fill
+  const openAddStopModal = (initialCoords?: { lat: number; lng: number }) => {
+    const defaultLat = initialCoords?.lat ? Number(initialCoords.lat.toFixed(6)) : (currentCoords.lat ? Number(currentCoords.lat.toFixed(6)) : 27.0270);
+    const defaultLng = initialCoords?.lng ? Number(initialCoords.lng.toFixed(6)) : (currentCoords.lng ? Number(currentCoords.lng.toFixed(6)) : 84.6826);
+    setStopForm({
+      stopName: '',
+      stopNumber: stops.length + 1,
+      pickupTime: '07:30 AM',
+      dropTime: '02:45 PM',
+      landmark: '',
+      latitude: defaultLat,
+      longitude: defaultLng,
+      feeMonthly: 600,
+      selectedStudentIds: []
+    });
+    setSelectedStudentIdsForStop([]);
+    setStudentSearchInStopModal('');
+    setFilterClassInStopModal('All');
+    setShowAddStopModal(true);
+    if (isSoundEnabled) playDriverSound('tap');
+  };
 
   // Fast Add Student Form
   const [studentForm, setStudentForm] = useState({
@@ -441,10 +540,27 @@ export const StaffDriverPortal: React.FC = () => {
     return `${hours > 0 ? `${hours}:` : ''}${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // 3. Leaflet Map Initialization
+  // 3. Leaflet Map Initialization with Rock-Solid Lifecycle & Auto Invalidation
   useEffect(() => {
+    // If not in live trip tab or not in leaflet mode or still loading, cleanup and exit
+    if (activeTab !== 'live_trip' || mapViewMode !== 'leaflet' || loading) {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      return;
+    }
+
     if (!mapContainerRef.current) return;
-    if (mapInstanceRef.current) return;
+
+    // Clean up any stale leaflet instance attached to this container
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+    if ((mapContainerRef.current as any)._leaflet_id) {
+      delete (mapContainerRef.current as any)._leaflet_id;
+    }
 
     // Anchor coordinates: Sikta Center (27.0270° N, 84.6826° E)
     const initialLat = currentCoords.lat || 27.0270;
@@ -453,10 +569,11 @@ export const StaffDriverPortal: React.FC = () => {
     const map = L.map(mapContainerRef.current, {
       center: [initialLat, initialLng],
       zoom: 15,
-      zoomControl: true
+      zoomControl: true,
+      fadeAnimation: true
     });
 
-    // Primary High-Definition Map Layer (Google Maps Roads by default)
+    // Primary High-Definition Map Layer
     const initialLayer = createTileLayer(mapLayerType).addTo(map);
     tileLayerRef.current = initialLayer;
 
@@ -475,7 +592,7 @@ export const StaffDriverPortal: React.FC = () => {
       iconSize: [140, 36],
       iconAnchor: [70, 18]
     });
-    L.marker([27.0180, 84.6725], { icon: schoolIcon })
+    L.marker([27.035265, 84.660400], { icon: schoolIcon })
       .bindPopup(`
         <div class="p-2 space-y-1 font-sans text-xs">
           <div class="font-black text-sm text-blue-900 flex items-center gap-1">
@@ -483,7 +600,7 @@ export const StaffDriverPortal: React.FC = () => {
           </div>
           <div class="text-slate-600 font-medium">AT- Bhawanipur, P.O.- Kursi Barwa, Sikta, West Champaran (845307)</div>
           <div class="text-[11px] text-emerald-600 font-bold">Central Transport Depot & Bus Bay A</div>
-          <div class="text-slate-500 font-mono text-[10px]">27.0180° N, 84.6725° E</div>
+          <div class="text-slate-500 font-mono text-[10px]">27.0353° N, 84.6604° E (27.035265, 84.660400)</div>
         </div>
       `)
       .addTo(map);
@@ -501,7 +618,7 @@ export const StaffDriverPortal: React.FC = () => {
         className: 'custom-bus-icon-container',
         html: `
           <div class="relative flex flex-col items-center select-none pointer-events-none" style="width: 140px; margin-left: -70px; margin-top: -62px;">
-            <!-- Floating Upright Telemetry Badge (DOES NOT ROTATE - stays horizontal) -->
+            <!-- Floating Upright Telemetry Badge -->
             <div class="mb-1 px-2.5 py-0.5 rounded-full ${badgeColor} text-[10px] font-mono font-black shadow-2xl border flex items-center gap-1.5 whitespace-nowrap">
               <span class="w-1.5 h-1.5 rounded-full ${isStopped ? 'bg-amber-200' : 'bg-white animate-ping'}"></span>
               <span>${speedLabel}</span>
@@ -510,21 +627,17 @@ export const StaffDriverPortal: React.FC = () => {
 
             <!-- Vehicle Body + Direction Pointer (Rotates to Bearing) -->
             <div class="relative flex items-center justify-center w-12 h-12" style="transform: rotate(${heading}deg); transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);">
-              <!-- Dynamic Pulse Wave -->
               <div class="absolute inset-0 rounded-full bg-amber-400/30 ${isStopped ? 'animate-pulse' : 'animate-ping'}"></div>
               
-              <!-- Directional Arrow Head pointing forward (UP = 0deg = North) -->
               <div class="absolute -top-3 flex flex-col items-center">
                 <div class="w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-b-[12px] border-b-amber-500 drop-shadow-md"></div>
               </div>
 
-              <!-- Bus Vehicle Disk -->
               <div class="relative w-11 h-11 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 text-slate-950 border-2 border-white shadow-2xl flex items-center justify-center font-black text-xl ring-4 ring-amber-400/40">
                 🚌
               </div>
             </div>
 
-            <!-- Vehicle Label -->
             <div class="mt-1 px-2 py-0.5 rounded bg-slate-900/90 text-amber-300 text-[9px] font-bold border border-slate-700 shadow whitespace-nowrap">
               ${vehicleNumber}
             </div>
@@ -551,15 +664,64 @@ export const StaffDriverPortal: React.FC = () => {
     }).addTo(map);
     accuracyCircleRef.current = accuracyCircle;
 
+    // Interactive Click on Map to Add Stop at Clicked Location!
+    map.on('click', (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      L.popup()
+        .setLatLng([lat, lng])
+        .setContent(`
+          <div style="font-family: sans-serif; font-size: 12px; padding: 4px; line-height: 1.4; color: #1e293b;">
+            <div style="font-weight: 800; font-size: 13px; color: #0f172a; display: flex; align-items: center; gap: 4px;">
+              <span>📍</span> <span>नया स्टॉप पॉइंट</span>
+            </div>
+            <div style="color: #64748b; font-size: 11px; margin: 3px 0 8px 0; font-family: monospace;">
+              ${lat.toFixed(5)}, ${lng.toFixed(5)}
+            </div>
+            <button id="leaflet-map-click-add-stop" style="background: #e11d48; color: white; border: none; padding: 6px 12px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; width: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+              + यहाँ नया स्टॉप जोड़ें (+ Add Stop)
+            </button>
+          </div>
+        `)
+        .openOn(map);
+
+      setTimeout(() => {
+        const btn = document.getElementById('leaflet-map-click-add-stop');
+        if (btn) {
+          btn.onclick = () => {
+            map.closePopup();
+            openAddStopModal({ lat, lng });
+          };
+        }
+      }, 100);
+    });
+
+    // Handle container resizing smoothly
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Staggered invalidateSize calls to guarantee sharp, non-grey tiles
+    const t1 = setTimeout(() => { if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize(); }, 100);
+    const t2 = setTimeout(() => { if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize(); }, 350);
+    const t3 = setTimeout(() => { if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize(); }, 900);
+
     mapInstanceRef.current = map;
+    setMapReady(prev => prev + 1);
 
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('resize', handleResize);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, [mapContainerRef.current]);
+  }, [activeTab, mapViewMode, loading, mapLayerType]);
 
   // Switch Tile Layer (Google Roads, Satellite Hybrid, Terrain, Night Drive, Carto Clean, OSM)
   const toggleMapLayer = (type: MapLayerOption) => {
@@ -622,8 +784,8 @@ export const StaffDriverPortal: React.FC = () => {
         }
       });
 
-      // Destination: School Campus Gate
-      waypoints.push({ lng: 84.6725, lat: 27.0180 });
+      // Destination: School Campus Gate (Model Public School Bhawanipur)
+      waypoints.push({ lng: 84.660400, lat: 27.035265 });
 
       const coordsString = waypoints.map(w => `${w.lng.toFixed(6)},${w.lat.toFixed(6)}`).join(';');
       const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
@@ -752,12 +914,12 @@ export const StaffDriverPortal: React.FC = () => {
       iconSize: [210, 32],
       iconAnchor: [105, 16]
     });
-    const schoolMarker = L.marker([27.0180, 84.6725], { icon: schoolIcon });
+    const schoolMarker = L.marker([27.035265, 84.660400], { icon: schoolIcon });
     schoolMarker.bindPopup(`
       <div class="p-2 space-y-1 font-sans text-xs">
         <div class="font-black text-emerald-800 text-sm">🏫 Model Public School, Sikta</div>
-        <div class="text-slate-600">अंतिम गंतव्य (Final Destination / Campus)</div>
-        <div class="text-[11px] text-slate-500 font-mono">27.0180° N, 84.6725° E</div>
+        <div class="text-slate-600">अंतिम गंतव्य (Final Destination / Campus Gate)</div>
+        <div class="text-[11px] text-slate-500 font-mono">27.0353° N, 84.6604° E (27.035265, 84.660400)</div>
       </div>
     `);
     stopMarkersRef.current?.addLayer(schoolMarker);
@@ -765,7 +927,7 @@ export const StaffDriverPortal: React.FC = () => {
     // Fetch and draw real Google-grade road route from driver's current coordinates
     lastRoutedCoordsRef.current = { lat: currentCoords.lat, lng: currentCoords.lng };
     fetchAndDrawRealRoadRoute(currentCoords, stops);
-  }, [stops, fetchAndDrawRealRoadRoute]);
+  }, [mapReady, stops, fetchAndDrawRealRoadRoute]);
 
   // Center map on vehicle
   const centerMapOnVehicle = () => {
@@ -1133,8 +1295,8 @@ export const StaffDriverPortal: React.FC = () => {
 
   // Launch Google Maps Driving Navigation (Turn-by-turn to School Campus from Current Location)
   const openGoogleMapsNavigation = (targetStop?: TransportStop) => {
-    const destLat = targetStop ? targetStop.latitude : 27.0180;
-    const destLng = targetStop ? targetStop.longitude : 84.6725;
+    const destLat = targetStop ? targetStop.latitude : 27.035265;
+    const destLng = targetStop ? targetStop.longitude : 84.660400;
     let url = `https://www.google.com/maps/dir/?api=1&origin=${currentCoords.lat},${currentCoords.lng}&destination=${destLat},${destLng}&travelmode=driving`;
     if (!targetStop && stops.length > 0) {
       const waypoints = stops
@@ -1155,14 +1317,15 @@ export const StaffDriverPortal: React.FC = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // Open School Campus on Google Maps
+  // Open School Campus on Google Maps (Direct to User-provided verified listing)
   const openSchoolGoogleMaps = () => {
-    const url = `https://www.google.com/maps?q=27.0180,84.6725+(Model+Public+School+Sikta+West+Champaran)`;
+    const url = `https://maps.app.goo.gl/wjptsD9GwK8ucjie7`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // 5. Start Trip Handler with High-Precision Continuous GPS Tracking
   const startTrip = () => {
+    if (isSoundEnabled) playDriverSound('trip_start');
     setIsTripActive(true);
     const startStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setTripStartTime(startStr);
@@ -1303,6 +1466,7 @@ export const StaffDriverPortal: React.FC = () => {
       notes: 'Trip completed safely. All students transported.'
     });
 
+    if (isSoundEnabled) playDriverSound('trip_finish');
     setIsTripActive(false);
     setCurrentSpeed(0);
     showToast('✅ Trip completed! GPS transmission turned off and log archived.', 'success');
@@ -1319,10 +1483,17 @@ export const StaffDriverPortal: React.FC = () => {
 
   // 8. Toggle student boarding status & send WhatsApp notification to parent
   const handleToggleBoarding = (studentId: string, status: 'Boarded' | 'Dropped' | 'Absent') => {
+    const nextStatus = boardedStatus[studentId] === status ? 'Pending' : status;
     setBoardedStatus(prev => ({
       ...prev,
-      [studentId]: prev[studentId] === status ? 'Pending' : status
+      [studentId]: nextStatus
     }));
+
+    if (isSoundEnabled) {
+      if (nextStatus === 'Boarded') playDriverSound('board');
+      else if (nextStatus === 'Absent') playDriverSound('alert');
+      else playDriverSound('tap');
+    }
   };
 
   // Quick Board All at a specific Stop
@@ -1335,22 +1506,48 @@ export const StaffDriverPortal: React.FC = () => {
       });
       return next;
     });
+    if (isSoundEnabled) playDriverSound('board');
     showToast(`Boarded all ${studentsAtStop.length} students for this stop.`, 'success');
   };
 
   // Driver 1-Tap: Arrived at Next Stop
-  const handleArriveAtNextStop = () => {
+  const handleArriveAtNextStop = (targetStopParam?: TransportStop) => {
     if (!stops.length) return;
-    const currentIdx = stops.findIndex(s => s.stopName === currentStopName);
-    const nextIdx = currentIdx >= 0 && currentIdx < stops.length - 1 ? currentIdx + 1 : 0;
-    const targetStop = stops[nextIdx];
+    let targetStop: TransportStop;
+    if (targetStopParam) {
+      targetStop = targetStopParam;
+    } else {
+      const currentIdx = stops.findIndex(s => s.stopName === currentStopName);
+      const nextIdx = currentIdx >= 0 && currentIdx < stops.length - 1 ? currentIdx + 1 : 0;
+      targetStop = stops[nextIdx];
+    }
     setCurrentStopName(targetStop.stopName);
 
     const d = haversineDistanceMeters(currentCoords.lat, currentCoords.lng, targetStop.latitude, targetStop.longitude);
     setNextStopDistMeters(Math.round(d));
     setNextStopEtaMinutes(Math.max(1, Math.round(d / ((25 * 1000) / 60))));
 
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([targetStop.latitude, targetStop.longitude], 16, { animate: true });
+    }
+
+    if (isSoundEnabled) playDriverSound('arrive');
     showToast(`✅ ${targetStop.stopName} पर पहुंच गए! बच्चों को चढ़ाएं।`, 'success');
+  };
+
+  // 1-Tap WhatsApp Alert to all parents waiting at a stop
+  const sendStopWhatsAppAlert = (stop: TransportStop) => {
+    const stopStudents = students.filter(s => s.stopId === stop.id);
+    const names = stopStudents.map(s => s.studentName).join(', ') || 'छात्र';
+    const msg = `नमस्ते! मॉडल पब्लिक स्कूल की बस (${assignedRoute?.busNumber || 'Bus #01'}) लगभग 5 मिनट में ${stop.stopName} पहुंच रही है। कृपया बच्चे (${names}) को बस स्टॉप पर तैयार रखें। - चालक: ${driverStaff?.name || 'विक्रम सिंह'}`;
+    const targetPhone = stopStudents[0]?.phone || '';
+    const cleanPhone = targetPhone.replace(/\D/g, '');
+    const url = cleanPhone
+      ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    if (isSoundEnabled) playDriverSound('tap');
+    showToast(`📢 ${stop.stopName} के अभिभावकों को WhatsApp सूचना तैयार!`, 'info');
   };
 
   // Driver 1-Tap: Quick Passenger Count +/-
@@ -1360,9 +1557,11 @@ export const StaffDriverPortal: React.FC = () => {
 
     if (delta > 0 && unboarded.length > 0) {
       setBoardedStatus(prev => ({ ...prev, [unboarded[0].studentId]: 'Boarded' }));
+      if (isSoundEnabled) playDriverSound('board');
       showToast(`➕ 1 बच्चा चढ़ा (${unboarded[0].studentName})`, 'info');
     } else if (delta < 0 && boarded.length > 0) {
       setBoardedStatus(prev => ({ ...prev, [boarded[boarded.length - 1].studentId]: 'Dropped' }));
+      if (isSoundEnabled) playDriverSound('tap');
       showToast(`➖ 1 बच्चा उतरा (${boarded[boarded.length - 1].studentName})`, 'info');
     }
   };
@@ -1441,28 +1640,63 @@ export const StaffDriverPortal: React.FC = () => {
     }
   };
 
-  // 12. Add new stop handler
+  // 12. Add new stop handler with complete student assignment support
   const handleAddStop = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!assignedRoute) return;
+    if (!assignedRoute) {
+      showToast('चालक के लिए कोई सक्रिय रूट उपलब्ध नहीं है (No route assigned)', 'alert');
+      return;
+    }
+    if (!stopForm.stopName.trim()) {
+      showToast('कृपया स्टॉप का नाम दर्ज करें (Please enter stop name)', 'alert');
+      return;
+    }
+
     try {
-      await api.createTransportStop({
+      setIsSubmittingStop(true);
+      const res = await api.createTransportStop({
         routeId: assignedRoute.id,
-        stopName: stopForm.stopName,
-        stopNumber: Number(stopForm.stopNumber),
-        pickupTime: stopForm.pickupTime,
-        dropTime: stopForm.dropTime,
-        landmark: stopForm.landmark,
-        latitude: Number(stopForm.latitude),
-        longitude: Number(stopForm.longitude),
-        feeMonthly: Number(stopForm.feeMonthly),
-        assignedStudentIds: []
+        stopName: stopForm.stopName.trim(),
+        stopNumber: Number(stopForm.stopNumber) || (stops.length + 1),
+        pickupTime: stopForm.pickupTime.trim() || '07:30 AM',
+        dropTime: stopForm.dropTime.trim() || '02:45 PM',
+        landmark: stopForm.landmark.trim(),
+        latitude: Number(stopForm.latitude) || 27.0270,
+        longitude: Number(stopForm.longitude) || 84.6826,
+        feeMonthly: Number(stopForm.feeMonthly) || 600,
+        assignedStudentIds: selectedStudentIdsForStop
       });
+
+      const newStopId = (res as any)?.stop?.id || (res as any)?.id || `stp-${Date.now()}`;
+
+      // Assign all selected students to this stop in the transport roster
+      for (const stId of selectedStudentIdsForStop) {
+        const studentObj = allStudents.find(s => s.id === stId);
+        if (studentObj) {
+          await api.addTransportStudent({
+            routeId: assignedRoute.id,
+            routeName: assignedRoute.routeName,
+            studentId: studentObj.id,
+            studentName: studentObj.name,
+            rollNo: studentObj.rollNo,
+            class: studentObj.class,
+            section: studentObj.section,
+            stopId: newStopId,
+            stopName: stopForm.stopName.trim(),
+            pickupTime: stopForm.pickupTime.trim() || '07:30 AM',
+            dropTime: stopForm.dropTime.trim() || '02:45 PM'
+          });
+        }
+      }
+
       setShowAddStopModal(false);
-      showToast(`Stop "${stopForm.stopName}" added successfully.`, 'success');
-      loadPortalData();
+      showToast(`✅ नया स्टॉप "${stopForm.stopName}" जोड़ा गया और ${selectedStudentIdsForStop.length} छात्र असाइन किए गए!`, 'success');
+      if (isSoundEnabled) playDriverSound('arrive');
+      await loadPortalData();
     } catch (err: any) {
       showToast(err.message || 'Error adding stop', 'alert');
+    } finally {
+      setIsSubmittingStop(false);
     }
   };
 
@@ -1602,6 +1836,54 @@ export const StaffDriverPortal: React.FC = () => {
               </button>
             </form>
 
+            {/* Quick 1-Tap Demo Driver Sign-In */}
+            <div className="pt-3 border-t border-slate-800 space-y-2">
+              <p className="text-[11px] font-bold text-slate-400 text-center uppercase tracking-wider">
+                त्वरित लॉगिन (One-Tap Driver Access)
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginForm({ username: 'driver1', password: 'driver123' });
+                    setTimeout(() => {
+                      const fakeEvt = { preventDefault: () => {} } as any;
+                      handleDriverLogin(fakeEvt);
+                    }, 50);
+                  }}
+                  className="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-left transition group cursor-pointer"
+                >
+                  <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+                    <Bus className="w-3 h-3" /> Bus #01
+                  </div>
+                  <div className="text-xs font-black text-white group-hover:text-amber-300 truncate">
+                    राजेश कुमार
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate">सिकटा रूट</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginForm({ username: 'driver2', password: 'driver123' });
+                    setTimeout(() => {
+                      const fakeEvt = { preventDefault: () => {} } as any;
+                      handleDriverLogin(fakeEvt);
+                    }, 50);
+                  }}
+                  className="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-left transition group cursor-pointer"
+                >
+                  <div className="text-[10px] text-blue-400 font-bold flex items-center gap-1">
+                    <Bus className="w-3 h-3" /> Bus #02
+                  </div>
+                  <div className="text-xs font-black text-white group-hover:text-blue-300 truncate">
+                    विक्रम सिंह
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate">बेतिया रूट</div>
+                </button>
+              </div>
+            </div>
+
             <div className="pt-3 border-t border-slate-800 text-center flex items-center justify-between text-xs text-slate-400">
               <a href="/" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
                 <Home className="w-3.5 h-3.5" /> School Home
@@ -1617,10 +1899,42 @@ export const StaffDriverPortal: React.FC = () => {
   }
 
   // -------------------------------------------------------------
+  // Filtered Students for the Add Stop Modal
+  // -------------------------------------------------------------
+  const availableStudentsForModal = allStudents.length > 0 ? allStudents : [
+    { id: 'st-demo-1', name: 'Aarav Sharma', class: 'Class 5', section: 'A', rollNo: '12', fatherName: 'Rajesh Sharma', phone: '9801234561' },
+    { id: 'st-demo-2', name: 'Priya Kumari', class: 'Class 4', section: 'B', rollNo: '08', fatherName: 'Manoj Kumar', phone: '9801234562' },
+    { id: 'st-demo-3', name: 'Rohit Verma', class: 'Class 6', section: 'A', rollNo: '15', fatherName: 'Vikash Verma', phone: '9801234563' },
+    { id: 'st-demo-4', name: 'Ananya Singh', class: 'Class 3', section: 'A', rollNo: '04', fatherName: 'Ramesh Singh', phone: '9801234564' },
+    { id: 'st-demo-5', name: 'Aryan Patel', class: 'Class 7', section: 'A', rollNo: '21', fatherName: 'Deepak Patel', phone: '9801234565' },
+    { id: 'st-demo-6', name: 'Sneha Pandey', class: 'Class 5', section: 'B', rollNo: '19', fatherName: 'Sanjay Pandey', phone: '9801234566' },
+  ];
+
+  const filteredStudentsInModal = availableStudentsForModal.filter(s => {
+    const q = studentSearchInStopModal.toLowerCase().trim();
+    const matchesSearch = !q ||
+      s.name.toLowerCase().includes(q) ||
+      (s.rollNo && s.rollNo.toString().includes(q)) ||
+      (s.class && s.class.toLowerCase().includes(q));
+    const matchesClass = filterClassInStopModal === 'All' || s.class === filterClassInStopModal || (s.class && s.class.includes(filterClassInStopModal));
+    return matchesSearch && matchesClass;
+  });
+
+  const toggleStudentSelectionForStop = (studentId: string) => {
+    setSelectedStudentIdsForStop(prev =>
+      prev.includes(studentId)
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  // -------------------------------------------------------------
   // AUTHENTICATED DRIVER PORTAL UI
   // -------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
+    <div className={`min-h-screen text-slate-100 font-sans pb-24 sm:pb-16 transition-colors duration-200 ${
+      isHighContrast ? 'bg-black contrast-125' : 'bg-slate-950'
+    }`}>
       {/* Toast Notification */}
       {toastMessage && (
         <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-3 border ${
@@ -1636,31 +1950,45 @@ export const StaffDriverPortal: React.FC = () => {
       )}
 
       {/* Top Cockpit Header */}
-      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-6 py-3 shadow-2xl">
+      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800/90 px-3 sm:px-6 py-3 shadow-2xl">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           {/* Driver & Bus Identity */}
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20 flex-shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20 flex-shrink-0 ring-2 ring-amber-400/30">
               <Bus className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base sm:text-lg font-black text-white tracking-tight font-heading">
-                  {assignedRoute?.busNumber || 'Bus #01'}
+                <h1 className="text-base sm:text-lg font-black text-white tracking-tight font-heading flex items-center gap-1.5">
+                  <span>{assignedRoute?.busNumber || 'Bus #01'}</span>
+                  <span className="text-xs font-medium text-slate-400 font-sans hidden sm:inline">({assignedRoute?.routeName || 'सिकटा रूट'})</span>
                 </h1>
-                <span className="px-2 py-0.5 bg-slate-800 text-amber-400 border border-slate-700 font-mono text-[10px] font-bold rounded-md">
+                <span className="px-2.5 py-0.5 bg-slate-800 text-amber-400 border border-slate-700 font-mono text-[11px] font-bold rounded-lg shadow-sm">
                   {assignedRoute?.numberPlate || 'BR-22-PA-8757'}
                 </span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1 ${
-                  isOnDuty ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-800 text-slate-400'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${isOnDuty ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
-                  {isOnDuty ? 'On Duty' : 'Off Duty'}
-                </span>
+                {/* Clickable On/Off Duty Interactive Switch */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOnDuty(!isOnDuty);
+                    if (isSoundEnabled) playDriverSound('tap');
+                    showToast(isOnDuty ? 'चालक ड्यूटी बंद (Off Duty)' : 'चालक ड्यूटी चालू (On Duty)', 'info');
+                  }}
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 transition cursor-pointer border ${
+                    isOnDuty
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
+                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                  }`}
+                  title="Click to toggle driver duty status"
+                >
+                  <span className={`w-2 h-2 rounded-full ${isOnDuty ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
+                  <span>{isOnDuty ? 'On Duty (ड्यूटी पर)' : 'Off Duty (छुट्टी)'}</span>
+                </button>
               </div>
               <p className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
-                <span>Driver: <strong className="text-white">{driverStaff?.name || 'Vikram Singh'}</strong></span>
-                <span className="hidden md:inline">• Route: <strong className="text-slate-300">{assignedRoute?.routeName || 'Sikta Route'}</strong></span>
+                <span>चालक (Driver): <strong className="text-white font-semibold">{driverStaff?.name || 'राजेश कुमार'}</strong></span>
+                <span className="text-slate-600">•</span>
+                <span>स्कूल: <strong className="text-slate-300">Model Public School</strong></span>
               </p>
             </div>
           </div>
@@ -1671,20 +1999,52 @@ export const StaffDriverPortal: React.FC = () => {
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition ${
               isTripActive
                 ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-300 shadow-md shadow-emerald-900/30'
-                : 'bg-slate-800 border-slate-700 text-slate-400'
+                : 'bg-slate-800/90 border-slate-700 text-slate-400'
             }`}>
               <Radio className={`w-3.5 h-3.5 ${isTripActive ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
-              <span className="hidden sm:inline">{isTripActive ? 'BROADCASTING PHONE GPS' : 'GPS STANDBY'}</span>
+              <span className="hidden sm:inline">{isTripActive ? 'लाइव GPS ऑन' : 'GPS तैयार'}</span>
             </div>
+
+            {/* Sound Mute / Unmute Toggle */}
+            <button
+              onClick={() => {
+                setIsSoundEnabled(!isSoundEnabled);
+                if (!isSoundEnabled) playDriverSound('tap');
+              }}
+              className={`p-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                isSoundEnabled
+                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/40 hover:bg-amber-500/20'
+                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+              }`}
+              title={isSoundEnabled ? 'ध्वनि संकेत चालू (Sound ON)' : 'ध्वनि संकेत बंद (Muted)'}
+            >
+              {isSoundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+
+            {/* High Contrast Mode Toggle */}
+            <button
+              onClick={() => setIsHighContrast(!isHighContrast)}
+              className={`p-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                isHighContrast
+                  ? 'bg-amber-500 text-slate-950 border-amber-400'
+                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+              }`}
+              title={isHighContrast ? 'हाई कॉन्ट्रास्ट मोड चालू' : 'नॉर्मल नाइट मोड'}
+            >
+              {isHighContrast ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
 
             {/* Emergency SOS Button */}
             <button
-              onClick={() => setShowSosModal(true)}
+              onClick={() => {
+                if (isSoundEnabled) playDriverSound('alert');
+                setShowSosModal(true);
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black shadow-lg shadow-rose-600/30 transition transform active:scale-95 cursor-pointer animate-pulse"
               title="Send Immediate Emergency SOS Alert to School Dispatch"
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>SOS PANIC</span>
+              <span>SOS आपातकाल</span>
             </button>
 
             {/* Daily Safety Checklist Button */}
@@ -1694,7 +2054,7 @@ export const StaffDriverPortal: React.FC = () => {
               title="Complete Pre-Trip Vehicle Checklist"
             >
               <Wrench className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden md:inline">Inspection</span>
+              <span className="hidden md:inline">जांच</span>
             </button>
 
             {/* Fuel Log Button */}
@@ -1704,14 +2064,14 @@ export const StaffDriverPortal: React.FC = () => {
               title="Record Diesel Expense"
             >
               <Fuel className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden md:inline">Fuel</span>
+              <span className="hidden md:inline">डीजल</span>
             </button>
 
             {/* Logout */}
             <button
               onClick={() => logout()}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-rose-600 hover:text-white border border-slate-700 text-slate-300 rounded-xl text-xs font-bold transition cursor-pointer"
-              title="Sign Out"
+              title="लॉगआउट (Sign Out)"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
@@ -1891,7 +2251,7 @@ export const StaffDriverPortal: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={handleArriveAtNextStop}
+                  onClick={() => handleArriveAtNextStop()}
                   className="w-full py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs rounded-xl shadow flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
@@ -1939,6 +2299,238 @@ export const StaffDriverPortal: React.FC = () => {
                   >
                     <UserMinus className="w-3 h-3" /> 1 उतरा
                   </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 1.5. Interactive Live Route Progression Stepper & Stop Timeline */}
+            <div className="bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black">
+                    <Navigation className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-white flex items-center gap-2">
+                      <span>लाइव रूट टाइमलाइन व स्टॉप क्रम (Route Timeline & Stops)</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-amber-300 font-mono font-bold">
+                        {stops.length} स्टॉप्स
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      स्टॉप चुनें, मैप पर फोकस करें, अभिभावकों को WhatsApp अलर्ट भेजें या एक-क्लिक में बच्चों को चढ़ाएं।
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => openAddStopModal()}
+                    className="flex-1 sm:flex-none px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    title="नया रूट स्टॉप जोड़ें और छात्र असाइन करें"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ नया स्टॉप जोड़ें</span>
+                  </button>
+                  <button
+                    onClick={() => handleArriveAtNextStop()}
+                    className="flex-1 sm:flex-none px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    title="अगले स्टॉप पर बस पहुंचने का संकेत दें"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>अगले स्टॉप पर पहुंचे</span>
+                  </button>
+                  <button
+                    onClick={openSchoolGoogleMaps}
+                    className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer"
+                    title="मॉडल पब्लिक स्कूल लोकेशन गूगल मैप्स पर खोलें"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">स्कूल कैम्पस मैप</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Horizontal Scrollable Timeline Cards */}
+              <div className="flex items-stretch gap-3 overflow-x-auto pb-2 pt-1 scrollbar-thin scrollbar-thumb-slate-700">
+                {stops.map((stop, idx) => {
+                  const currentIdx = stops.findIndex(s => s.stopName === currentStopName);
+                  const isCurrent = stop.stopName === currentStopName;
+                  const isPassed = currentIdx > -1 && idx < currentIdx;
+                  const isUpcoming = currentIdx > -1 ? idx > currentIdx : idx > 0;
+                  const stopStudents = students.filter(s => s.stopId === stop.id);
+                  const boardedCount = stopStudents.filter(s => boardedStatus[s.studentId] === 'Boarded').length;
+                  const isSelected = selectedTimelineStopId === stop.id;
+
+                  return (
+                    <div
+                      key={stop.id}
+                      onClick={() => {
+                        setSelectedTimelineStopId(stop.id);
+                        if (mapInstanceRef.current && stop.latitude && stop.longitude) {
+                          mapInstanceRef.current.setView([stop.latitude, stop.longitude], 16, { animate: true });
+                        }
+                        if (isSoundEnabled) playDriverSound('tap');
+                      }}
+                      className={`min-w-[240px] sm:min-w-[260px] max-w-[280px] p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                        isCurrent
+                          ? 'bg-amber-950/40 border-amber-500/80 shadow-lg shadow-amber-500/10 ring-2 ring-amber-400/40'
+                          : isPassed
+                          ? 'bg-slate-900/60 border-slate-800 text-slate-400'
+                          : isSelected
+                          ? 'bg-blue-950/40 border-blue-500/80 ring-1 ring-blue-400/30'
+                          : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {/* Top Header of Card */}
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black font-mono ${
+                            isCurrent
+                              ? 'bg-amber-400 text-slate-950 animate-pulse'
+                              : isPassed
+                              ? 'bg-emerald-500 text-slate-950'
+                              : 'bg-slate-800 text-slate-300 border border-slate-700'
+                          }`}>
+                            {isPassed ? '✓' : idx + 1}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400 font-bold">
+                            स्टॉप #{idx + 1}
+                          </span>
+                        </div>
+
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          isCurrent
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            : isPassed
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {isCurrent ? '👉 वर्तमान / NEXT' : isPassed ? '✓ पार हुआ' : '⏳ आगामी'}
+                        </span>
+                      </div>
+
+                      {/* Stop Info */}
+                      <div>
+                        <h4 className={`text-xs font-black truncate ${isCurrent ? 'text-amber-200' : 'text-white'}`} title={stop.stopName}>
+                          {stop.stopName}
+                        </h4>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-rose-400 shrink-0" />
+                          <span className="truncate">{stop.landmark || 'सिकटा, प. चंपारण'}</span>
+                        </p>
+                      </div>
+
+                      {/* Time & Student Tally */}
+                      <div className="flex items-center justify-between text-[11px] bg-slate-950/60 px-2.5 py-1.5 rounded-xl border border-slate-800/80">
+                        <span className="text-slate-300 font-mono font-bold flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-400" />
+                          {stop.pickupTime || '07:30 AM'}
+                        </span>
+                        <span className="text-amber-300 font-bold">
+                          {boardedCount}/{stopStudents.length} बच्चे
+                        </span>
+                      </div>
+
+                      {/* Quick Stop Action Buttons */}
+                      <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-800/80 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            sendStopWhatsAppAlert(stop);
+                          }}
+                          className="py-1 px-1.5 bg-emerald-700/80 hover:bg-emerald-600 text-white font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
+                          title="अभिभावकों को WhatsApp संदेश भेजें"
+                        >
+                          <Send className="w-2.5 h-2.5" />
+                          <span>WhatsApp</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBoardAllAtStop(stop.id);
+                          }}
+                          className="py-1 px-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
+                          title="इस स्टॉप के सभी बच्चों को चढ़ाएं"
+                        >
+                          <CheckCheck className="w-2.5 h-2.5" />
+                          <span>बोर्ड ऑल</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleArriveAtNextStop(stop);
+                          }}
+                          className="py-1 px-1.5 bg-blue-600/80 hover:bg-blue-600 text-white font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
+                          title="इस स्टॉप पर पहुंच गए"
+                        >
+                          <Check className="w-2.5 h-2.5" />
+                          <span>पहुंचे</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Final Destination Card: Model Public School */}
+                <div
+                  onClick={openSchoolGoogleMaps}
+                  className="min-w-[240px] sm:min-w-[260px] max-w-[280px] p-3 rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-emerald-950/40 to-slate-900 shadow-xl flex flex-col justify-between gap-2.5 cursor-pointer hover:border-emerald-400 transition group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="w-6 h-6 rounded-full bg-emerald-400 text-slate-950 flex items-center justify-center text-xs font-black">
+                      🏁
+                    </span>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      गंतव्य (Final Destination)
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-black text-white group-hover:text-emerald-300 truncate">
+                      Model Public School, Sikta
+                    </h4>
+                    <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                      कक्षा प्ले से 10वीं • मुख्य परिसर, सिकटा
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] bg-slate-950/80 px-2.5 py-1.5 rounded-xl border border-slate-800">
+                    <span className="text-emerald-400 font-mono font-bold">27.0352°, 84.6604°</span>
+                    <span className="text-[10px] text-slate-300 font-bold">स्कूल गेट</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openSchoolGoogleMaps();
+                    }}
+                    className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] rounded-lg shadow transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Navigation className="w-3 h-3 text-amber-300" />
+                    <span>स्कूल गेट नेविगेशन (Google Maps)</span>
+                  </button>
+                </div>
+
+                {/* Add Stop Card in Stepper Timeline */}
+                <div
+                  onClick={() => openAddStopModal()}
+                  className="min-w-[200px] p-3 rounded-2xl border-2 border-dashed border-slate-700 hover:border-rose-500 bg-slate-900/40 hover:bg-rose-950/20 shadow-lg flex flex-col items-center justify-center gap-2 cursor-pointer transition text-center group"
+                  title="रूट में नया स्टॉप जोड़ें"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-rose-600/20 group-hover:bg-rose-600 text-rose-400 group-hover:text-white flex items-center justify-center transition shadow">
+                    <Plus className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-white group-hover:text-rose-300">+ नया स्टॉप जोड़ें</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">छात्र असाइन करें</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2027,6 +2619,16 @@ export const StaffDriverPortal: React.FC = () => {
                   <Navigation className="w-3.5 h-3.5 text-amber-300" />
                   <span>गूगल मैप्स नेविगेशन</span>
                 </button>
+
+                {/* Add Stop Button on Map Ribbon */}
+                <button
+                  onClick={() => openAddStopModal()}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl shadow-lg transition active:scale-95 cursor-pointer"
+                  title="नक्शे पर नया स्टॉप जोड़ें और छात्र असाइन करें"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ स्टॉप जोड़ें</span>
+                </button>
               </div>
             </div>
 
@@ -2081,7 +2683,7 @@ export const StaffDriverPortal: React.FC = () => {
                     🏘️ भवानीपुर चौक
                   </button>
                   <button
-                    onClick={() => snapToPresetLocation('Model Public School Main Campus (स्कूल गेट)', 27.0180, 84.6725)}
+                    onClick={() => snapToPresetLocation('Model Public School Main Campus (स्कूल गेट)', 27.035265, 84.660400)}
                     className="px-2.5 py-1 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 rounded-lg whitespace-nowrap border border-emerald-600 transition font-bold cursor-pointer"
                   >
                     🏫 स्कूल गेट (कैंपस)
@@ -2133,7 +2735,7 @@ export const StaffDriverPortal: React.FC = () => {
                   isMapFullscreen ? 'flex-1 min-h-[500px]' : 'h-[500px]'
                 }`}>
                   <iframe
-                    src={`https://maps.google.com/maps?saddr=${currentCoords.lat},${currentCoords.lng}&daddr=27.0180,84.6725&t=m&z=15&output=embed`}
+                    src={`https://maps.google.com/maps?saddr=${currentCoords.lat},${currentCoords.lng}&daddr=27.035265,84.660400&t=m&z=15&output=embed`}
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}
@@ -2161,8 +2763,17 @@ export const StaffDriverPortal: React.FC = () => {
                     }`}
                   />
 
-                  {/* Top-Right Map Controls (Center Bus, Auto-Follow, Fullscreen) */}
+                  {/* Top-Right Map Controls (Center Bus, Add Stop, Auto-Follow, Fullscreen) */}
                   <div className="absolute top-4 right-4 z-[450] flex items-center gap-1.5 pointer-events-auto">
+                    <button
+                      onClick={() => openAddStopModal({ lat: currentCoords.lat, lng: currentCoords.lng })}
+                      className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white border border-rose-400 rounded-xl text-xs font-bold shadow-lg backdrop-blur transition cursor-pointer flex items-center gap-1"
+                      title="वर्तमान लोकेशन पर स्टॉप जोड़ें (+ Add Stop)"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ स्टॉप</span>
+                    </button>
+
                     <button
                       onClick={centerMapOnVehicle}
                       className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-900 text-amber-400 border border-slate-700 rounded-xl text-xs font-bold shadow-lg backdrop-blur transition cursor-pointer flex items-center gap-1"
@@ -2245,15 +2856,15 @@ export const StaffDriverPortal: React.FC = () => {
             </div>
 
             {/* Quick Live Passenger Boarding Checklist */}
-            <div className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-xl space-y-4">
+            <div className="bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-800 shadow-xl space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <h3 className="text-base font-black text-white flex items-center gap-2">
                     <UserCheck className="w-5 h-5 text-amber-400" />
-                    Live Passenger Manifest & One-Tap Boarding
+                    <span>लाइव यात्री हाजिरी व बोर्डिंग (Live Passenger Manifest)</span>
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Tap to mark students boarded as you arrive at each stop along the route.
+                    हर स्टॉप पर पहुंचते ही बच्चों को एक टैप में सवार (Boarded) या उतरा (Dropped) दर्ज करें।
                   </p>
                 </div>
 
@@ -2264,102 +2875,215 @@ export const StaffDriverPortal: React.FC = () => {
                       type="text"
                       value={studentSearch}
                       onChange={e => setStudentSearch(e.target.value)}
-                      placeholder="Search student or roll #..."
-                      className="w-full pl-8 pr-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="नाम, क्लास या रोल # खोजें..."
+                      className="w-full pl-8 pr-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium"
                     />
                   </div>
                   <button
-                    onClick={() => setShowAddStudentModal(true)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+                    onClick={() => openAddStopModal()}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shrink-0"
+                    title="नया रूट स्टॉप जोड़ें और छात्र असाइन करें"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Add Student
+                    <Plus className="w-3.5 h-3.5" /> <span>+ स्टॉप जोड़ें</span>
+                  </button>
+                  <button
+                    onClick={() => setShowAddStudentModal(true)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> <span>छात्र जोड़ें</span>
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredStudents.map(st => {
-                  const status = boardedStatus[st.studentId] || 'Pending';
-                  return (
-                    <div
-                      key={st.id}
-                      className={`p-3.5 rounded-2xl border transition ${
-                        status === 'Boarded'
-                          ? 'bg-emerald-950/40 border-emerald-500/50'
-                          : status === 'Dropped'
-                          ? 'bg-blue-950/40 border-blue-500/50'
-                          : status === 'Absent'
-                          ? 'bg-rose-950/40 border-rose-500/50'
-                          : 'bg-slate-800/80 border-slate-700/80'
+              {/* Status Filter Bar & Board All Shortcut */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  {[
+                    { id: 'All' as const, label: 'सभी', count: students.length },
+                    { id: 'Waiting' as const, label: 'प्रतीक्षारत', count: students.filter(st => !boardedStatus[st.studentId] || boardedStatus[st.studentId] === 'Pending').length },
+                    { id: 'Boarded' as const, label: 'सवार (Boarded)', count: students.filter(st => boardedStatus[st.studentId] === 'Boarded').length },
+                    { id: 'Dropped' as const, label: 'ड्रॉप (Dropped)', count: students.filter(st => boardedStatus[st.studentId] === 'Dropped').length },
+                    { id: 'Absent' as const, label: 'अनुपस्थित', count: students.filter(st => boardedStatus[st.studentId] === 'Absent').length }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setManifestFilter(tab.id);
+                        if (isSoundEnabled) playDriverSound('tap');
+                      }}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 border ${
+                        manifestFilter === tab.id
+                          ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
+                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
                       }`}
                     >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="font-bold text-white text-sm">{st.studentName}</div>
-                          <div className="text-xs text-slate-400">Class {st.class}-{st.section} • Roll #{st.rollNo}</div>
-                          <div className="text-[11px] text-amber-400 font-bold mt-1 flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-rose-400" /> {st.stopName}
+                      <span>{tab.label}</span>
+                      <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-mono font-black ${
+                        manifestFilter === tab.id ? 'bg-slate-950 text-amber-300' : 'bg-slate-900 text-slate-300'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Quick Board All Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const unboarded = filteredStudents.filter(st => (!boardedStatus[st.studentId] || boardedStatus[st.studentId] === 'Pending'));
+                    if (unboarded.length === 0) {
+                      showToast('सभी छात्र पहले से ही बोर्ड हो चुके हैं', 'info');
+                      return;
+                    }
+                    const nextStatus = { ...boardedStatus };
+                    unboarded.forEach(st => {
+                      nextStatus[st.studentId] = 'Boarded';
+                    });
+                    setBoardedStatus(nextStatus);
+                    if (isSoundEnabled) playDriverSound('board');
+                    showToast(`${unboarded.length} छात्रों को बोर्ड चिह्नित किया गया!`, 'success');
+                  }}
+                  className="px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  title="सभी शेष प्रतीक्षारत छात्रों को एक साथ चढ़ाएं"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  <span>सभी प्रतीक्षारत चढ़ाएं</span>
+                </button>
+              </div>
+
+              {/* Student Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredStudents
+                  .filter(st => {
+                    const status = boardedStatus[st.studentId] || 'Pending';
+                    if (manifestFilter === 'Waiting') return status === 'Pending';
+                    if (manifestFilter === 'Boarded') return status === 'Boarded';
+                    if (manifestFilter === 'Dropped') return status === 'Dropped';
+                    if (manifestFilter === 'Absent') return status === 'Absent';
+                    return true;
+                  })
+                  .map(st => {
+                    const status = boardedStatus[st.studentId] || 'Pending';
+                    const initials = st.studentName.split(' ').map(n => n[0]).join('').slice(0, 2);
+
+                    return (
+                      <div
+                        key={st.id}
+                        className={`p-3.5 rounded-2xl border transition-all ${
+                          status === 'Boarded'
+                            ? 'bg-emerald-950/30 border-emerald-500/50 shadow-md shadow-emerald-950/20'
+                            : status === 'Dropped'
+                            ? 'bg-blue-950/30 border-blue-500/50 shadow-md shadow-blue-950/20'
+                            : status === 'Absent'
+                            ? 'bg-rose-950/30 border-rose-500/50 opacity-80'
+                            : 'bg-slate-800/80 border-slate-700 hover:border-slate-600'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2.5">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                              status === 'Boarded'
+                                ? 'bg-emerald-500 text-slate-950'
+                                : status === 'Dropped'
+                                ? 'bg-blue-500 text-white'
+                                : status === 'Absent'
+                                ? 'bg-rose-500 text-white'
+                                : 'bg-slate-700 text-amber-400'
+                            }`}>
+                              {initials || 'ST'}
+                            </div>
+
+                            <div>
+                              <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                                <span className="truncate">{st.studentName}</span>
+                                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black uppercase ${
+                                  status === 'Boarded'
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                    : status === 'Dropped'
+                                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                    : status === 'Absent'
+                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                    : 'bg-slate-700 text-slate-300'
+                                }`}>
+                                  {status === 'Boarded' ? 'सवार' : status === 'Dropped' ? 'ड्रॉप' : status === 'Absent' ? 'अनुपस्थित' : 'बाकी'}
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-400">
+                                कक्षा {st.class}-{st.section} • रोल #{st.rollNo}
+                              </div>
+                              <div className="text-[11px] text-amber-400 font-bold mt-1 flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-rose-400 shrink-0" />
+                                <span className="truncate">{st.stopName}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick Parent Contact Actions */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <a
+                              href={`tel:${st.phone}`}
+                              className="p-1.5 bg-slate-700 hover:bg-slate-600 text-blue-400 rounded-xl transition"
+                              title={`अभिभावक को कॉल करें (${st.phone})`}
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                            <a
+                              href={`https://wa.me/91${st.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                `नमस्ते! मॉडल पब्लिक स्कूल ट्रांसपोर्ट अलर्ट: बस #${assignedRoute?.busNumber || '01'} वर्तमान में ${st.stopName} के समीप है। कृपया ${st.studentName} को तैयार रखें।`
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl transition"
+                              title="WhatsApp पर अभिभावक को सूचित करें"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </a>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1">
-                          <a
-                            href={`tel:${st.phone}`}
-                            className="p-1.5 bg-slate-700 hover:bg-slate-600 text-blue-400 rounded-lg transition"
-                            title="Call Parent"
+                        {/* Action buttons */}
+                        <div className="grid grid-cols-3 gap-1.5 mt-3 pt-2.5 border-t border-slate-700/60 text-xs font-bold">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleBoarding(st.studentId, 'Boarded')}
+                            className={`py-1.5 rounded-xl flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer ${
+                              status === 'Boarded'
+                                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                                : 'bg-slate-700/60 hover:bg-emerald-600 text-slate-300 hover:text-white'
+                            }`}
                           >
-                            <Phone className="w-3.5 h-3.5" />
-                          </a>
-                          <a
-                            href={`https://wa.me/91${st.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                              `Hello, Model Public School Transport Alert: Bus #01 is currently approaching ${st.stopName}. Please have ${st.studentName} ready.`
-                            )}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="p-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg transition"
-                            title="WhatsApp Parent Alert"
+                            <Check className="w-3 h-3" />
+                            <span>चढ़ा (Board)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleBoarding(st.studentId, 'Dropped')}
+                            className={`py-1.5 rounded-xl flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer ${
+                              status === 'Dropped'
+                                ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20'
+                                : 'bg-slate-700/60 hover:bg-blue-600 text-slate-300 hover:text-white'
+                            }`}
                           >
-                            <Send className="w-3.5 h-3.5" />
-                          </a>
+                            <CheckCircle className="w-3 h-3" />
+                            <span>उतरा (Drop)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleBoarding(st.studentId, 'Absent')}
+                            className={`py-1.5 rounded-xl flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer ${
+                              status === 'Absent'
+                                ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
+                                : 'bg-slate-700/60 hover:bg-rose-600 text-slate-300 hover:text-white'
+                            }`}
+                          >
+                            <X className="w-3 h-3" />
+                            <span>अनुपस्थित</span>
+                          </button>
                         </div>
                       </div>
-
-                      {/* Action buttons */}
-                      <div className="grid grid-cols-3 gap-1.5 mt-3 pt-2.5 border-t border-slate-700/60 text-xs">
-                        <button
-                          onClick={() => handleToggleBoarding(st.studentId, 'Boarded')}
-                          className={`py-1.5 rounded-xl font-bold flex items-center justify-center gap-1 transition cursor-pointer ${
-                            status === 'Boarded'
-                              ? 'bg-emerald-500 text-slate-950 shadow-md'
-                              : 'bg-slate-700/60 hover:bg-emerald-600 text-slate-300 hover:text-white'
-                          }`}
-                        >
-                          <Check className="w-3 h-3" /> Boarded
-                        </button>
-                        <button
-                          onClick={() => handleToggleBoarding(st.studentId, 'Dropped')}
-                          className={`py-1.5 rounded-xl font-bold flex items-center justify-center gap-1 transition cursor-pointer ${
-                            status === 'Dropped'
-                              ? 'bg-blue-500 text-white shadow-md'
-                              : 'bg-slate-700/60 hover:bg-blue-600 text-slate-300 hover:text-white'
-                          }`}
-                        >
-                          <CheckCircle className="w-3 h-3" /> Dropped
-                        </button>
-                        <button
-                          onClick={() => handleToggleBoarding(st.studentId, 'Absent')}
-                          className={`py-1.5 rounded-xl font-bold flex items-center justify-center gap-1 transition cursor-pointer ${
-                            status === 'Absent'
-                              ? 'bg-rose-500 text-white shadow-md'
-                              : 'bg-slate-700/60 hover:bg-rose-600 text-slate-300 hover:text-white'
-                          }`}
-                        >
-                          <X className="w-3 h-3" /> Absent
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -2465,10 +3189,10 @@ export const StaffDriverPortal: React.FC = () => {
               </div>
 
               <button
-                onClick={() => setShowAddStopModal(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+                onClick={() => openAddStopModal()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs transition active:scale-95 cursor-pointer shadow-lg"
               >
-                <Plus className="w-4 h-4" /> Add Route Stop
+                <Plus className="w-4 h-4" /> + नया स्टॉप जोड़ें (+ Add Route Stop)
               </button>
             </div>
 
@@ -2958,106 +3682,396 @@ export const StaffDriverPortal: React.FC = () => {
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* MODAL: ADD ROUTE STOP */}
+      {/* MODAL: ADD ROUTE STOP & ASSIGN STUDENTS */}
       {/* ------------------------------------------------------------- */}
       {showAddStopModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between text-white">
-              <h3 className="text-lg font-black flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-rose-400" />
-                Add New Route Stop
-              </h3>
-              <button onClick={() => setShowAddStopModal(false)} className="text-slate-400 hover:text-white">
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-3xl p-5 sm:p-7 max-w-4xl w-full shadow-2xl space-y-5 my-auto max-h-[92vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-600/20 text-rose-400 border border-rose-500/30 flex items-center justify-center font-black shadow-inner">
+                  <MapPin className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    <span>नया रूट स्टॉप जोड़ें व छात्र असाइन करें</span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono font-bold border border-rose-500/30">
+                      स्टॉप #{stopForm.stopNumber}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    रूट: <span className="text-white font-bold">{assignedRoute?.routeName || 'Main Route'}</span> • स्टॉप की जानकारी भरें और इस स्टॉप पर चढ़ने वाले छात्रों को चुनें
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowAddStopModal(false)}
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddStop} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-300 font-bold mb-1">Stop Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={stopForm.stopName}
-                  onChange={e => setStopForm({ ...stopForm, stopName: e.target.value })}
-                  placeholder="e.g. Purani Bazaar Chowk"
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold"
-                />
+            {/* Modal Form with Two Columns (Details on Left, Student Picker on Right) */}
+            <form onSubmit={handleAddStop} className="flex-1 overflow-y-auto space-y-5 pr-1 text-xs">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                {/* LEFT COLUMN: STOP BASIC INFO & GPS (5 Columns on Desktop) */}
+                <div className="lg:col-span-5 space-y-3.5 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                  <div className="flex items-center justify-between text-slate-300 font-bold border-b border-slate-800/80 pb-2">
+                    <span className="flex items-center gap-1.5 text-white">
+                      <Navigation className="w-3.5 h-3.5 text-rose-400" />
+                      <span>1. स्टॉप की जानकारी (Stop Details)</span>
+                    </span>
+                    <span className="text-[10px] text-amber-400 font-mono">क्रम #{stopForm.stopNumber}</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      स्टॉप का नाम (Stop Name) <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={stopForm.stopName}
+                      onChange={e => setStopForm({ ...stopForm, stopName: e.target.value })}
+                      placeholder="उदा. पुरानी बाजार चौक, सिकटा"
+                      className="w-full p-2.5 bg-slate-800 border border-slate-700 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl text-white font-bold text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      लैंडमार्क / पहचान (Landmark)
+                    </label>
+                    <input
+                      type="text"
+                      value={stopForm.landmark}
+                      onChange={e => setStopForm({ ...stopForm, landmark: e.target.value })}
+                      placeholder="उदा. शिव मंदिर के पास / पेट्रोल पंप"
+                      className="w-full p-2.5 bg-slate-800 border border-slate-700 focus:border-rose-500 rounded-xl text-white text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">
+                        सुबह पिकअप (Pickup) <span className="text-rose-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={stopForm.pickupTime}
+                        onChange={e => setStopForm({ ...stopForm, pickupTime: e.target.value })}
+                        placeholder="07:30 AM"
+                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">
+                        दोपहर ड्रॉप (Drop) <span className="text-rose-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={stopForm.dropTime}
+                        onChange={e => setStopForm({ ...stopForm, dropTime: e.target.value })}
+                        placeholder="02:45 PM"
+                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">क्रम संख्या (Seq #)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={stopForm.stopNumber}
+                        onChange={e => setStopForm({ ...stopForm, stopNumber: Number(e.target.value) })}
+                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono font-bold text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">मासिक किराया (Fee ₹)</label>
+                      <input
+                        type="number"
+                        value={stopForm.feeMonthly}
+                        onChange={e => setStopForm({ ...stopForm, feeMonthly: Number(e.target.value) })}
+                        className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* GPS Coordinates & Quick Presets */}
+                  <div className="space-y-2 pt-2 border-t border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-300 font-bold flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-amber-400" />
+                        <span>जीपीएस निर्देशांक (Coordinates)</span>
+                      </label>
+                      <span className="text-[10px] text-slate-500">Google Map Valid</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 font-mono">
+                      <div>
+                        <span className="text-[10px] text-slate-400">अक्षांश (Lat)</span>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={stopForm.latitude}
+                          onChange={e => setStopForm({ ...stopForm, latitude: Number(e.target.value) })}
+                          className="w-full p-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400">देशांतर (Lng)</span>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={stopForm.longitude}
+                          onChange={e => setStopForm({ ...stopForm, longitude: Number(e.target.value) })}
+                          className="w-full p-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Fast Quick Buttons to Auto-fill Coordinates */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStopForm(prev => ({
+                            ...prev,
+                            latitude: Number(currentCoords.lat.toFixed(6)),
+                            longitude: Number(currentCoords.lng.toFixed(6))
+                          }));
+                          showToast('📍 वर्तमान बस लोकेशन निर्देशांक सेट किए गए', 'info');
+                        }}
+                        className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center gap-1"
+                      >
+                        <LocateFixed className="w-2.5 h-2.5" />
+                        <span>वर्तमान बस GPS</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStopForm(prev => ({
+                            ...prev,
+                            latitude: 27.035265,
+                            longitude: 84.660400,
+                            stopName: prev.stopName || 'MPS Sikta Campus Gate'
+                          }));
+                          showToast('🏫 स्कूल गेट निर्देशांक सेट किए गए', 'info');
+                        }}
+                        className="px-2.5 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center gap-1"
+                      >
+                        <span>🏫 स्कूल गेट</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStopForm(prev => ({
+                            ...prev,
+                            latitude: 27.0249,
+                            longitude: 84.6812,
+                            stopName: prev.stopName || 'Sikta Railway Station'
+                          }));
+                          showToast('🚉 सिकटा रेलवे स्टेशन निर्देशांक सेट', 'info');
+                        }}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                      >
+                        🚉 सिकटा स्टेशन
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStopForm(prev => ({
+                            ...prev,
+                            latitude: 27.0268,
+                            longitude: 84.6818,
+                            stopName: prev.stopName || 'Sikta Main Bazaar'
+                          }));
+                          showToast('🏪 बाजार चौक निर्देशांक सेट', 'info');
+                        }}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                      >
+                        🏪 बाजार चौक
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN: INTERACTIVE STUDENT SELECTOR (7 Columns on Desktop) */}
+                <div className="lg:col-span-7 space-y-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                  <div>
+                    {/* Header of Student Selection */}
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-emerald-400" />
+                        <span className="font-bold text-white text-xs">
+                          2. इस स्टॉप के छात्र चुनें (Select Students for this Stop)
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[11px] border border-emerald-500/30">
+                        {selectedStudentIdsForStop.length} छात्र चुने गए
+                      </span>
+                    </div>
+
+                    {/* Search & Bulk Select / Clear Actions */}
+                    <div className="mt-3 flex flex-wrap items-center gap-2 justify-between">
+                      <div className="relative flex-1 min-w-[180px]">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          value={studentSearchInStopModal}
+                          onChange={e => setStudentSearchInStopModal(e.target.value)}
+                          placeholder="नाम, रोल # या क्लास खोजें..."
+                          className="w-full pl-8 pr-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const ids = filteredStudentsInModal.map(s => s.id);
+                            setSelectedStudentIdsForStop(prev => Array.from(new Set([...prev, ...ids])));
+                          }}
+                          className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-[11px] font-bold transition cursor-pointer"
+                        >
+                          सब चुनें ({filteredStudentsInModal.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStudentIdsForStop([])}
+                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 rounded-xl text-[11px] font-bold transition cursor-pointer"
+                        >
+                          साफ करें (Clear)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Class Filter Badges */}
+                    <div className="mt-2.5 flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-800">
+                      {['All', 'Nursery', 'LKG', 'UKG', 'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10'].map(cls => (
+                        <button
+                          key={cls}
+                          type="button"
+                          onClick={() => setFilterClassInStopModal(cls)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition cursor-pointer ${
+                            filterClassInStopModal === cls
+                              ? 'bg-emerald-600 text-white shadow'
+                              : 'bg-slate-800/80 text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {cls}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Scrollable Student Picker Cards List */}
+                    <div className="mt-3 space-y-1.5 max-h-[260px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700">
+                      {filteredStudentsInModal.length === 0 ? (
+                        <div className="text-center py-8 text-slate-500 text-xs">
+                          कोई छात्र नहीं मिला (No students matched search)
+                        </div>
+                      ) : (
+                        filteredStudentsInModal.map(st => {
+                          const isSelected = selectedStudentIdsForStop.includes(st.id);
+                          const existingAssigned = students.find(s => s.studentId === st.id);
+
+                          return (
+                            <div
+                              key={st.id}
+                              onClick={() => toggleStudentSelectionForStop(st.id)}
+                              className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 select-none ${
+                                isSelected
+                                  ? 'bg-emerald-950/40 border-emerald-500/80 shadow-md ring-1 ring-emerald-500/30'
+                                  : 'bg-slate-800/60 border-slate-700/60 hover:border-slate-600 hover:bg-slate-800'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className={`w-5 h-5 rounded-lg flex items-center justify-center font-black text-xs transition ${
+                                  isSelected ? 'bg-emerald-500 text-slate-950' : 'border border-slate-600 bg-slate-900'
+                                }`}>
+                                  {isSelected ? '✓' : ''}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-bold text-white text-xs truncate flex items-center gap-1.5">
+                                    <span>{st.name}</span>
+                                    {st.rollNo && (
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-900 text-slate-400 font-mono">
+                                        Roll #{st.rollNo}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 flex items-center gap-2 truncate mt-0.5">
+                                    <span>{st.class} {st.section ? `(${st.section})` : ''}</span>
+                                    {st.phone && <span>• 📞 {st.phone}</span>}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 text-right">
+                                {existingAssigned ? (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold">
+                                    वर्तमान: {existingAssigned.stopName || 'अन्य स्टॉप'}
+                                  </span>
+                                ) : (
+                                  <span className={`text-[10px] font-bold ${isSelected ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                    {isSelected ? 'चयनित (Selected)' : '+ जोड़ें'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Summary Bar inside Right Column */}
+                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>कुल उपलब्ध छात्र: {availableStudentsForModal.length}</span>
+                    <span className="text-emerald-400 font-bold">
+                      {selectedStudentIdsForStop.length} छात्र इस स्टॉप पर चढ़ेंगे
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">Pickup Time *</label>
-                  <input
-                    type="text"
-                    required
-                    value={stopForm.pickupTime}
-                    onChange={e => setStopForm({ ...stopForm, pickupTime: e.target.value })}
-                    placeholder="07:30 AM"
-                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">Drop Time *</label>
-                  <input
-                    type="text"
-                    required
-                    value={stopForm.dropTime}
-                    onChange={e => setStopForm({ ...stopForm, dropTime: e.target.value })}
-                    placeholder="02:30 PM"
-                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-bold mb-1">Landmark</label>
-                <input
-                  type="text"
-                  value={stopForm.landmark}
-                  onChange={e => setStopForm({ ...stopForm, landmark: e.target.value })}
-                  placeholder="e.g. Near Shiv Mandir"
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">Latitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={stopForm.latitude}
-                    onChange={e => setStopForm({ ...stopForm, latitude: Number(e.target.value) })}
-                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">Longitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={stopForm.longitude}
-                    onChange={e => setStopForm({ ...stopForm, longitude: Number(e.target.value) })}
-                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
+              {/* Modal Footer Controls */}
+              <div className="flex items-center justify-between pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddStopModal(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white"
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition cursor-pointer text-xs"
                 >
-                  Cancel
+                  रद्द करें (Cancel)
                 </button>
+
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg"
+                  disabled={isSubmittingStop || !stopForm.stopName.trim()}
+                  className="px-6 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-black rounded-xl shadow-xl transition active:scale-95 flex items-center gap-2 cursor-pointer text-xs"
                 >
-                  Save Stop
+                  {isSubmittingStop ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>स्टॉप जोड़ा जा रहा है...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>✓ स्टॉप सेव करें व {selectedStudentIdsForStop.length} छात्र असाइन करें</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -3152,6 +4166,59 @@ export const StaffDriverPortal: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Sticky Mobile Driver Bottom Quick Dock */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/90 px-3 py-2 sm:hidden flex items-center justify-around shadow-2xl">
+        <button
+          onClick={() => {
+            if (!isTripActive) startTrip();
+            else finishTrip();
+          }}
+          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition shadow-lg active:scale-95 cursor-pointer ${
+            isTripActive
+              ? 'bg-rose-600 text-white animate-pulse'
+              : 'bg-emerald-600 text-white'
+          }`}
+        >
+          {isTripActive ? <Square className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+          <span>{isTripActive ? 'यात्रा समाप्त' : 'यात्रा शुरू'}</span>
+        </button>
+
+        <button
+          onClick={() => openAddStopModal()}
+          className="px-2.5 py-2 bg-rose-600/30 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-black flex items-center gap-1 active:scale-95 cursor-pointer"
+          title="नया स्टॉप जोड़ें"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>+ स्टॉप</span>
+        </button>
+
+        <button
+          onClick={() => handleArriveAtNextStop()}
+          className="px-3 py-2 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-black flex items-center gap-1.5 active:scale-95 cursor-pointer"
+        >
+          <CheckCircle className="w-3.5 h-3.5" />
+          <span>अगला स्टॉप</span>
+        </button>
+
+        <button
+          onClick={() => openGoogleMapsNavigation()}
+          className="p-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold active:scale-95 transition cursor-pointer"
+          title="Google Maps"
+        >
+          <Navigation className="w-4 h-4 text-amber-300" />
+        </button>
+
+        <button
+          onClick={() => {
+            if (isSoundEnabled) playDriverSound('alert');
+            setShowSosModal(true);
+          }}
+          className="p-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold active:scale-95 animate-pulse transition cursor-pointer"
+          title="SOS Panic"
+        >
+          <AlertTriangle className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 };

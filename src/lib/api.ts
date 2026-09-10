@@ -2333,8 +2333,8 @@ export const api = {
         pickupTime: '08:05 AM',
         dropTime: '03:30 PM',
         landmark: 'AT- Bhawanipur, P.O.- Kursi Barwa, Sikta Main Depot',
-        latitude: 27.0180,
-        longitude: 84.6725,
+        latitude: 27.035265,
+        longitude: 84.660400,
         assignedStudentIds: [],
         studentCount: 0,
         feeMonthly: 0
@@ -2347,7 +2347,7 @@ export const api = {
       () => {
         let saved = getLocalData<TransportStop[]>('transport_stops', SIKTA_DEFAULT_STOPS);
         // Ensure valid stops with real school coords
-        if (!saved || saved.length === 0 || !saved.some(s => s.latitude === 27.0180)) {
+        if (!saved || saved.length === 0 || !saved.some(s => s.latitude === 27.035265)) {
           saved = SIKTA_DEFAULT_STOPS;
           setLocalData('transport_stops', SIKTA_DEFAULT_STOPS);
         }

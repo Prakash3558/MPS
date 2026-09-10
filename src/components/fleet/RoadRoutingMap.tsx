@@ -246,7 +246,7 @@ export const RoadRoutingMap: React.FC<RoadRoutingMapProps> = ({
           properties: {},
           geometry: {
             type: 'LineString',
-            coordinates: [[84.6812, 27.0250], [84.5936, 27.0248]]
+            coordinates: [[84.6812, 27.0250], [84.6604, 27.0353]]
           }
         }
       });
@@ -601,7 +601,7 @@ export const RoadRoutingMap: React.FC<RoadRoutingMapProps> = ({
             <span className="text-base">🏫</span>
             <div>
               <div className="font-bold text-white text-[11px]">{MODEL_PUBLIC_SCHOOL_HUB.name} Destination Hub</div>
-              <div className="text-[10px] text-slate-400">Bhawanipur, West Champaran (27.0248° N, 84.5936° E)</div>
+              <div className="text-[10px] text-slate-400">Bhawanipur, West Champaran (27.0353° N, 84.6604° E)</div>
             </div>
           </div>
         </div>

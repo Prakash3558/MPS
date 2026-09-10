@@ -87,10 +87,10 @@ export const ThreeDGlobeCanvas: React.FC = React.memo(() => {
     orbitRing2.rotation.y = Math.PI / 3;
     globeGroup.add(orbitRing2);
 
-    // 4. Pin Point Marker for MPS Sikta (Lat: 26.85° N, Long: 84.55° E approx for West Champaran, Bihar)
+    // 4. Pin Point Marker for MPS Sikta (Lat: 27.035265° N, Long: 84.660400° E in Bhawanipur, Sikta, West Champaran)
     // Convert Lat/Long to 3D Cartesian Coordinates
-    const lat = 26.85;
-    const lon = 84.55;
+    const lat = 27.035265;
+    const lon = 84.660400;
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lon + 180) * (Math.PI / 180);
     const radius = 2.56;
@@ -255,13 +255,18 @@ export const ThreeDGlobeCanvas: React.FC = React.memo(() => {
             <MapPin className="w-4 h-4" />
           </div>
           <div>
-            <div className="font-extrabold text-white text-xs">Model Public School (MPS Sikta)</div>
+            <div className="font-extrabold text-white text-xs flex items-center gap-2">
+              <span>Model Public School (MPS Sikta)</span>
+              <span className="text-[10px] font-mono text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 font-bold">
+                27.0353° N, 84.6604° E
+              </span>
+            </div>
             <div className="text-[11px] text-slate-400">AT- Bhawanipur, P.O.- Kursi Barwa, Sikta, West Champaran, Bihar</div>
           </div>
         </div>
 
         <a
-          href="https://maps.google.com/?q=Model+Public+School+Bhawanipur+Sikta+West+Champaran+Bihar"
+          href="https://maps.app.goo.gl/wjptsD9GwK8ucjie7"
           target="_blank"
           rel="noopener noreferrer"
           className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md whitespace-nowrap"

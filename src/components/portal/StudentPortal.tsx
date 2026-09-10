@@ -1962,7 +1962,7 @@ export const StudentPortal: React.FC = () => {
 
                   <div className="pt-2 flex flex-wrap items-center gap-3">
                     <a
-                      href="https://www.google.com/maps/dir/?api=1&destination=27.0180,84.6725"
+                      href="https://maps.app.goo.gl/wjptsD9GwK8ucjie7"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all hover:scale-[1.02]"
@@ -1971,7 +1971,7 @@ export const StudentPortal: React.FC = () => {
                       <span>🗺️ Get Directions on Google Maps</span>
                     </a>
                     <span className="text-[11px] text-slate-400 font-mono">
-                      📍 GPS: 27.0180° N, 84.6725° E
+                      📍 GPS: 27.0353° N, 84.6604° E (27.035265, 84.660400)
                     </span>
                   </div>
                 </div>
@@ -1979,7 +1979,7 @@ export const StudentPortal: React.FC = () => {
                 {/* Campus Location Map View */}
                 <div className="h-56 lg:h-auto rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 relative">
                   <iframe
-                    src="https://maps.google.com/maps?q=27.0180,84.6725+(Model+Public+School+Bhawanipur+Kursi+Barwa+Sikta)&t=m&z=16&output=embed"
+                    src="https://maps.google.com/maps?q=27.035265,84.660400+(Model+Public+School+Bhawanipur+Kursi+Barwa+Sikta)&t=m&z=16&output=embed"
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}

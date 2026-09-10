@@ -125,11 +125,11 @@ export interface SupabaseFleetIncident {
 // ---------------------------------------------------------------------------
 export const MODEL_PUBLIC_SCHOOL_HUB = {
   name: 'Model Public School',
-  address: 'Bhawanipur, West Champaran, Bihar 845307',
-  latitude: 27.0248,
-  longitude: 84.5936,
-  coords: [27.0248, 84.5936] as [number, number],
-  mapboxCoords: [84.5936, 27.0248] as [number, number]
+  address: 'AT- Bhawanipur, P.O.- Kursi Barwa, Sikta, West Champaran, Bihar 845307',
+  latitude: 27.035265,
+  longitude: 84.660400,
+  coords: [27.035265, 84.660400] as [number, number],
+  mapboxCoords: [84.660400, 27.035265] as [number, number]
 };
 
 // ---------------------------------------------------------------------------
@@ -187,8 +187,8 @@ export const DEFAULT_ROUTES: SupabaseRoute[] = [
       [27.0320, 84.6880],
       [27.0345, 84.6915],
       [27.0380, 84.6950],
-      [27.0310, 84.6420],
-      [27.0248, 84.5936]
+      [27.0310, 84.6650],
+      [27.035265, 84.660400]
     ],
     status: 'Active'
   },
@@ -202,10 +202,10 @@ export const DEFAULT_ROUTES: SupabaseRoute[] = [
     end_location: 'Model Public School, Bhawanipur',
     polyline_coords: [
       [27.0120, 84.6650],
-      [27.0180, 84.6710],
+      [27.0190, 84.6710],
       [27.0250, 84.6812],
-      [27.0280, 84.6350],
-      [27.0248, 84.5936]
+      [27.0310, 84.6650],
+      [27.035265, 84.660400]
     ],
     status: 'Active'
   }
@@ -275,9 +275,9 @@ export const DEFAULT_STOPS: SupabaseStop[] = [
     stop_order: 5,
     scheduled_pickup_time: '07:55 AM',
     scheduled_drop_time: '02:30 PM',
-    latitude: 27.0248,
-    longitude: 84.5936,
-    landmark: 'Bhawanipur, West Champaran - School Gate',
+    latitude: 27.035265,
+    longitude: 84.660400,
+    landmark: 'AT- Bhawanipur, P.O.- Kursi Barwa, Sikta - Main Campus Gate',
     radius_meters: 100,
     fee_monthly: 0,
     student_count: 29
@@ -893,7 +893,7 @@ class SupabaseFleetService {
       driver_phone: '+91 97712 34567',
       route_id: 'route-02',
       route_name: 'Route 2: Balthar - Inarwa Bypass',
-      latitude: 27.0180,
+      latitude: 27.0190,
       longitude: 84.6710,
       speed: 34.0,
       heading: 42,
