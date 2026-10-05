@@ -1628,14 +1628,9 @@ export const TeacherWorkspace: React.FC = () => {
             ✓ Target Protection Active
           </span>
         </div>
-        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-500" /> Teacher Workspace Tools Grid
-            </h2>
-            <span className="text-[11px] text-slate-500 font-bold">18 Editable Features</span>
-          </div>
 
+        {/* 20 Tools Navigation Bar */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-2.5">
             {TOOLS_LIST.map(tool => {
               const IconComp = tool.icon;
@@ -1644,10 +1639,10 @@ export const TeacherWorkspace: React.FC = () => {
                 <button
                   key={tool.id}
                   onClick={() => handleSwitchTab(tool.id)}
-                  className={`p-2.5 sm:p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[84px] sm:min-h-[92px] relative cursor-pointer ${
+                  className={`p-3 sm:p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[88px] sm:min-h-[96px] relative cursor-pointer ${
                     isActive
                       ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                      : 'bg-stone-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 hover:bg-amber-500/5 text-slate-700 dark:text-slate-200'
+                      : 'bg-stone-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 hover:bg-amber-500/5 text-slate-700 dark:text-slate-200 hover:shadow-sm'
                   }`}
                 >
                   {tool.alert && (
@@ -1655,8 +1650,8 @@ export const TeacherWorkspace: React.FC = () => {
                   )}
                   <IconComp className={`w-5 h-5 sm:w-6 sm:h-6 ${isActive ? 'text-slate-950' : tool.color}`} />
                   <div>
-                    <span className="block leading-tight text-[11px] sm:text-xs">{tool.title}</span>
-                    <span className={`text-[9px] sm:text-[10px] font-normal block ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
+                    <span className="block leading-tight text-[11px] sm:text-xs font-black">{tool.title}</span>
+                    <span className={`text-[9px] sm:text-[10px] font-semibold block mt-0.5 ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
                       {tool.subtitle}
                     </span>
                   </div>
@@ -2691,10 +2686,13 @@ export const TeacherWorkspace: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {students
-                    .filter(st =>
-                      st.name.toLowerCase().includes(marksheetSearch.toLowerCase()) ||
-                      st.rollNo.toLowerCase().includes(marksheetSearch.toLowerCase())
-                    )
+                    .filter(st => {
+                      if (!st) return false;
+                      const q = (marksheetSearch || '').toLowerCase();
+                      const sName = (st.name || '').toLowerCase();
+                      const sRoll = (st.rollNo || '').toLowerCase();
+                      return sName.includes(q) || sRoll.includes(q);
+                    })
                     .map(st => (
                       <div
                         key={st.id}
@@ -3213,12 +3211,18 @@ export const TeacherWorkspace: React.FC = () => {
 
         {/* Tool: Class Students Management */}
         {activeTab === 'students' && (() => {
-          const filteredList = students.filter(s =>
-            s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-            s.rollNo.toLowerCase().includes(studentSearch.toLowerCase()) ||
-            (s.parentName && s.parentName.toLowerCase().includes(studentSearch.toLowerCase())) ||
-            (s.phone && s.phone.includes(studentSearch))
-          );
+          const q = (studentSearch || '').toLowerCase();
+          const filteredList = students.filter(s => {
+            if (!s) return false;
+            const sName = (s.name || '').toLowerCase();
+            const sRoll = (s.rollNo || '').toLowerCase();
+            const sParent = (s.parentName || '').toLowerCase();
+            const sPhone = (s.phone || '');
+            return sName.includes(q) ||
+              sRoll.includes(q) ||
+              sParent.includes(q) ||
+              sPhone.includes(studentSearch || '');
+          });
 
           const feeClearedCount = students.filter(s => !s.feeInfo || (s.feeInfo.pending || 0) <= 0).length;
           const totalDuesSum = students.reduce((acc, curr) => acc + (curr.feeInfo?.pending || 0), 0);

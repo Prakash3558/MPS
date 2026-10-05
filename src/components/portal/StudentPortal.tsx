@@ -7,7 +7,7 @@ import { CountryPhoneInput, detectUserCountryCode, fetchUserCountryCodeFromIP } 
 import {
   Student, Homework, AttendanceRecord, ExamResult, Notice,
   OnlineClass, OnlineExam, TimeTableSlot, StudyMaterial, SchoolDiaryEntry,
-  SyllabusItem, TransportRoute, AdmitCard, StudentDeclaration, SchoolMessage, RecordUpdateReq, ParentComplaint,
+  SyllabusItem, TransportRoute, TransportStop, TransportStudentRosterItem, AdmitCard, StudentDeclaration, SchoolMessage, RecordUpdateReq, ParentComplaint,
   VehicleLiveLocation
 } from '../../types';
 import { StudentIDCard } from '../common/StudentIDCard';
@@ -16,12 +16,12 @@ import { AcademicProgressAnalytics } from './AcademicProgressAnalytics';
 import { downloadElementAsPDF } from '../../lib/pdf';
 import { OfficialFeeReceipt } from '../common/OfficialFeeReceipt';
 import { sortFeeMonths, getNormalizedStudentFeeMonths } from '../../lib/feeUtils';
-import { ParentFleetTracker } from '../fleet/ParentFleetTracker';
+import { StudentAppointedTransport } from './StudentAppointedTransport';
 import {
   GraduationCap, LogOut, Calendar, BookOpen, FileText, IndianRupee, Bell, AlertTriangle, AlertCircle,
   CheckCircle2, XCircle, Clock, Award, ShieldCheck, Download, UserCheck, Key, User, TrendingUp, Printer, Check,
   Video, FileQuestion, BookMarked, Notebook, FileCode, Bus, CreditCard, FileCheck, MessageSquare, Edit3, ExternalLink, Home, Send,
-  ShieldAlert, LifeBuoy, PhoneCall, HelpCircle, Compass, MapPin, Navigation, Sparkles, Zap
+  ShieldAlert, LifeBuoy, PhoneCall, HelpCircle, Compass, MapPin, Navigation, Sparkles, Search, Filter, ChevronRight
 } from 'lucide-react';
 
 export const StudentPortal: React.FC = () => {
@@ -53,7 +53,6 @@ export const StudentPortal: React.FC = () => {
     phone: '',
     password: ''
   });
-  const [studentLoginMode, setStudentLoginMode] = useState<'quick' | 'full'>('quick');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
 
@@ -117,6 +116,8 @@ export const StudentPortal: React.FC = () => {
   const [schoolDiary, setSchoolDiary] = useState<SchoolDiaryEntry[]>([]);
   const [syllabus, setSyllabus] = useState<SyllabusItem[]>([]);
   const [transportRoutes, setTransportRoutes] = useState<TransportRoute[]>([]);
+  const [transportStops, setTransportStops] = useState<TransportStop[]>([]);
+  const [transportRoster, setTransportRoster] = useState<TransportStudentRosterItem[]>([]);
   const [liveLocations, setLiveLocations] = useState<VehicleLiveLocation[]>([]);
   const [admitCards, setAdmitCards] = useState<AdmitCard[]>([]);
   const [declarations, setDeclarations] = useState<StudentDeclaration[]>([]);
@@ -156,7 +157,8 @@ export const StudentPortal: React.FC = () => {
 
       const [
         hw, att, exams, nots,
-        oc, oe, tt, sm, sd, syl, tr, ac, dec, msgs, reqs, cmps, liveLocs
+        oc, oe, tt, sm, sd, syl, tr, ac, dec, msgs, reqs, cmps, liveLocs,
+        stopsData, rosterData
       ] = await Promise.all([
         api.getHomework(st.class, st.section),
         api.getAttendance(st.id),
@@ -174,7 +176,9 @@ export const StudentPortal: React.FC = () => {
         api.getSchoolMessages(st.id, st.class, st.section),
         api.getRecordUpdates(st.id),
         api.getComplaints(st.class, st.section),
-        api.getLiveLocations()
+        api.getLiveLocations(),
+        api.getTransportStops(),
+        api.getTransportStudents()
       ]);
 
       const cleanStr = (v?: string) => String(v || '').replace(/^class/i, '').trim().toLowerCase();
@@ -196,6 +200,8 @@ export const StudentPortal: React.FC = () => {
       setSchoolDiary(sd.filter(d => matchClassSec(d.class, d.section)));
       setSyllabus(syl.filter(s => matchClassSec(s.class, s.section)));
       setTransportRoutes(tr);
+      setTransportStops(stopsData || []);
+      setTransportRoster(rosterData || []);
       setLiveLocations(liveLocs || []);
       setAdmitCards(ac);
       setDeclarations(dec);
@@ -263,38 +269,29 @@ export const StudentPortal: React.FC = () => {
     e.preventDefault();
     setLoginError('');
 
+    const cleanName = loginForm.studentName.trim();
+    const cleanClass = loginForm.className.trim();
+    const cleanSection = loginForm.section.trim();
     const cleanRoll = loginForm.rollNo.trim();
+    const cleanDigits = loginForm.phone.replace(/\D/g, '');
     const cleanPassword = loginForm.password.trim();
 
-    if (studentLoginMode === 'quick') {
-      if (!cleanRoll || !cleanPassword) {
-        setLoginError('Both Roll Number (or Admission No) and Password are required to sign in.');
-        return;
-      }
-    } else {
-      const cleanName = loginForm.studentName.trim();
-      const cleanClass = loginForm.className.trim();
-      const cleanSection = loginForm.section.trim();
-      const cleanDigits = loginForm.phone.replace(/\D/g, '');
-
-      if (!cleanName || !cleanClass || !cleanSection || !cleanRoll || !cleanDigits || !cleanPassword) {
-        setLoginError('All student details (Student Name, Class, Section, Roll Number, Phone Number, and Password) are strictly required for full verification.');
-        return;
-      }
+    if (!cleanName || !cleanClass || !cleanSection || !cleanRoll || !cleanDigits || !cleanPassword) {
+      setLoginError('All student details (Student Name, Class, Section, Roll Number, Phone Number, and Password) are strictly required for student portal sign-in.');
+      return;
     }
 
     setLoginLoading(true);
     try {
-      const cleanDigits = loginForm.phone.replace(/\D/g, '');
       const fullPhone = cleanDigits ? `${selectedCountryCode}${cleanDigits}` : undefined;
 
       const res = await api.login({
         role: 'student',
         username: cleanRoll,
         rollNo: cleanRoll,
-        studentName: studentLoginMode === 'full' ? loginForm.studentName.trim() : undefined,
-        className: studentLoginMode === 'full' ? loginForm.className.trim() : undefined,
-        section: studentLoginMode === 'full' ? loginForm.section.trim() : undefined,
+        studentName: cleanName,
+        className: cleanClass,
+        section: cleanSection,
         phone: fullPhone,
         password: cleanPassword,
         captchaToken: captchaToken || undefined
@@ -595,34 +592,6 @@ export const StudentPortal: React.FC = () => {
           </div>
 
           <div className="bg-slate-900 p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-800 space-y-4">
-            {/* Mode Switcher */}
-            <div className="grid grid-cols-2 p-1 bg-slate-800 rounded-2xl gap-1">
-              <button
-                type="button"
-                onClick={() => { setStudentLoginMode('quick'); setLoginError(''); }}
-                className={`py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                  studentLoginMode === 'quick'
-                    ? 'bg-amber-500 text-slate-950 shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Zap className="w-3.5 h-3.5" />
-                <span>Quick Sign-In</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setStudentLoginMode('full'); setLoginError(''); }}
-                className={`py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                  studentLoginMode === 'full'
-                    ? 'bg-amber-500 text-slate-950 shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Full Verification</span>
-              </button>
-            </div>
-
             {loginError && (
               <div className="p-3 bg-rose-950/80 text-rose-300 text-xs rounded-xl border border-rose-800 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-400" />
@@ -631,142 +600,102 @@ export const StudentPortal: React.FC = () => {
             )}
 
             <form onSubmit={handleStudentLogin} className="space-y-3.5 text-xs font-medium">
-              {studentLoginMode === 'quick' ? (
-                <>
-                  <div>
-                    <label className="block text-slate-300 font-bold mb-1">
-                      Roll Number or Admission ID
-                    </label>
-                    <div className="relative">
-                      <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                      <input
-                        type="text"
-                        required
-                        value={loginForm.rollNo}
-                        onChange={e => setLoginForm({ ...loginForm, rollNo: e.target.value })}
-                        placeholder="e.g. 1001, 1002, 1003"
-                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold"
-                      />
-                    </div>
-                  </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">
+                  1. Student Full Name
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    required
+                    value={loginForm.studentName}
+                    onChange={e => setLoginForm({ ...loginForm, studentName: e.target.value })}
+                    placeholder="Enter student full name"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                  />
+                </div>
+              </div>
 
-                  <div>
-                    <label className="block text-slate-300 font-bold mb-1">
-                      Student Password
-                    </label>
-                    <div className="relative">
-                      <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                      <input
-                        type="password"
-                        required
-                        value={loginForm.password}
-                        onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
-                        placeholder="Enter password (default: 123)"
-                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-slate-300 font-bold mb-1">
-                      1. Student Full Name
-                    </label>
-                    <div className="relative">
-                      <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                      <input
-                        type="text"
-                        required
-                        value={loginForm.studentName}
-                        onChange={e => setLoginForm({ ...loginForm, studentName: e.target.value })}
-                        placeholder="Enter student full name"
-                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                      />
-                    </div>
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">
+                    2. Class
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={loginForm.className}
+                    onChange={e => setLoginForm({ ...loginForm, className: e.target.value })}
+                    placeholder="e.g. 10"
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                  />
+                </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">
-                        2. Class
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={loginForm.className}
-                        onChange={e => setLoginForm({ ...loginForm, className: e.target.value })}
-                        placeholder="e.g. 10"
-                        className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                      />
-                    </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">
+                    3. Section
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={loginForm.section}
+                    onChange={e => setLoginForm({ ...loginForm, section: e.target.value })}
+                    placeholder="e.g. A"
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                  />
+                </div>
+              </div>
 
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">
-                        3. Section
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={loginForm.section}
-                        onChange={e => setLoginForm({ ...loginForm, section: e.target.value })}
-                        placeholder="e.g. A"
-                        className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                      />
-                    </div>
-                  </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">
+                    4. Roll Number
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={loginForm.rollNo}
+                    onChange={e => setLoginForm({ ...loginForm, rollNo: e.target.value })}
+                    placeholder="e.g. 1001"
+                    className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                  />
+                </div>
 
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">
-                        4. Roll Number
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={loginForm.rollNo}
-                        onChange={e => setLoginForm({ ...loginForm, rollNo: e.target.value })}
-                        placeholder="e.g. 1001"
-                        className="w-full p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                      />
-                    </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">
+                    5. Mobile Number (Country Code + Number)
+                  </label>
+                  <CountryPhoneInput
+                    value={loginForm.phone}
+                    selectedCountryCode={selectedCountryCode}
+                    onCountryCodeChange={setSelectedCountryCode}
+                    onChange={(val, code) => {
+                      setLoginForm({ ...loginForm, phone: val });
+                      setSelectedCountryCode(code);
+                    }}
+                    required
+                    placeholder="Enter mobile number"
+                  />
+                </div>
+              </div>
 
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">
-                        5. Mobile Number (Country Code + Number)
-                      </label>
-                      <CountryPhoneInput
-                        value={loginForm.phone}
-                        selectedCountryCode={selectedCountryCode}
-                        onCountryCodeChange={setSelectedCountryCode}
-                        onChange={(val, code) => {
-                          setLoginForm({ ...loginForm, phone: val });
-                          setSelectedCountryCode(code);
-                        }}
-                        required
-                        placeholder="Enter mobile number"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 font-bold mb-1">
-                      Unique Password
-                    </label>
-                    <div className="relative">
-                      <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                      <input
-                        type="password"
-                        required
-                        value={loginForm.password}
-                        onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
-                        placeholder="Enter password"
-                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">
+                  Unique Password
+                </label>
+                <div className="relative">
+                  <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    required
+                    value={loginForm.password}
+                    onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
+                    placeholder="Enter password"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-normal"
+                  />
+                </div>
+              </div>
 
               {captchaRequired && (
                 <CaptchaWidget
@@ -895,339 +824,61 @@ export const StudentPortal: React.FC = () => {
           </div>
         )}
 
-        {/* All Portal Features Grid (Big Full-Sized Buttons - Daily Useful Tools First!) */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-500" /> Student & Parent Portal Workspace Tools
-            </h2>
-            <span className="text-[11px] text-slate-500 font-bold">19 Full Features</span>
-          </div>
+        {/* Tab Navigation Grid */}
+        {(() => {
+          const TABS: { id: TabType; title: string; icon: any; color: string; badge: string; badgeAlert?: boolean }[] = [
+            { id: 'profile', title: 'Student Profile', icon: User, color: 'text-purple-500', badge: 'Dossier' },
+            { id: 'homework', title: 'Homework', icon: BookOpen, color: 'text-blue-500', badge: `${homeworkList.length} Tasks` },
+            { id: 'attendance', title: 'Attendance', icon: Calendar, color: 'text-emerald-500', badge: `${attendancePercentage}%` },
+            { id: 'fees', title: 'Fee Details', icon: IndianRupee, color: 'text-teal-500', badge: student.feeInfo.pending > 0 ? '(!) UNPAID' : 'All Paid', badgeAlert: student.feeInfo.pending > 0 },
+            { id: 'transport', title: 'School Bus', icon: Bus, color: 'text-amber-500', badge: student.transportRoute ? 'Assigned' : 'Bus' },
+            { id: 'messages', title: 'Messages', icon: MessageSquare, color: 'text-sky-500', badge: `${schoolMessages.length} Alerts` },
+            { id: 'reportcard', title: 'Marksheets', icon: Award, color: 'text-amber-600', badge: 'Exam Results' },
+            { id: 'timetable', title: 'Time Table', icon: Clock, color: 'text-teal-500', badge: 'Routine' },
+            { id: 'online-classes', title: 'Online Classes', icon: Video, color: 'text-indigo-500', badge: `${onlineClasses.length} Classes` },
+            { id: 'online-exams', title: 'Online Exams', icon: FileQuestion, color: 'text-purple-500', badge: `${onlineExams.length} Tests` },
+            { id: 'study-material', title: 'Study Material', icon: BookMarked, color: 'text-emerald-500', badge: `${studyMaterials.length} Files` },
+            { id: 'school-diary', title: 'School Diary', icon: Notebook, color: 'text-amber-500', badge: 'Teacher Notes' },
+            { id: 'syllabus', title: 'Course Syllabus', icon: FileCode, color: 'text-teal-500', badge: 'Curriculum' },
+            { id: 'admit-card', title: 'Admit Card', icon: CreditCard, color: 'text-rose-500', badge: 'Exam Pass' },
+            { id: 'declarations', title: 'Declarations', icon: FileCheck, color: 'text-indigo-500', badge: 'Safety Rules' },
+            { id: 'record-updates', title: 'Correction & Grievance', icon: Edit3, color: 'text-orange-500', badge: 'Help & Edits' },
+            { id: 'idcard', title: 'Digital ID Card', icon: ShieldCheck, color: 'text-emerald-500', badge: 'Student ID' },
+            { id: 'trends', title: 'Progress Trends', icon: TrendingUp, color: 'text-amber-500', badge: 'Analytics' }
+          ];
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 text-xs font-bold">
-            {/* 0. Student Profile */}
-            <button
-              onClick={() => handleSwitchTab('profile')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'profile'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <User className={`w-5 h-5 ${activeTab === 'profile' ? 'text-slate-950' : 'text-purple-500'}`} />
-              <span className="font-extrabold leading-tight">Student Profile</span>
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                activeTab === 'profile' ? 'bg-slate-900/20 text-slate-950' : 'bg-purple-100 text-purple-800 dark:bg-purple-900/80 dark:text-purple-200'
-              }`}>
-                Dossier & Bio
-              </span>
-            </button>
-
-            {/* 1. Homework */}
-            <button
-              onClick={() => handleSwitchTab('homework')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'homework'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <BookOpen className={`w-5 h-5 ${activeTab === 'homework' ? 'text-slate-950' : 'text-blue-500'}`} />
-              <span className="font-extrabold leading-tight">Homework</span>
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                activeTab === 'homework' ? 'bg-slate-900/20 text-slate-950' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/80 dark:text-blue-200'
-              }`}>
-                {homeworkList.length} Tasks
-              </span>
-            </button>
-
-            {/* 2. Attendance */}
-            <button
-              onClick={() => handleSwitchTab('attendance')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'attendance'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <Calendar className={`w-5 h-5 ${activeTab === 'attendance' ? 'text-slate-950' : 'text-emerald-500'}`} />
-              <span className="font-extrabold leading-tight">Attendance</span>
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                activeTab === 'attendance' ? 'bg-slate-900/20 text-slate-950' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200'
-              }`}>
-                {attendancePercentage}% Record
-              </span>
-            </button>
-
-            {/* 3. Fee */}
-            <button
-              onClick={() => handleSwitchTab('fees')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'fees'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <IndianRupee className={`w-5 h-5 ${activeTab === 'fees' ? 'text-slate-950' : 'text-teal-600 dark:text-teal-400'}`} />
-              <span className="font-extrabold leading-tight">Fee</span>
-              {student.feeInfo.pending > 0 || student.feeInfo.months?.some(m => m.status === 'Pending') ? (
-                <span className="inline-flex items-center gap-1 text-[10px] bg-rose-600 text-white font-black px-2 py-0.5 rounded-full shadow-xs animate-pulse">
-                  <AlertCircle className="w-3 h-3" /> (!) UNPAID
-                </span>
-              ) : (
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full font-black">
-                  All Paid
-                </span>
-              )}
-            </button>
-
-            {/* 4. Campus Travel & Route Guide */}
-            <button
-              onClick={() => handleSwitchTab('transport')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'transport'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <Bus className={`w-5 h-5 ${activeTab === 'transport' ? 'text-slate-950' : 'text-amber-500'}`} />
-              <span className="font-extrabold leading-tight">Campus Travel</span>
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                activeTab === 'transport' ? 'bg-slate-900/20 text-slate-950' : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300'
-              }`}>
-                Route Guide
-              </span>
-            </button>
-
-            {/* 5. Messages */}
-            <button
-              onClick={() => handleSwitchTab('messages')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'messages'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <MessageSquare className={`w-5 h-5 ${activeTab === 'messages' ? 'text-slate-950' : 'text-sky-500'}`} />
-              <span className="font-extrabold leading-tight">Messages</span>
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                activeTab === 'messages' ? 'bg-slate-900/20 text-slate-950' : 'bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300'
-              }`}>
-                {schoolMessages.length} Alerts
-              </span>
-            </button>
-
-            {/* 6. Marksheets */}
-            <button
-              onClick={() => handleSwitchTab('reportcard')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'reportcard'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <Award className={`w-5 h-5 ${activeTab === 'reportcard' ? 'text-slate-950' : 'text-amber-600'}`} />
-              <span className="font-extrabold leading-tight">Marksheets</span>
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                activeTab === 'reportcard' ? 'bg-slate-900/20 text-slate-950' : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300'
-              }`}>
-                Report Card
-              </span>
-            </button>
-
-            {/* 7. Time Table */}
-            <button
-              onClick={() => handleSwitchTab('timetable')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'timetable'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <Clock className={`w-5 h-5 ${activeTab === 'timetable' ? 'text-slate-950' : 'text-teal-500'}`} />
-              <span className="font-extrabold leading-tight">Time Table</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'timetable' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                Daily Routine
-              </span>
-            </button>
-
-            {/* 8. Online Classes */}
-            <button
-              onClick={() => handleSwitchTab('online-classes')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'online-classes'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <Video className={`w-5 h-5 ${activeTab === 'online-classes' ? 'text-slate-950' : 'text-indigo-500'}`} />
-              <span className="font-extrabold leading-tight">Online Classes</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'online-classes' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                {onlineClasses.length} Scheduled
-              </span>
-            </button>
-
-            {/* 9. Online Exams */}
-            <button
-              onClick={() => handleSwitchTab('online-exams')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'online-exams'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <FileQuestion className={`w-5 h-5 ${activeTab === 'online-exams' ? 'text-slate-950' : 'text-purple-500'}`} />
-              <span className="font-extrabold leading-tight">Online Exams</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'online-exams' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                {onlineExams.length} Scheduled
-              </span>
-            </button>
-
-            {/* 10. Study Material */}
-            <button
-              onClick={() => handleSwitchTab('study-material')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'study-material'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <BookMarked className={`w-5 h-5 ${activeTab === 'study-material' ? 'text-slate-950' : 'text-emerald-500'}`} />
-              <span className="font-extrabold leading-tight">Study Material</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'study-material' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                {studyMaterials.length} PDFs
-              </span>
-            </button>
-
-            {/* 11. School Diary */}
-            <button
-              onClick={() => handleSwitchTab('school-diary')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'school-diary'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <Notebook className={`w-5 h-5 ${activeTab === 'school-diary' ? 'text-slate-950' : 'text-amber-500'}`} />
-              <span className="font-extrabold leading-tight">School Diary</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'school-diary' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                Teacher Notes
-              </span>
-            </button>
-
-            {/* 12. Course Syllabus */}
-            <button
-              onClick={() => handleSwitchTab('syllabus')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'syllabus'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <FileCode className={`w-5 h-5 ${activeTab === 'syllabus' ? 'text-slate-950' : 'text-teal-500'}`} />
-              <span className="font-extrabold leading-tight">Course Syllabus</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'syllabus' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                Curriculum
-              </span>
-            </button>
-
-            {/* 13. School Transport */}
-            <button
-              onClick={() => handleSwitchTab('transport')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'transport'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <Bus className={`w-5 h-5 ${activeTab === 'transport' ? 'text-slate-950' : 'text-amber-500'}`} />
-              <span className="font-extrabold leading-tight">School Transport</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'transport' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                Bus Route
-              </span>
-            </button>
-
-            {/* 14. Admit Card */}
-            <button
-              onClick={() => handleSwitchTab('admit-card')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'admit-card'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <CreditCard className={`w-5 h-5 ${activeTab === 'admit-card' ? 'text-slate-950' : 'text-rose-500'}`} />
-              <span className="font-extrabold leading-tight">Admit Card</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'admit-card' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                Exam Pass
-              </span>
-            </button>
-
-            {/* 15. Declarations */}
-            <button
-              onClick={() => handleSwitchTab('declarations')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'declarations'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <FileCheck className={`w-5 h-5 ${activeTab === 'declarations' ? 'text-slate-950' : 'text-indigo-500'}`} />
-              <span className="font-extrabold leading-tight">Declarations</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'declarations' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                Rules & Safety
-              </span>
-            </button>
-
-            {/* 16. Corrections & Complaints */}
-            <button
-              onClick={() => handleSwitchTab('record-updates')}
-              className={`p-2.5 sm:p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[84px] sm:min-h-[92px] ${
-                activeTab === 'record-updates'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <Edit3 className={`w-5 h-5 ${activeTab === 'record-updates' ? 'text-slate-950' : 'text-orange-500'}`} />
-              <span className="font-extrabold leading-tight text-[11px] sm:text-xs">Correction & Complaints</span>
-              <span className={`text-[9px] sm:text-[10px] font-semibold ${activeTab === 'record-updates' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                Grievance & Edits
-              </span>
-            </button>
-
-            {/* 17. Digital ID Card */}
-            <button
-              onClick={() => handleSwitchTab('idcard')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'idcard'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <ShieldCheck className={`w-5 h-5 ${activeTab === 'idcard' ? 'text-slate-950' : 'text-emerald-500'}`} />
-              <span className="font-extrabold leading-tight">Digital ID Card</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'idcard' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                Identity
-              </span>
-            </button>
-
-            {/* 18. Progress Trends */}
-            <button
-              onClick={() => handleSwitchTab('trends')}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] ${
-                activeTab === 'trends'
-                  ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
-                  : 'bg-stone-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800'
-              }`}
-            >
-              <TrendingUp className={`w-5 h-5 ${activeTab === 'trends' ? 'text-slate-950' : 'text-amber-500'}`} />
-              <span className="font-extrabold leading-tight">Progress Trends</span>
-              <span className={`text-[10px] font-semibold ${activeTab === 'trends' ? 'text-slate-900/80' : 'text-slate-500'}`}>
-                Analytics
-              </span>
-            </button>
-          </div>
-        </div>
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 text-xs font-bold">
+              {TABS.map(tab => {
+                const IconComp = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleSwitchTab(tab.id)}
+                    className={`p-3.5 rounded-2xl font-bold text-xs transition-all flex flex-col items-center justify-center text-center gap-1.5 border min-h-[92px] cursor-pointer relative ${
+                      isActive
+                        ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-lg ring-2 ring-amber-400 scale-[1.02]'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-amber-400 hover:shadow-sm'
+                    }`}
+                  >
+                    <IconComp className={`w-5 h-5 ${isActive ? 'text-slate-950' : tab.color}`} />
+                    <span className="font-extrabold leading-tight">{tab.title}</span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      isActive
+                        ? 'bg-slate-900/20 text-slate-950'
+                        : tab.badgeAlert
+                        ? 'bg-rose-600 text-white animate-pulse'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    }`}>
+                      {tab.badge}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Tab Content Section Container with scroll target ref */}
         <div ref={activeContentRef} id="student-tab-content-section" className="scroll-mt-6 space-y-6">
@@ -1850,341 +1501,21 @@ export const StudentPortal: React.FC = () => {
           </div>
         )}
 
-        {/* --- TAB 7: TRANSPORT & CAMPUS ROUTE GUIDE --- */}
+        {/* --- TAB 7: APPOINTED SCHOOL TRANSPORT --- */}
         {activeTab === 'transport' && (
-          <div className="space-y-6">
-            {/* Live Real-Time Supabase Bus & Fleet Tracker */}
-            <ParentFleetTracker
-              studentId={student?.id || 'stu-01'}
-              studentName={student?.name || 'Aarav Sharma'}
-              busId="bus-01"
-              routeId="route-01"
-              stopId="stop-01"
-            />
-
-            <div>
-              <span className="text-[10px] font-medium uppercase tracking-widest text-amber-600 bg-amber-100 dark:bg-amber-950/60 px-3 py-1 rounded-full">
-                Connectivity & Commute
-              </span>
-              <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white mt-1 flex items-center gap-2">
-                <Bus className="w-5 h-5 text-amber-500" /> Campus Travel & Route Guide
-              </h3>
-              <p className="text-xs text-slate-500">
-                Directions, landmark guides, route presets from nearby hubs, and official school bus fleet routes.
-              </p>
-            </div>
-
-            {/* Campus Travel & Directions Guide Box */}
-            <div className="bg-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-xl text-white space-y-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                    <Compass className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-bold text-white">How to Reach Model Public School</h4>
-                    <p className="text-xs text-slate-400">Select your starting hub for detailed travel directions & estimated time.</p>
-                  </div>
-                </div>
-
-                {/* Preset Hub Buttons */}
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { id: 'bettiah', label: 'From Bettiah (HQ)' },
-                    { id: 'raxaul', label: 'From Raxaul' },
-                    { id: 'sikta', label: 'From Sikta Station' },
-                    { id: 'motihari', label: 'From Motihari' }
-                  ].map((hub) => (
-                    <button
-                      key={hub.id}
-                      onClick={() => setSelectedTravelOrigin(hub.id as any)}
-                      className={`text-xs px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-bold ${
-                        selectedTravelOrigin === hub.id
-                          ? 'bg-amber-500 border-amber-400 text-slate-950 shadow-md scale-[1.02]'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                      }`}
-                    >
-                      {hub.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Selected Route Details */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-4 bg-slate-950/70 border border-slate-800/80 rounded-2xl p-5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h5 className="text-sm font-bold text-amber-400 flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-rose-400" />
-                      {selectedTravelOrigin === 'bettiah' && 'Route from Bettiah (District HQ)'}
-                      {selectedTravelOrigin === 'raxaul' && 'Route from Raxaul (Indo-Nepal Border)'}
-                      {selectedTravelOrigin === 'sikta' && 'Route from Sikta Railway Station'}
-                      {selectedTravelOrigin === 'motihari' && 'Route from Motihari (East Champaran)'}
-                    </h5>
-                    <span className="text-xs font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 px-3 py-0.5 rounded-full">
-                      ⏱ {selectedTravelOrigin === 'bettiah' && '25 – 35 Mins (22 KM)'}
-                      {selectedTravelOrigin === 'raxaul' && '30 – 40 Mins (28 KM)'}
-                      {selectedTravelOrigin === 'sikta' && '3 – 5 Mins (1.2 KM)'}
-                      {selectedTravelOrigin === 'motihari' && '55 – 70 Mins (54 KM)'}
-                    </span>
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-body">
-                    {selectedTravelOrigin === 'bettiah' && 'Take SH-54 toward Sikta via Majhaulia / Puraina road. School campus is located near Sikta Chowk main junction with clear signboards. Frequent local buses and MPS school buses operate regularly.'}
-                    {selectedTravelOrigin === 'raxaul' && 'Travel via Indo-Nepal border connecting highway toward Sikta. Regular autos, private cabs, and dedicated school buses operate on this route throughout the morning and evening.'}
-                    {selectedTravelOrigin === 'sikta' && 'Head south from Sikta Railway Station toward Main Market. School campus is easily reachable within 3-5 minutes by e-rickshaw, auto, or walking.'}
-                    {selectedTravelOrigin === 'motihari' && 'Travel via Bettiah or Sugauli-Raxaul highway route. Direct express buses connect Motihari to Bettiah and Sikta throughout the day.'}
-                  </p>
-
-                  {/* Route Waypoints */}
-                  <div className="pt-3 border-t border-slate-800">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                      Key Waypoints & Route Stops:
-                    </span>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {(selectedTravelOrigin === 'bettiah'
-                        ? ['Bettiah Bus Stand', 'Majhaulia Chowk', 'Puraina Mor', 'Sikta Main Road', 'Model Public School']
-                        : selectedTravelOrigin === 'raxaul'
-                        ? ['Raxaul Custom Chowk', 'Narkatiaganj-Raxaul Link', 'Bhelwa Gate', 'Sikta Road', 'Model Public School']
-                        : selectedTravelOrigin === 'sikta'
-                        ? ['Sikta Railway Station', 'Sikta Main Chowk', 'Hospital Road', 'Model Public School Gate']
-                        : ['Motihari Zero Mile', 'Sugauli Chowk', 'Bettiah Bypass', 'Sikta Junction', 'Model Public School']
-                      ).map((step, idx, arr) => (
-                        <React.Fragment key={idx}>
-                          <span className={`text-[11px] px-2.5 py-1 rounded-lg font-medium ${idx === arr.length - 1 ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-200'}`}>
-                            {step}
-                          </span>
-                          {idx < arr.length - 1 && <span className="text-slate-500 text-xs">→</span>}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex flex-wrap items-center gap-3">
-                    <a
-                      href="https://maps.app.goo.gl/wjptsD9GwK8ucjie7"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all hover:scale-[1.02]"
-                    >
-                      <Navigation className="w-3.5 h-3.5" />
-                      <span>🗺️ Get Directions on Google Maps</span>
-                    </a>
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      📍 GPS: 27.0353° N, 84.6604° E (27.035265, 84.660400)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Campus Location Map View */}
-                <div className="h-56 lg:h-auto rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 relative">
-                  <iframe
-                    src="https://maps.google.com/maps?q=27.035265,84.660400+(Model+Public+School+Bhawanipur+Kursi+Barwa+Sikta)&t=m&z=16&output=embed"
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen={false}
-                    loading="lazy"
-                    title="Model Public School Campus Location"
-                    className="w-full h-full filter contrast-[1.02]"
-                  ></iframe>
-                </div>
-              </div>
-            </div>
-
-            {/* Real-Time Live Bus GPS Tracker Stream */}
-            <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-3xl p-5 border border-slate-800 shadow-xl space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-                <div>
-                  <h4 className="text-base font-black text-white flex items-center gap-2">
-                    <Navigation className="w-5 h-5 text-amber-400" />
-                    🛰️ Live School Bus GPS Tracker (लाइव बस लोकेशन)
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Real-time satellite GPS tracking fed directly from the driver's onboard navigation unit.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/80">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    Auto-Syncing Live GPS
-                  </span>
-                </div>
-              </div>
-
-              {/* Active Vehicles Live Radar Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {(liveLocations.length > 0 ? liveLocations : [
-                  {
-                    routeId: 'route_1',
-                    routeName: 'Route 1 - Sikta Station to School Campus',
-                    vehicleNumber: 'Bus #01',
-                    numberPlate: 'BR 22 P 4412',
-                    driverName: 'Vikram Singh',
-                    driverPhone: '+91 91620 24642',
-                    latitude: 27.0249,
-                    longitude: 84.6812,
-                    speed: 0,
-                    isActive: false,
-                    tripType: 'Morning Pickup' as const,
-                    lastUpdated: new Date().toISOString(),
-                    nextStopName: 'Sikta Railway Station'
-                  }
-                ]).map((live, idx) => {
-                  const isMoving = (live.speed || 0) > 2;
-                  return (
-                    <div
-                      key={live.routeId || idx}
-                      className={`p-4 rounded-2xl border transition-all ${
-                        live.isActive
-                          ? 'bg-slate-900/90 border-amber-500/50 shadow-lg shadow-amber-500/5 ring-1 ring-amber-500/30'
-                          : 'bg-slate-900/50 border-slate-800'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="px-2.5 py-0.5 rounded-md bg-amber-500 text-slate-950 font-black text-xs">
-                              {live.vehicleNumber || 'Bus #01'}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                              live.isActive
-                                ? 'bg-emerald-600 text-white animate-pulse'
-                                : 'bg-slate-800 text-slate-400'
-                            }`}>
-                              {live.isActive ? '● ON ACTIVE TRIP' : 'STANDBY AT CAMPUS DEPOT'}
-                            </span>
-                          </div>
-                          <h5 className="text-sm font-bold text-white mt-1">
-                            {live.routeName || 'MPS Central Sikta Route'}
-                          </h5>
-                          <span className="text-[11px] text-slate-400 font-mono">
-                            Plate: {live.numberPlate || 'BR 22 P 4412'}
-                          </span>
-                        </div>
-
-                        <div className="text-right">
-                          <span className="text-xl font-black text-amber-400 font-mono block">
-                            {live.isActive ? live.speed : 0} <span className="text-xs text-slate-400 font-sans">km/h</span>
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {live.isActive && isMoving ? '🚀 In Transit' : '🛑 At Stop'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Telemetry info row */}
-                      <div className="grid grid-cols-2 gap-2 text-xs mb-3 p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
-                        <div>
-                          <span className="text-slate-400 block text-[10px]">Driver:</span>
-                          <strong className="text-slate-200">{live.driverName || 'Vikram Singh'}</strong>
-                          {live.driverPhone && (
-                            <a
-                              href={`tel:${live.driverPhone}`}
-                              className="text-amber-400 hover:underline block text-[11px] font-mono mt-0.5"
-                            >
-                              📞 {live.driverPhone}
-                            </a>
-                          )}
-                        </div>
-                        <div>
-                          <span className="text-slate-400 block text-[10px]">Upcoming Stop:</span>
-                          <strong className="text-emerald-400 truncate block">
-                            {live.nextStopName || 'Model Public School'}
-                          </strong>
-                          <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
-                            {live.latitude.toFixed(4)}° N, {live.longitude.toFixed(4)}° E
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Embedded Google Maps View for this Vehicle */}
-                      <div className="h-44 rounded-xl overflow-hidden border border-slate-800 bg-slate-950 relative mb-3">
-                        <iframe
-                          src={`https://maps.google.com/maps?q=${live.latitude},${live.longitude}&t=m&z=16&output=embed`}
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          allowFullScreen={false}
-                          loading="lazy"
-                          title={`Live Map for ${live.vehicleNumber || 'School Bus'}`}
-                          className="w-full h-full filter contrast-[1.02]"
-                        />
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <a
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${live.latitude},${live.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow transition"
-                        >
-                          <Navigation className="w-3.5 h-3.5" />
-                          <span>Track Bus on Google Maps</span>
-                        </a>
-
-                        {live.driverPhone && (
-                          <a
-                            href={`https://wa.me/${live.driverPhone.replace(/\D/g, '')}?text=Hello%20${encodeURIComponent(live.driverName || 'Driver')},%20inquiring%20about%20the%20MPS%20school%20bus%20location.`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-1 py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition"
-                            title="Chat with Driver on WhatsApp"
-                          >
-                            <span>💬 WhatsApp</span>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* School Bus Fleet Routes */}
-            <div>
-              <h4 className="text-base font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2 mb-3">
-                <Bus className="w-4 h-4 text-amber-500" /> Active School Bus Fleet & Driver Contacts
-              </h4>
-
-              {transportRoutes.length === 0 ? (
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
-                  <Bus className="w-8 h-8 text-slate-400 mx-auto" />
-                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No custom bus routes listed yet</p>
-                  <p className="text-xs text-slate-500">Contact school transport desk at +91 94318 12345 for bus seat bookings.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {transportRoutes.map(tr => (
-                    <div key={tr.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-                      <div className="flex justify-between items-start">
-                        <h4 className="text-base font-bold text-slate-900 dark:text-white font-heading">{tr.routeName}</h4>
-                        <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
-                          ₹{tr.feeMonthly}/mo
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-                        <div>Bus Number: <strong>{tr.busNumber}</strong></div>
-                        <div>Driver Name: <strong>{tr.driverName}</strong> ({tr.driverPhone})</div>
-                      </div>
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
-                        <strong className="block text-slate-700 dark:text-slate-300 mb-1">Stops:</strong>
-                        <div className="flex flex-wrap gap-1">
-                          {tr.stops.map((st, idx) => (
-                            <span key={idx} className="bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[10px]">
-                              📍 {st}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <StudentAppointedTransport
+            student={student}
+            transportRoutes={transportRoutes}
+            transportStops={transportStops}
+            transportRoster={transportRoster}
+            liveLocations={liveLocations}
+            onRefreshLive={async () => {
+              try {
+                const locs = await api.getLiveLocations();
+                setLiveLocations(locs || []);
+              } catch (e) {}
+            }}
+          />
         )}
 
         {/* --- TAB 8: ADMIT CARD --- */}

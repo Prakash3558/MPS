@@ -242,8 +242,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             },
             "geo": {
               "@type": "GeoCoordinates",
-              "latitude": 27.035265,
-              "longitude": 84.660400
+              "latitude": 27.001738,
+              "longitude": 84.674348
             },
             "hasCredential": [
               {
@@ -272,7 +272,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ],
             "sameAs": [
               "https://www.facebook.com",
-              "https://maps.app.goo.gl/wjptsD9GwK8ucjie7"
+              "https://maps.app.goo.gl/jsQqX4F6LW8XkQ7W6"
             ]
           },
           {

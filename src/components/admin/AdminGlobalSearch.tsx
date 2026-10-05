@@ -102,8 +102,17 @@ export const AdminGlobalSearch: React.FC<AdminGlobalSearchProps> = ({
     // 1. Search Students
     if (category === 'all' || category === 'students') {
       students.forEach(s => {
+        if (!s) return;
+        const sClass = (s.class || '').toLowerCase();
+        const sName = (s.name || '').toLowerCase();
+        const sRollNo = (s.rollNo || '').toLowerCase();
+        const sId = (s.id || '').toLowerCase();
+        const sUserId = (s.userId || '').toLowerCase();
+        const sParent = (s.parentName || '').toLowerCase();
+        const sPhone = (s.phone || '').toLowerCase();
+
         // First check class filter
-        if (classFilter !== 'all' && s.class.toLowerCase() !== classFilter.toLowerCase()) {
+        if (classFilter !== 'all' && sClass !== classFilter.toLowerCase()) {
           return;
         }
 
@@ -112,19 +121,19 @@ export const AdminGlobalSearch: React.FC<AdminGlobalSearchProps> = ({
           // If query empty but classFilter set, show all in class
           isMatch = true;
         } else if (searchBy === 'name') {
-          isMatch = s.name.toLowerCase().includes(q);
+          isMatch = sName.includes(q);
         } else if (searchBy === 'rollNo') {
-          isMatch = s.rollNo.toLowerCase().includes(q);
+          isMatch = sRollNo.includes(q);
         } else if (searchBy === 'class') {
-          isMatch = s.class.toLowerCase().includes(q) || `class ${s.class}`.toLowerCase().includes(q);
+          isMatch = sClass.includes(q) || `class ${sClass}`.includes(q);
         } else {
           // 'all'
-          const nameMatch = s.name.toLowerCase().includes(q);
-          const rollMatch = s.rollNo.toLowerCase().includes(q);
-          const classMatch = s.class.toLowerCase().includes(q) || `class ${s.class}`.toLowerCase().includes(q);
-          const idMatch = s.id.toLowerCase().includes(q) || (s.userId && s.userId.toLowerCase().includes(q));
-          const parentMatch = s.parentName.toLowerCase().includes(q);
-          const phoneMatch = s.phone.toLowerCase().includes(q);
+          const nameMatch = sName.includes(q);
+          const rollMatch = sRollNo.includes(q);
+          const classMatch = sClass.includes(q) || `class ${sClass}`.includes(q);
+          const idMatch = sId.includes(q) || (sUserId && sUserId.includes(q));
+          const parentMatch = sParent.includes(q);
+          const phoneMatch = sPhone.includes(q);
           isMatch = nameMatch || rollMatch || classMatch || idMatch || parentMatch || phoneMatch;
         }
 
@@ -154,12 +163,21 @@ export const AdminGlobalSearch: React.FC<AdminGlobalSearchProps> = ({
     // 2. Search Faculty / Teachers
     if (category === 'all' || category === 'teachers') {
       teachers.forEach(t => {
-        const nameMatch = t.name.toLowerCase().includes(q);
-        const subjectMatch = t.subject.toLowerCase().includes(q);
-        const classMatch = t.assignedClass.toLowerCase().includes(q) || `class ${t.assignedClass}`.toLowerCase().includes(q);
-        const idMatch = t.id.toLowerCase().includes(q) || (t.userId && t.userId.toLowerCase().includes(q));
-        const usernameMatch = t.username.toLowerCase().includes(q);
-        const phoneMatch = t.phone.toLowerCase().includes(q);
+        if (!t) return;
+        const tName = (t.name || '').toLowerCase();
+        const tSubject = (t.subject || '').toLowerCase();
+        const tClass = (t.assignedClass || '').toLowerCase();
+        const tId = (t.id || '').toLowerCase();
+        const tUserId = (t.userId || '').toLowerCase();
+        const tUsername = (t.username || '').toLowerCase();
+        const tPhone = (t.phone || '').toLowerCase();
+
+        const nameMatch = tName.includes(q);
+        const subjectMatch = tSubject.includes(q);
+        const classMatch = tClass.includes(q) || `class ${tClass}`.includes(q);
+        const idMatch = tId.includes(q) || (tUserId && tUserId.includes(q));
+        const usernameMatch = tUsername.includes(q);
+        const phoneMatch = tPhone.includes(q);
 
         if (nameMatch || subjectMatch || classMatch || idMatch || usernameMatch || phoneMatch) {
           results.push({
@@ -188,12 +206,13 @@ export const AdminGlobalSearch: React.FC<AdminGlobalSearchProps> = ({
     if (category === 'all' || category === 'documents') {
       // Admissions
       admissions.forEach(a => {
-        const nameMatch = a.studentName.toLowerCase().includes(q);
-        const idMatch = a.id.toLowerCase().includes(q);
-        const classMatch = a.targetClass.toLowerCase().includes(q);
-        const parentMatch = a.parentName.toLowerCase().includes(q);
-        const phoneMatch = a.phone.toLowerCase().includes(q);
-        const statusMatch = a.status.toLowerCase().includes(q);
+        if (!a) return;
+        const nameMatch = (a.studentName || '').toLowerCase().includes(q);
+        const idMatch = (a.id || '').toLowerCase().includes(q);
+        const classMatch = (a.targetClass || '').toLowerCase().includes(q);
+        const parentMatch = (a.parentName || '').toLowerCase().includes(q);
+        const phoneMatch = (a.phone || '').toLowerCase().includes(q);
+        const statusMatch = (a.status || '').toLowerCase().includes(q);
 
         if (nameMatch || idMatch || classMatch || parentMatch || phoneMatch || statusMatch) {
           results.push({
@@ -220,11 +239,12 @@ export const AdminGlobalSearch: React.FC<AdminGlobalSearchProps> = ({
 
       // Notices
       notices.forEach(n => {
-        const titleMatch = n.title.toLowerCase().includes(q);
-        const contentMatch = n.content.toLowerCase().includes(q);
-        const categoryMatch = n.category.toLowerCase().includes(q);
+        if (!n) return;
+        const titleMatch = (n.title || '').toLowerCase().includes(q);
+        const contentMatch = (n.content || '').toLowerCase().includes(q);
+        const categoryMatch = (n.category || '').toLowerCase().includes(q);
         const classMatch = (n.targetClass || '').toLowerCase().includes(q);
-        const idMatch = n.id.toLowerCase().includes(q);
+        const idMatch = (n.id || '').toLowerCase().includes(q);
 
         if (titleMatch || contentMatch || categoryMatch || classMatch || idMatch) {
           results.push({
@@ -250,11 +270,12 @@ export const AdminGlobalSearch: React.FC<AdminGlobalSearchProps> = ({
 
       // Online Classes
       onlineClasses.forEach(c => {
-        const titleMatch = c.title.toLowerCase().includes(q);
-        const subjectMatch = c.subject.toLowerCase().includes(q);
-        const teacherMatch = c.teacherName.toLowerCase().includes(q);
-        const classMatch = c.class.toLowerCase().includes(q);
-        const idMatch = c.id.toLowerCase().includes(q);
+        if (!c) return;
+        const titleMatch = (c.title || '').toLowerCase().includes(q);
+        const subjectMatch = (c.subject || '').toLowerCase().includes(q);
+        const teacherMatch = (c.teacherName || '').toLowerCase().includes(q);
+        const classMatch = (c.class || '').toLowerCase().includes(q);
+        const idMatch = (c.id || '').toLowerCase().includes(q);
 
         if (titleMatch || subjectMatch || teacherMatch || classMatch || idMatch) {
           results.push({
@@ -280,10 +301,11 @@ export const AdminGlobalSearch: React.FC<AdminGlobalSearchProps> = ({
 
       // Online Exams
       onlineExams.forEach(e => {
-        const titleMatch = e.title.toLowerCase().includes(q);
-        const subjectMatch = e.subject.toLowerCase().includes(q);
-        const classMatch = e.class.toLowerCase().includes(q);
-        const idMatch = e.id.toLowerCase().includes(q);
+        if (!e) return;
+        const titleMatch = (e.title || '').toLowerCase().includes(q);
+        const subjectMatch = (e.subject || '').toLowerCase().includes(q);
+        const classMatch = (e.class || '').toLowerCase().includes(q);
+        const idMatch = (e.id || '').toLowerCase().includes(q);
 
         if (titleMatch || subjectMatch || classMatch || idMatch) {
           results.push({

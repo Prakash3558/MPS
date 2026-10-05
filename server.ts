@@ -238,6 +238,13 @@ const initialStudents: Student[] = [
     address: 'AT- Bhawanipur, P.S.- Sikta, West Champaran, Bihar',
     admissionDate: '2023-04-10',
     notice: 'Please submit your science project report before August 10th.',
+    transportEnrolled: true,
+    transportRoute: 'tr-1',
+    transportStop: 'Bhawanipur Tola Chowk (भवानीपुर चौक)',
+    transportStopId: 'stp-4',
+    pickupTime: '07:50 AM',
+    dropTime: '03:15 PM',
+    transportFee: 600,
     feeInfo: {
       totalAnnual: 25100,
       paid: 18000,
@@ -271,6 +278,13 @@ const initialStudents: Student[] = [
     classTeacher: 'Ramesh Sharma',
     address: 'Kursi Barwa, Sikta, West Champaran',
     admissionDate: '2023-04-12',
+    transportEnrolled: true,
+    transportRoute: 'tr-2',
+    transportStop: 'Kursi Barwa Mod (कुर्सी बरवा मोड़)',
+    transportStopId: 'stp-6',
+    pickupTime: '07:10 AM',
+    dropTime: '02:35 PM',
+    transportFee: 700,
     feeInfo: {
       totalAnnual: 25100,
       paid: 21600,
@@ -700,8 +714,8 @@ const initialTransportStops: TransportStop[] = [
     landmark: 'Bhawanipur Paved Road Corner',
     latitude: 27.0195,
     longitude: 84.6738,
-    assignedStudentIds: [],
-    studentCount: 0,
+    assignedStudentIds: ['s-1001'],
+    studentCount: 1,
     feeMonthly: 600
   },
   {
@@ -712,8 +726,8 @@ const initialTransportStops: TransportStop[] = [
     pickupTime: '08:05 AM',
     dropTime: '03:30 PM',
     landmark: 'MPS Bhawanipur Campus Bay A',
-    latitude: 27.0180,
-    longitude: 84.6725,
+    latitude: 27.001738,
+    longitude: 84.674348,
     assignedStudentIds: [],
     studentCount: 0,
     feeMonthly: 0
@@ -754,8 +768,8 @@ const initialTransportStops: TransportStop[] = [
     pickupTime: '08:00 AM',
     dropTime: '03:30 PM',
     landmark: 'MPS Bhawanipur Campus Bay B',
-    latitude: 27.0180,
-    longitude: 84.6725,
+    latitude: 27.001738,
+    longitude: 84.674348,
     assignedStudentIds: [],
     studentCount: 0,
     feeMonthly: 0
@@ -997,8 +1011,8 @@ const initialLiveLocations: Record<string, VehicleLiveLocation> = {
     speed: 0,
     heading: 90,
     accuracy: 5,
-    isActive: true,
-    tripType: 'Morning Pickup',
+    isActive: false,
+    tripType: 'None',
     tripStartTime: '07:15 AM',
     lastUpdated: new Date().toISOString(),
     nextStopName: 'Sikta Main Market Chowk (सिकटा बाज़ार)',
@@ -2132,23 +2146,23 @@ app.post('/api/auth/login', async (req, res) => {
   let ownerEmail = '';
 
   if (role === 'admin') {
-    const adminUser = (username || dbData.adminAuth.username || 'admin').toLowerCase().trim();
+    const adminUser = (username || dbData.adminAuth?.username || 'admin').toLowerCase().trim();
     accountKey = `admin:${adminUser}`;
-    ownerEmail = dbData.adminAuth.email || 'admin@modelpublicschool.com';
+    ownerEmail = dbData.adminAuth?.email || 'admin@modelpublicschool.com';
   } else if (role === 'teacher') {
     const tUser = (username || '').toLowerCase().trim();
     accountKey = `teacher:${tUser}`;
-    const foundTeacher = dbData.teachers.find(t => t.username.toLowerCase() === tUser);
+    const foundTeacher = (dbData.teachers || []).find(t => (t.username || '').toLowerCase() === tUser);
     ownerEmail = foundTeacher?.email || `${tUser}@modelpublicschool.com`;
   } else if (role === 'staff') {
     const stUser = (username || '').toLowerCase().trim();
     accountKey = `staff:${stUser}`;
-    const foundStaff = (dbData.staff || []).find(s => s.username?.toLowerCase() === stUser);
+    const foundStaff = (dbData.staff || []).find(s => (s.username || '').toLowerCase() === stUser);
     ownerEmail = foundStaff?.email || `${stUser}@modelpublicschool.com`;
   } else if (role === 'student') {
     const sRoll = (rollNo || username || req.body.studentName || req.body.name || phone || '').toLowerCase().trim();
     accountKey = `student:${sRoll}`;
-    const foundStudent = dbData.students.find(s => s.rollNo.toLowerCase() === sRoll || s.name.toLowerCase().includes(sRoll));
+    const foundStudent = (dbData.students || []).find(s => (s.rollNo || '').toLowerCase() === sRoll || (s.name || '').toLowerCase().includes(sRoll));
     ownerEmail = foundStudent?.email || `s${foundStudent?.rollNo || sRoll}@modelpublicschool.com`;
   } else {
     accountKey = `unknown:${ip}`;
@@ -2231,14 +2245,14 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    const teacher = dbData.teachers.find(
-      t => t.username.toLowerCase() === givenUser
+    const teacher = (dbData.teachers || []).find(
+      t => (t.username || '').toLowerCase() === givenUser
     );
 
     if (teacher) {
       const storedPass = teacher.password || 'teacher123';
       let authCheck = await verifyPassword(password || '', storedPass);
-      if (!authCheck.valid && (password === 'teacher123' || password === 'password' || password === teacher.username)) {
+      if (!authCheck.valid && (password === 'teacher123' || password === 'password' || (teacher.username && password === teacher.username))) {
         authCheck = { valid: true, needsRehash: true };
       }
 
@@ -2251,7 +2265,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         await loginSecurityTracker.recordSuccess(accountKey);
-        const email = teacher.email || `${teacher.username.toLowerCase()}@modelpublicschool.com`;
+        const email = teacher.email || `${(teacher.username || 'teacher').toLowerCase()}@modelpublicschool.com`;
         const authAccount = await getOrCreateFirebaseAuthUser(email, password || '');
 
         return res.json({
@@ -2359,7 +2373,8 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    const student = dbData.students.find(s => {
+    const student = (dbData.students || []).find(s => {
+      if (!s) return false;
       const sRoll = cleanStr(s.rollNo);
       const sId = cleanStr(s.id);
       const sUserId = cleanStr(s.userId);
@@ -3742,8 +3757,8 @@ app.get('/api/transport/live-location/:routeId', (req, res) => {
     res.json({
       routeId: req.params.routeId,
       isActive: false,
-      latitude: 27.0180,
-      longitude: 84.6725,
+      latitude: 27.001738,
+      longitude: 84.674348,
       speed: 0,
       lastUpdated: new Date().toISOString()
     });
@@ -3753,10 +3768,12 @@ app.get('/api/transport/live-location/:routeId', (req, res) => {
 // Driver phone updates live GPS coordinates (latitude, longitude, speed, heading)
 app.post('/api/transport/live-location/update', (req, res) => {
   if (!dbData.liveLocations) dbData.liveLocations = {};
-  const { routeId, staffId, latitude, longitude, speed, heading, accuracy, tripType, nextStopName, studentsBoardedCount } = req.body;
+  const { routeId, staffId, latitude, longitude, speed, heading, accuracy, tripType, nextStopName, studentsBoardedCount, isActive } = req.body;
 
   const targetRoute = dbData.transport?.find(r => r.id === routeId) as TransportRoute | undefined;
   const targetStaff = dbData.staff?.find(s => s.id === staffId);
+
+  const activeFlag = isActive !== undefined ? Boolean(isActive) : true;
 
   dbData.liveLocations[routeId] = {
     staffId: staffId || targetStaff?.id || 'st-1',
@@ -3767,13 +3784,13 @@ app.post('/api/transport/live-location/update', (req, res) => {
     vehicleType: targetStaff?.vehicleType || targetRoute?.vehicleType || 'School Bus',
     vehicleNumber: targetStaff?.vehicleNumber || targetRoute?.busNumber || 'Bus #01',
     numberPlate: targetStaff?.numberPlate || targetRoute?.numberPlate || 'BR-22-PA-8757',
-    latitude: Number(latitude) || 27.0180,
-    longitude: Number(longitude) || 84.6725,
-    speed: Number(speed) || 0,
+    latitude: Number(latitude) || 27.001738,
+    longitude: Number(longitude) || 84.674348,
+    speed: activeFlag ? (Number(speed) || 0) : 0,
     heading: Number(heading) || 0,
     accuracy: Number(accuracy) || 5,
-    isActive: true,
-    tripType: tripType || 'Morning Pickup',
+    isActive: activeFlag,
+    tripType: activeFlag ? (tripType || 'Morning Pickup') : 'None',
     lastUpdated: new Date().toISOString(),
     nextStopName: nextStopName || '',
     studentsBoardedCount: Number(studentsBoardedCount) || 0,
@@ -3790,11 +3807,43 @@ app.post('/api/transport/trip/finish', (req, res) => {
   if (!dbData.tripLogs) dbData.tripLogs = [];
   const { routeId, staffId, tripType, totalBoarded, totalStudents, notes } = req.body;
 
-  if (dbData.liveLocations[routeId]) {
-    dbData.liveLocations[routeId].isActive = false;
-    dbData.liveLocations[routeId].speed = 0;
-    dbData.liveLocations[routeId].tripType = 'None';
-    dbData.liveLocations[routeId].lastUpdated = new Date().toISOString();
+  // Turn off live location across all matching keys in dbData.liveLocations
+  Object.keys(dbData.liveLocations).forEach(key => {
+    const loc = dbData.liveLocations[key];
+    if (key === routeId || loc.routeId === routeId || (staffId && loc.staffId === staffId)) {
+      loc.isActive = false;
+      loc.speed = 0;
+      loc.tripType = 'None';
+      loc.lastUpdated = new Date().toISOString();
+    }
+  });
+
+  if (routeId) {
+    if (!dbData.liveLocations[routeId]) {
+      dbData.liveLocations[routeId] = {
+        routeId,
+        staffId: staffId || 'st-1',
+        driverName: 'Driver',
+        driverPhone: '',
+        routeName: 'Route',
+        vehicleType: 'School Bus',
+        vehicleNumber: 'Bus #01',
+        numberPlate: 'BR-22-PA-8757',
+        latitude: 27.001738,
+        longitude: 84.674348,
+        speed: 0,
+        heading: 0,
+        accuracy: 5,
+        isActive: false,
+        tripType: 'None',
+        lastUpdated: new Date().toISOString()
+      };
+    } else {
+      dbData.liveLocations[routeId].isActive = false;
+      dbData.liveLocations[routeId].speed = 0;
+      dbData.liveLocations[routeId].tripType = 'None';
+      dbData.liveLocations[routeId].lastUpdated = new Date().toISOString();
+    }
   }
 
   const targetRoute = dbData.transport?.find(r => r.id === routeId);
@@ -3846,7 +3895,7 @@ app.post('/api/transport/sos', (req, res) => {
     staffId: staffId || 'st-1',
     driverName: driverName || 'Driver',
     vehicleNumber: vehicleNumber || 'Bus #01',
-    location: location || { lat: 27.0180, lng: 84.6725 },
+    location: location || { lat: 27.001738, lng: 84.674348 },
     reason: reason || 'Emergency Assistance Requested',
     status: 'Active',
     timestamp: timestamp || new Date().toISOString()

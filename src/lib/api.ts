@@ -1020,8 +1020,9 @@ export const api = {
       () => {
         const all = getLocalData<Student[]>('students', defaultStudents);
         return all.filter(s => {
-          const matchC = !className || className === 'All' || s.class.toLowerCase() === className.toLowerCase();
-          const matchS = !section || section === 'All' || s.section.toLowerCase() === section.toLowerCase();
+          if (!s) return false;
+          const matchC = !className || className === 'All' || (s.class || '').toLowerCase() === className.toLowerCase();
+          const matchS = !section || section === 'All' || (s.section || '').toLowerCase() === section.toLowerCase();
           return matchC && matchS;
         });
       }
@@ -1398,8 +1399,9 @@ export const api = {
       () => {
         const all = getLocalData<Homework[]>('homework', defaultHomework);
         return all.filter(h => {
-          const matchC = !className || className === 'All' || h.class.toLowerCase() === className.toLowerCase();
-          const matchS = !section || section === 'All' || h.section.toLowerCase() === section.toLowerCase();
+          if (!h) return false;
+          const matchC = !className || className === 'All' || (h.class || '').toLowerCase() === className.toLowerCase();
+          const matchS = !section || section === 'All' || (h.section || '').toLowerCase() === section.toLowerCase();
           return matchC && matchS;
         });
       }
@@ -2333,8 +2335,8 @@ export const api = {
         pickupTime: '08:05 AM',
         dropTime: '03:30 PM',
         landmark: 'AT- Bhawanipur, P.O.- Kursi Barwa, Sikta Main Depot',
-        latitude: 27.035265,
-        longitude: 84.660400,
+        latitude: 27.001738,
+        longitude: 84.674348,
         assignedStudentIds: [],
         studentCount: 0,
         feeMonthly: 0
@@ -2346,8 +2348,8 @@ export const api = {
       { headers: await getAuthHeaders() },
       () => {
         let saved = getLocalData<TransportStop[]>('transport_stops', SIKTA_DEFAULT_STOPS);
-        // Ensure valid stops with real school coords
-        if (!saved || saved.length === 0 || !saved.some(s => s.latitude === 27.035265)) {
+        // Ensure valid stops with real school coords (27.001738, 84.674348)
+        if (!saved || saved.length === 0 || !saved.some(s => Math.abs((s.latitude || 0) - 27.001738) < 0.001)) {
           saved = SIKTA_DEFAULT_STOPS;
           setLocalData('transport_stops', SIKTA_DEFAULT_STOPS);
         }
@@ -2496,6 +2498,7 @@ export const api = {
     tripType?: string;
     nextStopName?: string;
     studentsBoardedCount?: number;
+    isActive?: boolean;
   }) {
     try {
       const res = await fetch(apiUrl('/api/transport/live-location/update'), {

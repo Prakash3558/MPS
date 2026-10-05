@@ -759,13 +759,13 @@ export const StaffManagementSystem: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-amber-400 font-mono bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
-                    📍 Campus: 27.0353° N, 84.6604° E (27.035265, 84.660400)
+                    📍 Campus: 27.0017° N, 84.6743° E (27.001738, 84.674348)
                   </span>
                   <span className="text-xs text-emerald-400 font-mono bg-emerald-950/60 border border-emerald-800/80 px-2.5 py-1 rounded-full">
                     GPS Fix: High Accuracy (±5m)
                   </span>
                   <a
-                    href="https://maps.app.goo.gl/wjptsD9GwK8ucjie7"
+                    href="https://maps.app.goo.gl/jsQqX4F6LW8XkQ7W6"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 bg-amber-400 hover:bg-amber-300 px-3 py-1 rounded-lg transition"
@@ -820,7 +820,7 @@ export const StaffManagementSystem: React.FC = () => {
                   src={
                     liveLocations.find(l => l.isActive)
                       ? `https://maps.google.com/maps?q=${liveLocations.find(l => l.isActive)?.latitude},${liveLocations.find(l => l.isActive)?.longitude}&t=m&z=15&output=embed`
-                      : `https://maps.google.com/maps?q=27.035265,84.660400+(Model+Public+School+Campus+Depot)&t=m&z=16&output=embed`
+                      : `https://maps.google.com/maps?q=27.001738,84.674348+(Model+Public+School+Campus+Depot)&t=m&z=16&output=embed`
                   }
                   width="100%"
                   height="100%"

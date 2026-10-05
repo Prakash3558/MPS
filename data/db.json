@@ -795,7 +795,7 @@
       "accuracy": 5,
       "isActive": false,
       "tripType": "None",
-      "lastUpdated": "2026-09-05T14:00:50.026Z",
+      "lastUpdated": "2026-09-12T15:55:40.289Z",
       "nextStopName": "Kursi Barwa Mod (कुर्सी बरवा)",
       "studentsBoardedCount": 0,
       "totalAssignedStudents": 1
@@ -832,6 +832,23 @@
     }
   ],
   "tripLogs": [
+    {
+      "id": "trip-1789228540289",
+      "staffId": "st-2",
+      "driverName": "Ramesh Yadav",
+      "routeId": "tr-2",
+      "routeName": "Route B - Kursi Barwa & Surrounding Villages",
+      "vehicleNumber": "Van #02",
+      "numberPlate": "BR-22-PA-9162",
+      "tripType": "Morning Pickup",
+      "date": "2026-09-12",
+      "startTime": "07:15 AM",
+      "endTime": "03:55 PM",
+      "totalBoarded": 0,
+      "totalStudents": 0,
+      "status": "Completed",
+      "notes": "Trip completed successfully. All students reached safely."
+    },
     {
       "id": "trip-1",
       "staffId": "st-1",

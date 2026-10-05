@@ -6,7 +6,7 @@ import {
   AlertTriangle, Key, Radio, Fuel, Wrench, ShieldAlert, Sparkles, Share2,
   Send, Zap, Home, Gauge, Layers, Eye, Activity, Smartphone, BellRing,
   Maximize2, Minimize2, LocateFixed, Lock, Unlock, ArrowUpRight, TrendingUp,
-  Crosshair, Satellite, ExternalLink, Volume2, VolumeX, Sun, Moon, ArrowRight, CheckCheck, MessageSquare
+  Crosshair, Satellite, ExternalLink, Volume2, VolumeX, Sun, Moon, ArrowRight, CheckCheck, MessageSquare, Route
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCMS } from '../../context/CMSContext';
@@ -217,13 +217,11 @@ export const SIKTA_ROAD_NETWORK_COORDS: [number, number][] = [
   // 6. Bhawanipur Tola Chowk (भवानीपुर चौक) - Stop 4
   [27.019500, 84.673800],
 
-  // 7. Bhawanipur Village Approach to Model Public School Campus
-  [27.022000, 84.670000],
-  [27.026000, 84.667000],
-  [27.031000, 84.663500],
-  [27.033500, 84.661800],
-  // 8. Model Public School Main Gate (स्कूल गेट) - Stop 5 (27.035265° N, 84.660400° E)
-  [27.035265, 84.660400]
+  // 7. Approach to Model Public School Campus
+  [27.012000, 84.674000],
+  [27.006000, 84.674200],
+  // 8. Model Public School Main Gate (स्कूल गेट) - Stop 5 (27.001738° N, 84.674348° E)
+  [27.001738, 84.674348]
 ];
 
 export const StaffDriverPortal: React.FC = () => {
@@ -569,8 +567,23 @@ export const StaffDriverPortal: React.FC = () => {
     const map = L.map(mapContainerRef.current, {
       center: [initialLat, initialLng],
       zoom: 15,
-      zoomControl: true,
-      fadeAnimation: true
+      zoomControl: false,
+      fadeAnimation: true,
+      scrollWheelZoom: true,
+      touchZoom: true,
+      dragging: true,
+      doubleClickZoom: true,
+      boxZoom: true
+    });
+
+    // Detect user manual interaction so auto-follow doesn't fight the driver!
+    map.on('dragstart', () => {
+      setAutoFollowVehicle(false);
+    });
+    map.on('zoomstart', (e: any) => {
+      if (!e.hard) {
+        setAutoFollowVehicle(false);
+      }
     });
 
     // Primary High-Definition Map Layer
@@ -592,7 +605,7 @@ export const StaffDriverPortal: React.FC = () => {
       iconSize: [140, 36],
       iconAnchor: [70, 18]
     });
-    L.marker([27.035265, 84.660400], { icon: schoolIcon })
+    L.marker([27.001738, 84.674348], { icon: schoolIcon })
       .bindPopup(`
         <div class="p-2 space-y-1 font-sans text-xs">
           <div class="font-black text-sm text-blue-900 flex items-center gap-1">
@@ -600,7 +613,7 @@ export const StaffDriverPortal: React.FC = () => {
           </div>
           <div class="text-slate-600 font-medium">AT- Bhawanipur, P.O.- Kursi Barwa, Sikta, West Champaran (845307)</div>
           <div class="text-[11px] text-emerald-600 font-bold">Central Transport Depot & Bus Bay A</div>
-          <div class="text-slate-500 font-mono text-[10px]">27.0353° N, 84.6604° E (27.035265, 84.660400)</div>
+          <div class="text-slate-500 font-mono text-[10px]">27.0017° N, 84.6743° E (27.001738, 84.674348)</div>
         </div>
       `)
       .addTo(map);
@@ -785,7 +798,7 @@ export const StaffDriverPortal: React.FC = () => {
       });
 
       // Destination: School Campus Gate (Model Public School Bhawanipur)
-      waypoints.push({ lng: 84.660400, lat: 27.035265 });
+      waypoints.push({ lng: 84.674348, lat: 27.001738 });
 
       const coordsString = waypoints.map(w => `${w.lng.toFixed(6)},${w.lat.toFixed(6)}`).join(';');
       const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
@@ -914,12 +927,12 @@ export const StaffDriverPortal: React.FC = () => {
       iconSize: [210, 32],
       iconAnchor: [105, 16]
     });
-    const schoolMarker = L.marker([27.035265, 84.660400], { icon: schoolIcon });
+    const schoolMarker = L.marker([27.001738, 84.674348], { icon: schoolIcon });
     schoolMarker.bindPopup(`
       <div class="p-2 space-y-1 font-sans text-xs">
         <div class="font-black text-emerald-800 text-sm">🏫 Model Public School, Sikta</div>
         <div class="text-slate-600">अंतिम गंतव्य (Final Destination / Campus Gate)</div>
-        <div class="text-[11px] text-slate-500 font-mono">27.0353° N, 84.6604° E (27.035265, 84.660400)</div>
+        <div class="text-[11px] text-slate-500 font-mono">27.0017° N, 84.6743° E (27.001738, 84.674348)</div>
       </div>
     `);
     stopMarkersRef.current?.addLayer(schoolMarker);
@@ -929,10 +942,46 @@ export const StaffDriverPortal: React.FC = () => {
     fetchAndDrawRealRoadRoute(currentCoords, stops);
   }, [mapReady, stops, fetchAndDrawRealRoadRoute]);
 
-  // Center map on vehicle
+  // Center map on vehicle and re-lock auto follow
   const centerMapOnVehicle = () => {
     if (!mapInstanceRef.current) return;
     mapInstanceRef.current.setView([currentCoords.lat, currentCoords.lng], 16, { animate: true });
+    setAutoFollowVehicle(true);
+    if (isSoundEnabled) playDriverSound('tap');
+    showToast('📍 बस पर केंद्रित किया गया (Auto-Follow चालू)', 'info');
+  };
+
+  // Zoom In
+  const handleZoomIn = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.zoomIn();
+      if (isSoundEnabled) playDriverSound('tap');
+    }
+  };
+
+  // Zoom Out
+  const handleZoomOut = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.zoomOut();
+      if (isSoundEnabled) playDriverSound('tap');
+    }
+  };
+
+  // Fit entire route with school and all stops into view
+  const fitEntireRoute = () => {
+    if (!mapInstanceRef.current) return;
+    setAutoFollowVehicle(false);
+    const bounds = L.latLngBounds([]);
+    bounds.extend([currentCoords.lat, currentCoords.lng]);
+    bounds.extend([27.001738, 84.674348]); // MPS Sikta Campus Gate
+    stops.forEach(st => {
+      if (st.latitude && st.longitude) {
+        bounds.extend([st.latitude, st.longitude]);
+      }
+    });
+    mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    if (isSoundEnabled) playDriverSound('tap');
+    showToast('🗺️ पूरा रूट व सभी स्टॉप्स स्क्रीन पर सेट किए गए', 'info');
   };
 
   // 4. Accurate GPS Real-time Telemetry & Map Update Engine
@@ -1295,8 +1344,8 @@ export const StaffDriverPortal: React.FC = () => {
 
   // Launch Google Maps Driving Navigation (Turn-by-turn to School Campus from Current Location)
   const openGoogleMapsNavigation = (targetStop?: TransportStop) => {
-    const destLat = targetStop ? targetStop.latitude : 27.035265;
-    const destLng = targetStop ? targetStop.longitude : 84.660400;
+    const destLat = targetStop ? targetStop.latitude : 27.001738;
+    const destLng = targetStop ? targetStop.longitude : 84.674348;
     let url = `https://www.google.com/maps/dir/?api=1&origin=${currentCoords.lat},${currentCoords.lng}&destination=${destLat},${destLng}&travelmode=driving`;
     if (!targetStop && stops.length > 0) {
       const waypoints = stops
@@ -1319,7 +1368,7 @@ export const StaffDriverPortal: React.FC = () => {
 
   // Open School Campus on Google Maps (Direct to User-provided verified listing)
   const openSchoolGoogleMaps = () => {
-    const url = `https://maps.app.goo.gl/wjptsD9GwK8ucjie7`;
+    const url = `https://maps.app.goo.gl/jsQqX4F6LW8XkQ7W6`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -1454,7 +1503,26 @@ export const StaffDriverPortal: React.FC = () => {
       setIsSimulatingDrive(false);
     }
 
+    if (geoWatchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(geoWatchIdRef.current);
+      geoWatchIdRef.current = null;
+    }
+
     const totalBoarded = Object.values(boardedStatus).filter(s => s === 'Boarded').length;
+
+    try {
+      await api.updateVehicleLiveLocation({
+        routeId: assignedRoute.id,
+        staffId: driverStaff?.id,
+        latitude: currentCoords.lat,
+        longitude: currentCoords.lng,
+        speed: 0,
+        heading: 0,
+        isActive: false,
+        tripType: 'None',
+        nextStopName: 'Trip Finished - Depot'
+      });
+    } catch (e) {}
 
     await api.finishDriverTrip({
       routeId: assignedRoute.id,
@@ -1836,54 +1904,6 @@ export const StaffDriverPortal: React.FC = () => {
               </button>
             </form>
 
-            {/* Quick 1-Tap Demo Driver Sign-In */}
-            <div className="pt-3 border-t border-slate-800 space-y-2">
-              <p className="text-[11px] font-bold text-slate-400 text-center uppercase tracking-wider">
-                त्वरित लॉगिन (One-Tap Driver Access)
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginForm({ username: 'driver1', password: 'driver123' });
-                    setTimeout(() => {
-                      const fakeEvt = { preventDefault: () => {} } as any;
-                      handleDriverLogin(fakeEvt);
-                    }, 50);
-                  }}
-                  className="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-left transition group cursor-pointer"
-                >
-                  <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
-                    <Bus className="w-3 h-3" /> Bus #01
-                  </div>
-                  <div className="text-xs font-black text-white group-hover:text-amber-300 truncate">
-                    राजेश कुमार
-                  </div>
-                  <div className="text-[10px] text-slate-400 truncate">सिकटा रूट</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginForm({ username: 'driver2', password: 'driver123' });
-                    setTimeout(() => {
-                      const fakeEvt = { preventDefault: () => {} } as any;
-                      handleDriverLogin(fakeEvt);
-                    }, 50);
-                  }}
-                  className="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-left transition group cursor-pointer"
-                >
-                  <div className="text-[10px] text-blue-400 font-bold flex items-center gap-1">
-                    <Bus className="w-3 h-3" /> Bus #02
-                  </div>
-                  <div className="text-xs font-black text-white group-hover:text-blue-300 truncate">
-                    विक्रम सिंह
-                  </div>
-                  <div className="text-[10px] text-slate-400 truncate">बेतिया रूट</div>
-                </button>
-              </div>
-            </div>
-
             <div className="pt-3 border-t border-slate-800 text-center flex items-center justify-between text-xs text-slate-400">
               <a href="/" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
                 <Home className="w-3.5 h-3.5" /> School Home
@@ -2082,34 +2102,86 @@ export const StaffDriverPortal: React.FC = () => {
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 mt-4 space-y-4">
         {/* Navigation Tabs Bar */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-900 rounded-2xl border border-slate-800">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-1.5 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
           {[
-            { id: 'live_trip', label: '🧭 ड्राइवर कॉकपिट (Cockpit & Map)', icon: Navigation },
-            { id: 'students', label: `👥 छात्र हाजिरी (${students.length})`, icon: Users },
-            { id: 'stops', label: `📍 स्टॉप व समय (${stops.length})`, icon: MapPin },
-            { id: 'fuel', label: '⛽ डीजल व खर्च (Fuel)', icon: Fuel },
-            { id: 'inspection', label: '🛡️ गाड़ी जांच (Safety)', icon: Shield },
-            { id: 'logs', label: '📜 सफ़र रिकॉर्ड (Trip Logs)', icon: Calendar },
-            { id: 'supabase_controller', label: '⚡ क्लाउड स्टॉप कंट्रोलर', icon: Radio }
+            { id: 'live_trip', label: '🧭 कॉकपिट व नक्शा', subtitle: 'Live Map & Trip', icon: Navigation },
+            { id: 'students', label: '👥 छात्र हाजिरी', subtitle: `${totalBoardedCount}/${students.length} सवार`, icon: Users },
+            { id: 'stops', label: '📍 रूट स्टॉप्स', subtitle: `${stops.length} स्टॉप्स लिस्ट`, icon: MapPin },
+            { id: 'logs', label: '📋 सफ़र व वाहन लॉग्स', subtitle: 'Logs, Fuel & Safety', icon: Calendar }
           ].map(tab => {
             const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+            const isTabActive = activeTab === tab.id || (tab.id === 'logs' && ['logs', 'fuel', 'inspection', 'supabase_controller'].includes(activeTab));
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer ${
-                  isActive
-                    ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id as any);
+                  if (isSoundEnabled) playDriverSound('tap');
+                }}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all cursor-pointer text-left active:scale-95 ${
+                  isTabActive
+                    ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/25 ring-2 ring-amber-400/40 font-bold'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  isTabActive ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-amber-400'
+                }`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div className="truncate">
+                  <div className="text-xs font-black truncate">{tab.label}</div>
+                  <div className={`text-[10px] font-bold truncate ${isTabActive ? 'text-slate-900/80' : 'text-slate-400'}`}>
+                    {tab.subtitle}
+                  </div>
+                </div>
               </button>
             );
           })}
         </div>
+
+        {/* Sub-Tabs selector if user is in any of the log/fuel/inspection/controller tabs */}
+        {['logs', 'fuel', 'inspection', 'supabase_controller'].includes(activeTab) && (
+          <div className="flex items-center gap-2 overflow-x-auto p-1.5 bg-slate-900/80 rounded-2xl border border-slate-800">
+            <button
+              onClick={() => setActiveTab('logs')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeTab === 'logs' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>📜 सफ़र रिकॉर्ड (Trip Logs)</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('fuel')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeTab === 'fuel' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Fuel className="w-3.5 h-3.5" />
+              <span>⛽ डीजल व खर्च (Fuel Refills)</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('inspection')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeTab === 'inspection' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>🛡️ गाड़ी सुरक्षा जांच (Safety Checklist)</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('supabase_controller')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeTab === 'supabase_controller' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5" />
+              <span>⚡ क्लाउड स्टॉप कंट्रोलर</span>
+            </button>
+          </div>
+        )}
 
         {/* ------------------------------------------------------------- */}
         {/* TAB: CLOUD SUPABASE CONTROLLER (OPTIONAL TOOL) */}
@@ -2501,7 +2573,7 @@ export const StaffDriverPortal: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] bg-slate-950/80 px-2.5 py-1.5 rounded-xl border border-slate-800">
-                    <span className="text-emerald-400 font-mono font-bold">27.0352°, 84.6604°</span>
+                    <span className="text-emerald-400 font-mono font-bold">27.0017°, 84.6743°</span>
                     <span className="text-[10px] text-slate-300 font-bold">स्कूल गेट</span>
                   </div>
 
@@ -2683,7 +2755,7 @@ export const StaffDriverPortal: React.FC = () => {
                     🏘️ भवानीपुर चौक
                   </button>
                   <button
-                    onClick={() => snapToPresetLocation('Model Public School Main Campus (स्कूल गेट)', 27.035265, 84.660400)}
+                    onClick={() => snapToPresetLocation('Model Public School Main Campus (स्कूल गेट)', 27.001738, 84.674348)}
                     className="px-2.5 py-1 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 rounded-lg whitespace-nowrap border border-emerald-600 transition font-bold cursor-pointer"
                   >
                     🏫 स्कूल गेट (कैंपस)
@@ -2735,7 +2807,7 @@ export const StaffDriverPortal: React.FC = () => {
                   isMapFullscreen ? 'flex-1 min-h-[500px]' : 'h-[500px]'
                 }`}>
                   <iframe
-                    src={`https://maps.google.com/maps?saddr=${currentCoords.lat},${currentCoords.lng}&daddr=27.035265,84.660400&t=m&z=15&output=embed`}
+                    src={`https://maps.google.com/maps?saddr=${currentCoords.lat},${currentCoords.lng}&daddr=27.001738,84.674348&t=m&z=15&output=embed`}
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}
@@ -2755,100 +2827,150 @@ export const StaffDriverPortal: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="relative w-full">
+                <div className="relative w-full overflow-hidden rounded-2xl border border-slate-800 shadow-inner">
+                  {/* Leaflet Map Canvas */}
                   <div
                     ref={mapContainerRef}
-                    className={`w-full rounded-2xl overflow-hidden border border-slate-800 relative z-10 shadow-inner ${
-                      isMapFullscreen ? 'flex-1 min-h-[500px]' : 'h-[500px]'
+                    className={`w-full relative z-10 ${
+                      isMapFullscreen ? 'flex-1 min-h-[550px]' : 'h-[520px]'
                     }`}
                   />
 
-                  {/* Top-Right Map Controls (Center Bus, Add Stop, Auto-Follow, Fullscreen) */}
-                  <div className="absolute top-4 right-4 z-[450] flex items-center gap-1.5 pointer-events-auto">
-                    <button
-                      onClick={() => openAddStopModal({ lat: currentCoords.lat, lng: currentCoords.lng })}
-                      className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white border border-rose-400 rounded-xl text-xs font-bold shadow-lg backdrop-blur transition cursor-pointer flex items-center gap-1"
-                      title="वर्तमान लोकेशन पर स्टॉप जोड़ें (+ Add Stop)"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>+ स्टॉप</span>
-                    </button>
+                  {/* Tactile Control Overlays - Note pointer-events-none ensures touch & pinch gestures flow 100% directly to the map canvas */}
+                  <div className="absolute inset-0 z-[400] pointer-events-none p-3 sm:p-4 flex flex-col justify-between">
+                    {/* Top Controls Bar */}
+                    <div className="flex items-start justify-between gap-2">
+                      {/* Top Left: Quick Stop & Layer Switch */}
+                      <div className="flex items-center gap-2 flex-wrap pointer-events-auto">
+                        <button
+                          type="button"
+                          onClick={() => openAddStopModal({ lat: currentCoords.lat, lng: currentCoords.lng })}
+                          className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black shadow-2xl border border-rose-400 flex items-center gap-1.5 transition active:scale-95 cursor-pointer ring-2 ring-rose-500/30"
+                          title="वर्तमान बस लोकेशन पर नया स्टॉप जोड़ें (+ Add Stop)"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>+ नया स्टॉप जोड़ें</span>
+                        </button>
 
-                    <button
-                      onClick={centerMapOnVehicle}
-                      className="px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-900 text-amber-400 border border-slate-700 rounded-xl text-xs font-bold shadow-lg backdrop-blur transition cursor-pointer flex items-center gap-1"
-                      title="बस पर लाएं"
-                    >
-                      <LocateFixed className="w-3.5 h-3.5" />
-                      <span>बस पर लाएं</span>
-                    </button>
-
-                    <button
-                      onClick={() => setAutoFollowVehicle(!autoFollowVehicle)}
-                      className={`px-2 py-1.5 rounded-xl text-xs font-bold border shadow-lg backdrop-blur transition cursor-pointer flex items-center gap-1 ${
-                        autoFollowVehicle
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                          : 'bg-slate-900/90 text-slate-400 border-slate-700'
-                      }`}
-                      title={autoFollowVehicle ? 'ऑटो फॉलो चालू' : 'ऑटो फॉलो बंद'}
-                    >
-                      {autoFollowVehicle ? <Lock className="w-3 h-3 text-amber-400" /> : <Unlock className="w-3 h-3" />}
-                    </button>
-
-                    <button
-                      onClick={() => setIsMapFullscreen(!isMapFullscreen)}
-                      className="p-1.5 bg-slate-900/90 hover:bg-slate-900 text-slate-300 hover:text-white border border-slate-700 rounded-xl shadow-lg backdrop-blur transition cursor-pointer"
-                      title={isMapFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-                    >
-                      {isMapFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  {/* Floating Google Maps Style Locate Me Action Button */}
-                  <div className="absolute bottom-6 right-4 z-[450] flex flex-col items-end gap-2.5 pointer-events-auto">
-                    <button
-                      onClick={() => openGoogleMapsNavigation()}
-                      className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow-2xl border border-blue-400/50 backdrop-blur-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-                      title="Turn-by-turn driving directions in Google Maps app"
-                    >
-                      <Navigation className="w-3.5 h-3.5 text-amber-300" />
-                      <span>नेविगेशन शुरू करें</span>
-                    </button>
-
-                    <button
-                      onClick={() => acquireDeviceLocation(true, false)}
-                      disabled={isGpsAcquiring}
-                      className="w-12 h-12 bg-white hover:bg-slate-100 text-slate-800 rounded-full shadow-2xl border-2 border-slate-200 flex items-center justify-center transition active:scale-90 cursor-pointer group"
-                      title="मेरी लाइव लोकेशन (Google Maps High Accuracy GPS)"
-                    >
-                      <Crosshair
-                        className={`w-6 h-6 transition ${
-                          isGpsAcquiring
-                            ? 'text-blue-600 animate-spin'
-                            : isUsingDeviceGps
-                            ? 'text-blue-600 fill-blue-50'
-                            : 'text-slate-700 group-hover:text-blue-600'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Floating Live Location & Address Badge */}
-                  <div className="absolute bottom-6 left-4 z-[450] max-w-[70%] sm:max-w-md pointer-events-auto">
-                    <div className="bg-slate-950/90 backdrop-blur-md px-3 py-2 rounded-2xl border border-slate-700 shadow-2xl space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${isUsingDeviceGps ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
-                        <span className="text-[11px] font-mono font-bold text-white">
-                          {currentCoords.lat.toFixed(5)}° N, {currentCoords.lng.toFixed(5)}° E
-                        </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                          {isUsingDeviceGps ? 'Live GPS' : 'Sikta Route'}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleMapLayer(mapLayerType === 'google_streets' ? 'google_hybrid' : 'google_streets')}
+                          className="px-3 py-2 bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-bold shadow-xl backdrop-blur-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                          title="सड़क नक्शा / सैटेलाइट दृश्य बदलें"
+                        >
+                          <Layers className="w-3.5 h-3.5 text-amber-400" />
+                          <span className="hidden sm:inline">{mapLayerType === 'google_streets' ? '🛰️ सैटेलाइट' : '🗺️ सड़क नक्शा'}</span>
+                        </button>
                       </div>
-                      <p className="text-[11px] text-slate-300 truncate font-medium flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
-                        <span className="truncate">{currentAddress || 'Sikta Main Road, West Champaran'}</span>
-                      </p>
+
+                      {/* Top Right: Fullscreen Toggle */}
+                      <div className="flex items-center gap-1.5 pointer-events-auto">
+                        <button
+                          type="button"
+                          onClick={() => setIsMapFullscreen(!isMapFullscreen)}
+                          className="p-2.5 bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md transition active:scale-95 cursor-pointer"
+                          title={isMapFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                        >
+                          {isMapFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Middle Right: Tactile Zoom & Auto-Follow Cluster */}
+                    <div className="self-end flex flex-col items-end gap-2.5 pointer-events-auto">
+                      {/* Auto-Follow Re-Center Status Button */}
+                      <button
+                        type="button"
+                        onClick={centerMapOnVehicle}
+                        className={`px-3 py-2 rounded-xl text-xs font-black border shadow-2xl backdrop-blur-md transition flex items-center gap-2 active:scale-95 cursor-pointer ${
+                          autoFollowVehicle
+                            ? 'bg-emerald-600 text-white border-emerald-400 shadow-emerald-600/30 ring-2 ring-emerald-500/40'
+                            : 'bg-amber-500 text-slate-950 border-amber-300 animate-pulse shadow-amber-500/40'
+                        }`}
+                        title={autoFollowVehicle ? 'बस पर लॉक है (Auto-Following)' : 'क्लिक करके बस पर लाएं'}
+                      >
+                        <LocateFixed className="w-4 h-4" />
+                        <span>{autoFollowVehicle ? '🔒 बस फॉलो हो रही है' : '📍 बस पर लाएं'}</span>
+                      </button>
+
+                      {/* Tactile Zoom Buttons (+, -, Entire Route) */}
+                      <div className="flex flex-col bg-slate-900/95 border border-slate-700/90 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md divide-y divide-slate-800">
+                        <button
+                          type="button"
+                          onClick={handleZoomIn}
+                          className="w-11 h-11 flex items-center justify-center text-white hover:bg-slate-800 hover:text-amber-400 transition font-black text-2xl active:scale-90 cursor-pointer"
+                          title="Zoom In (ज़ूम इन करें)"
+                        >
+                          +
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleZoomOut}
+                          className="w-11 h-11 flex items-center justify-center text-white hover:bg-slate-800 hover:text-amber-400 transition font-black text-2xl active:scale-90 cursor-pointer"
+                          title="Zoom Out (ज़ूम आउट करें)"
+                        >
+                          −
+                        </button>
+                        <button
+                          type="button"
+                          onClick={fitEntireRoute}
+                          className="w-11 h-11 flex items-center justify-center text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition active:scale-90 cursor-pointer"
+                          title="पूरा रूट व सभी स्टॉप्स एक साथ स्क्रीन पर देखें"
+                        >
+                          <Route className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Bottom Row: Sleek Live GPS & Navigation Dock */}
+                    <div className="flex items-end justify-between gap-2 flex-wrap sm:flex-nowrap">
+                      {/* Live Location Coordinates & Address Pill */}
+                      <div className="pointer-events-auto bg-slate-950/90 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-700/80 shadow-2xl space-y-0.5 max-w-[240px] sm:max-w-md">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${isUsingDeviceGps ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+                          <span className="text-[11px] font-mono font-bold text-white truncate">
+                            {currentCoords.lat.toFixed(5)}°, {currentCoords.lng.toFixed(5)}°
+                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0">
+                            {isUsingDeviceGps ? 'Live GPS' : 'Sikta Route'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 truncate font-medium flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
+                          <span className="truncate">{currentAddress || 'Sikta Main Road, West Champaran'}</span>
+                        </p>
+                      </div>
+
+                      {/* Right: Google Turn-by-Turn Navigation & High Accuracy Device GPS */}
+                      <div className="flex items-center gap-2 pointer-events-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => openGoogleMapsNavigation()}
+                          className="px-3.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl shadow-2xl border border-blue-400/50 backdrop-blur-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                          title="गूगल मैप्स ऐप में टर्न-बाय-टर्न नेविगेशन शुरू करें"
+                        >
+                          <Navigation className="w-4 h-4 text-amber-300" />
+                          <span className="hidden sm:inline">गूगल नेविगेशन</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => acquireDeviceLocation(true, false)}
+                          disabled={isGpsAcquiring}
+                          className="w-11 h-11 bg-white hover:bg-slate-100 text-slate-800 rounded-xl shadow-2xl border border-slate-200 flex items-center justify-center transition active:scale-90 cursor-pointer"
+                          title="मेरी डिवाइस से लाइव GPS लोकेशन प्राप्त करें"
+                        >
+                          <Crosshair
+                            className={`w-5 h-5 transition ${
+                              isGpsAcquiring
+                                ? 'text-blue-600 animate-spin'
+                                : isUsingDeviceGps
+                                ? 'text-blue-600 fill-blue-50'
+                                : 'text-slate-700'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3861,8 +3983,8 @@ export const StaffDriverPortal: React.FC = () => {
                         onClick={() => {
                           setStopForm(prev => ({
                             ...prev,
-                            latitude: 27.035265,
-                            longitude: 84.660400,
+                            latitude: 27.001738,
+                            longitude: 84.674348,
                             stopName: prev.stopName || 'MPS Sikta Campus Gate'
                           }));
                           showToast('🏫 स्कूल गेट निर्देशांक सेट किए गए', 'info');

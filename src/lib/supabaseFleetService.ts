@@ -126,10 +126,10 @@ export interface SupabaseFleetIncident {
 export const MODEL_PUBLIC_SCHOOL_HUB = {
   name: 'Model Public School',
   address: 'AT- Bhawanipur, P.O.- Kursi Barwa, Sikta, West Champaran, Bihar 845307',
-  latitude: 27.035265,
-  longitude: 84.660400,
-  coords: [27.035265, 84.660400] as [number, number],
-  mapboxCoords: [84.660400, 27.035265] as [number, number]
+  latitude: 27.001738,
+  longitude: 84.674348,
+  coords: [27.001738, 84.674348] as [number, number],
+  mapboxCoords: [84.674348, 27.001738] as [number, number]
 };
 
 // ---------------------------------------------------------------------------
@@ -187,8 +187,8 @@ export const DEFAULT_ROUTES: SupabaseRoute[] = [
       [27.0320, 84.6880],
       [27.0345, 84.6915],
       [27.0380, 84.6950],
-      [27.0310, 84.6650],
-      [27.035265, 84.660400]
+      [27.0195, 84.6738],
+      [27.001738, 84.674348]
     ],
     status: 'Active'
   },
@@ -204,8 +204,8 @@ export const DEFAULT_ROUTES: SupabaseRoute[] = [
       [27.0120, 84.6650],
       [27.0190, 84.6710],
       [27.0250, 84.6812],
-      [27.0310, 84.6650],
-      [27.035265, 84.660400]
+      [27.0195, 84.6738],
+      [27.001738, 84.674348]
     ],
     status: 'Active'
   }
@@ -275,8 +275,8 @@ export const DEFAULT_STOPS: SupabaseStop[] = [
     stop_order: 5,
     scheduled_pickup_time: '07:55 AM',
     scheduled_drop_time: '02:30 PM',
-    latitude: 27.035265,
-    longitude: 84.660400,
+    latitude: 27.001738,
+    longitude: 84.674348,
     landmark: 'AT- Bhawanipur, P.O.- Kursi Barwa, Sikta - Main Campus Gate',
     radius_meters: 100,
     fee_monthly: 0,

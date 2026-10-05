@@ -16,7 +16,7 @@ import {
   Palette, Users, GraduationCap, Megaphone, ClipboardList, Image, Settings, Home, LogOut,
   X, Menu, Plus, Trash2, Search, Check, AlertTriangle, Edit3, Download, Key, ShieldAlert,
   Upload, Phone, Mail, UserPlus, CheckCircle, XCircle, Clock, Sparkles, School, Eye, EyeOff,
-  Video, FileQuestion, DollarSign, Camera, Bus, User, ShieldCheck, RefreshCw, Layers, Calendar, Navigation
+  Video, FileQuestion, DollarSign, Camera, Bus, User, ShieldCheck, RefreshCw, Layers, Calendar, Navigation, ChevronRight
 } from 'lucide-react';
 
 export const AdminControlCenter: React.FC = () => {
@@ -421,7 +421,8 @@ export const AdminControlCenter: React.FC = () => {
     // Build or preserve months with auto-addon calculation
     const existingMonths = isEdit && editingStudent?.feeInfo?.months ? editingStudent.feeInfo.months : [];
     const months = generateDefault12MonthFeeList(combinedMonthlyFee, 2026).map(m => {
-      const existing = existingMonths.find(em => em.month.toLowerCase().includes(m.month.split(',')[0].toLowerCase()));
+      const monthPrefix = (m.month || '').split(',')[0].toLowerCase();
+      const existing = existingMonths.find(em => (em.month || '').toLowerCase().includes(monthPrefix));
       if (existing && existing.status === 'Paid') {
         return { ...existing };
       }
@@ -703,27 +704,30 @@ export const AdminControlCenter: React.FC = () => {
   }
 
   // Filtered lists
+  const tQuery = teacherSearch.toLowerCase();
   const filteredTeachers = teachers.filter(
-    t => t.name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
-         t.subject.toLowerCase().includes(teacherSearch.toLowerCase()) ||
-         t.username.toLowerCase().includes(teacherSearch.toLowerCase())
+    t => (t.name || '').toLowerCase().includes(tQuery) ||
+         (t.subject || '').toLowerCase().includes(tQuery) ||
+         (t.username || '').toLowerCase().includes(tQuery)
   );
 
+  const sQuery = studentSearch.toLowerCase();
   const filteredStudents = students.filter(
-    s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-         s.rollNo.toLowerCase().includes(studentSearch.toLowerCase()) ||
-         s.class.toLowerCase().includes(studentSearch.toLowerCase())
+    s => (s.name || '').toLowerCase().includes(sQuery) ||
+         (s.rollNo || '').toLowerCase().includes(sQuery) ||
+         (s.class || '').toLowerCase().includes(sQuery)
   );
 
   const filteredAdmissions = admissions.filter(
     a => admissionFilter === 'All' ? true : a.status === admissionFilter
   );
 
+  const fQuery = feeSearch.toLowerCase();
   const filteredFeeStudents = students.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(feeSearch.toLowerCase()) ||
-      s.rollNo.toLowerCase().includes(feeSearch.toLowerCase()) ||
-      s.class.toLowerCase().includes(feeSearch.toLowerCase()) ||
-      s.parentName.toLowerCase().includes(feeSearch.toLowerCase());
+    const matchesSearch = (s.name || '').toLowerCase().includes(fQuery) ||
+      (s.rollNo || '').toLowerCase().includes(fQuery) ||
+      (s.class || '').toLowerCase().includes(fQuery) ||
+      (s.parentName || '').toLowerCase().includes(fQuery);
     const matchesClass = feeClassFilter === 'All' || s.class === feeClassFilter;
     return matchesSearch && matchesClass;
   });

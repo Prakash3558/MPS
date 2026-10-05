@@ -30,7 +30,7 @@ interface RoadRoutingMapProps {
 /**
  * Enterprise Production-Ready Road Routing Map (Mapbox GL JS + OSRM)
  * - Strictly ZERO straight-line vector lines (strict snap-to-roads via Mapbox Directions API / OSRM)
- * - Anchored at Model Public School ([84.5936, 27.0248])
+ * - Anchored at Model Public School ([84.674348, 27.001738])
  * - Live bus gliding marker with heading rotation
  * - Secondary ETA & delay calculation (Scheduled vs Predicted)
  * - Dynamic stop addition, deletion, and sequence re-routing
@@ -246,7 +246,7 @@ export const RoadRoutingMap: React.FC<RoadRoutingMapProps> = ({
           properties: {},
           geometry: {
             type: 'LineString',
-            coordinates: [[84.6812, 27.0250], [84.6604, 27.0353]]
+            coordinates: [[84.6812, 27.0250], [84.674348, 27.001738]]
           }
         }
       });
@@ -601,7 +601,7 @@ export const RoadRoutingMap: React.FC<RoadRoutingMapProps> = ({
             <span className="text-base">🏫</span>
             <div>
               <div className="font-bold text-white text-[11px]">{MODEL_PUBLIC_SCHOOL_HUB.name} Destination Hub</div>
-              <div className="text-[10px] text-slate-400">Bhawanipur, West Champaran (27.0353° N, 84.6604° E)</div>
+              <div className="text-[10px] text-slate-400">Bhawanipur, West Champaran (27.001738° N, 84.674348° E)</div>
             </div>
           </div>
         </div>

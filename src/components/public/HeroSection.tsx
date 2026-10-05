@@ -6,7 +6,6 @@ import { EditableImage } from '../common/EditableImage';
 import { EditableIcon } from '../common/EditableIcon';
 import { ChevronLeft, ChevronRight, Bookmark, Download, Smartphone, GraduationCap, ArrowRight, ShieldCheck, Sparkles, Camera } from 'lucide-react';
 import { motion } from 'motion/react';
-import { ThreeDHeroCanvas } from '../common/ThreeDHeroCanvas';
 import { AppDownloadModal } from '../common/AppDownloadModal';
 
 export const HeroSection: React.FC = React.memo(() => {
@@ -118,9 +117,6 @@ export const HeroSection: React.FC = React.memo(() => {
         {/* Soft Contrast Scrim Overlay - Minimal & Translucent so image is vivid */}
         <div className="absolute inset-0 z-15 bg-slate-950/25 pointer-events-none"></div>
         <div className="absolute inset-0 z-15 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/40 pointer-events-none"></div>
-        
-        {/* Interactive 3D WebGL Floating Geometry & Stars Overlay */}
-        <ThreeDHeroCanvas />
       </div>
 
       {/* FLOATING SIDE NAVIGATION ARROWS */}

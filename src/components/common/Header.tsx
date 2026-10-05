@@ -306,7 +306,7 @@ export const Header: React.FC = React.memo(() => {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border-b border-slate-200 dark:border-slate-800 px-4 py-3.5 space-y-3 text-sm font-medium animate-in slide-in-from-top-3 duration-200">
-          {(user || teacher || student) ? (
+          {(user || teacher || student || staff) ? (
             <div className="bg-slate-100 dark:bg-slate-800/90 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5">
               <div className="flex items-center gap-3">
                 {/* Profile Photo Avatar */}
@@ -323,9 +323,15 @@ export const Header: React.FC = React.memo(() => {
                       alt={teacher.name}
                       className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400 shadow-sm"
                     />
+                  ) : staff?.photo ? (
+                    <img
+                      src={staff.photo}
+                      alt={staff.name}
+                      className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400 shadow-sm"
+                    />
                   ) : (
                     <div className="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 font-black flex items-center justify-center text-base shadow-sm">
-                      {(user?.name || teacher?.name || student?.name || 'U').charAt(0).toUpperCase()}
+                      {(user?.name || teacher?.name || student?.name || staff?.name || 'U').charAt(0).toUpperCase()}
                     </div>
                   )}
                   <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></span>
@@ -334,7 +340,7 @@ export const Header: React.FC = React.memo(() => {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase">
-                      {student ? `Class ${student.class}-${student.section}` : (teacher ? `Teacher: Class ${teacher.assignedClass}-${teacher.assignedSection}` : 'Admin')}
+                      {staff ? `${staff.role}: ${staff.vehicleNumber || 'Staff'}` : student ? `Class ${student.class}-${student.section}` : (teacher ? `Teacher: Class ${teacher.assignedClass}-${teacher.assignedSection}` : 'Admin')}
                     </span>
                     {student?.rollNo && (
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">
@@ -343,14 +349,14 @@ export const Header: React.FC = React.memo(() => {
                     )}
                   </div>
                   <div className="text-sm font-black text-slate-900 dark:text-white truncate mt-0.5">
-                    {user?.name || teacher?.name || student?.name}
+                    {user?.name || teacher?.name || student?.name || staff?.name}
                   </div>
                 </div>
               </div>
 
               <div className="flex gap-2 pt-1 border-t border-slate-200 dark:border-slate-700/60">
                 <a
-                  href={student ? '/portal' : (teacher ? '/teacher' : '/admin')}
+                  href={staff ? '/staff' : (student ? '/portal' : (teacher ? '/teacher' : '/admin'))}
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex-1 flex items-center justify-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs py-2 rounded-xl shadow-xs"
                 >
